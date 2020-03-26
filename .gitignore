@@ -1,0 +1,9 @@
+*.session
+*.idea
+*.xml
+/bot_tools/__pycache__
+/commands/__pycache__
+/unknown_errors.txt
+/.idea
+/bot.cfg
+*.pyc
