@@ -13,13 +13,6 @@ from text.basiq_texts import new_user_txt, choice_valuta_txt, end_reg_txt
 def reg_user(_, m):
     user = m.from_user
 
-    User.create(user_id=user.id,
-                user_name=user.username,
-                first_name=user.first_name,
-                last_name=user.last_name,
-                date_reg=dt.datetime.utcnow()
-                )
-
     UserSet.create(user_id=user.id)
 
     # TODO дописать создание профиля и кошелька
@@ -46,12 +39,19 @@ def choice_lang_cb(_, cb):
 
 @Client.on_callback_query(UserCallbackFilter.choice_valuta)
 def choice_val_cb(_, cb):
-    user_id = cb.from_user.id
+    user = cb.from_user
     choice = int(cb.data[4:])
 
-    user_set = UserSet.get_by_id(user_id)
+    user_set = UserSet.get_by_id(user.id)
     user_set.valuta = choice
     user_set.save()
+
+    User.create(user_id=user.id,
+                user_name=user.username,
+                first_name=user.first_name,
+                last_name=user.last_name,
+                date_reg=dt.datetime.utcnow()
+                )
 
     cb.message.delete()
     cb.message.reply(end_reg_txt, reply_markup=menu_kb)
