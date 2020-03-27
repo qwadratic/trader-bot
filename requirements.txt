@@ -1,9 +1,9 @@
 colorama==0.4.3
-peewee==3.13.1
+peewee==3.13.2
 peewee-db-evolve==3.7.3
 Pyrogram==0.16.0
 PySocks==1.7.1
 pytz==2019.3
-virtualenv==16.7.9
+virtualenv==20.0.15
 TgCrypto==1.2.0
-postgres==3.0.0
+psycopg2==2.8.4

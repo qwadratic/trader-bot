@@ -8,7 +8,7 @@ app = Client(session_name=get_session_name(), bot_token=get_token(), config_file
 
 
 if __name__ == "__main__":
-    peeweedbevolve.evolve(db, interactive=False, ignore_tables=['basemodel'])
+    db.evolve(interactive=False, ignore_tables=['basemodel'])
     app.run()
 
 

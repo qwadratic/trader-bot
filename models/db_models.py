@@ -1,6 +1,6 @@
 from peewee import *
 from bot_tools.dbconnect import db_conn
-import peeweedbevolve
+
 
 db = PostgresqlDatabase(**db_conn)
 
@@ -8,7 +8,6 @@ db = PostgresqlDatabase(**db_conn)
 class BaseModel(Model):
     class Meta:
         database = db
-        schema = 'banker'
 
 
 class User(BaseModel):
