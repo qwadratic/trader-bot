@@ -46,7 +46,7 @@ def choice_val_cb(_, cb):
     user_set.valuta = choice
     user_set.save()
 
-    User.create(user_id=user.id,
+    User.create(tg_id=user.id,
                 user_name=user.username,
                 first_name=user.first_name,
                 last_name=user.last_name,
