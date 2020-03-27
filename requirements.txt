@@ -6,4 +6,4 @@ PySocks==1.7.1
 pytz==2019.3
 virtualenv==16.7.9
 TgCrypto==1.2.0
-PyMySQL==0.9.3
+postgres==3.0.0
