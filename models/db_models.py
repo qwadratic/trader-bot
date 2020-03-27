@@ -23,5 +23,5 @@ class User(BaseModel):
 class UserSet(BaseModel):
     user_id = IntegerField(primary_key=True)
     lang = IntegerField(null=True)
-    valuta = IntegerField(null=True)
+    currency = IntegerField(null=True)
 

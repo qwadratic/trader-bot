@@ -6,7 +6,7 @@ new_user_txt = 'Hello!\n' \
                 'Выбери язык'
 
 
-def choice_valuta_txt(user_id):
+def choice_currency_txt(user_id):
     lang = UserSet.get_by_id(user_id)
 
     if lang == 1:

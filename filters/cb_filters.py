@@ -7,4 +7,4 @@ class UserCallbackFilter:
 
     choice_lang = create(lambda _, cb: cb.data[:4] == 'lang')
 
-    choice_valuta = create(lambda _, cb: cb.data[:3] == 'val')
+    choice_currency = create(lambda _, cb: cb.data[:3] == 'val')

@@ -4,9 +4,9 @@ from pyrogram import Client, Filters
 
 from filters.cb_filters import UserCallbackFilter
 from filters.m_filters import UserMessageFilter
-from keyboard.user_kb import choice_lang_kb, choice_valuta_kb, menu_kb
+from keyboard.user_kb import choice_lang_kb, choice_currency_kb, menu_kb
 from models.db_models import User, UserSet
-from text.basiq_texts import new_user_txt, choice_valuta_txt, end_reg_txt
+from text.basiq_texts import new_user_txt, choice_currency_txt, end_reg_txt
 
 
 @Client.on_message(Filters.command('start') & UserMessageFilter.new_user)
@@ -34,16 +34,16 @@ def choice_lang_cb(_, cb):
     user_set.lang = choice
     user_set.save()
 
-    cb.message.edit(choice_valuta_txt(user_id), reply_markup=choice_valuta_kb)
+    cb.message.edit(choice_currency_txt(user_id), reply_markup=choice_currency_kb)
 
 
-@Client.on_callback_query(UserCallbackFilter.choice_valuta)
-def choice_val_cb(_, cb):
+@Client.on_callback_query(UserCallbackFilter.choice_currency)
+def choice_curr_cb(_, cb):
     user = cb.from_user
     choice = int(cb.data[4:])
 
     user_set = UserSet.get_by_id(user.id)
-    user_set.valuta = choice
+    user_set.currency = choice
     user_set.save()
 
     User.create(tg_id=user.id,

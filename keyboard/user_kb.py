@@ -9,7 +9,7 @@ choice_lang_kb = InlineKeyboardMarkup(
         )
 
 
-choice_valuta_kb = InlineKeyboardMarkup(
+choice_currency_kb = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton('🇺🇸 Американский доллар (USD)', callback_data=f'val 1')],
                 [InlineKeyboardButton('🇺🇦 Украинская гривна (UAH)', callback_data=f'val 2')],
