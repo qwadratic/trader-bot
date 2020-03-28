@@ -1,5 +1,6 @@
 import datetime as dt
 
+from peewee import IntegrityError
 from pyrogram import Client, Filters
 
 from filters.cb_filters import UserCallbackFilter
@@ -12,6 +13,7 @@ from text.basiq_texts import choice_lang, choice_currency_txt, end_reg_txt, star
 @Client.on_message(Filters.regex(r'q'))
 def qew(_, m):
     job_check_ref()
+
 
 @Client.on_message(Filters.command('start'))
 def reg_user(_, m):
@@ -30,10 +32,18 @@ def reg_user(_, m):
                 ref_user = User.get_or_none(id=int(comm[1][1:]))
 
                 if ref_user:
-                    user_ref = user.ref
-                    user_ref.ref_user_id = ref_user.id
-                    user_ref.ref_created_at = dt.datetime.utcnow()
-                    user_ref.save()
+
+                    try:
+                        UserRef.create(user_id=user.id,
+                                       ref_user_id=ref_user.id,
+                                       ref_created_at=dt.datetime.utcnow()
+                                       )
+
+                    except IntegrityError:
+                        UserRef.update(user_id=user.id,
+                                       ref_user_id=ref_user.id,
+                                       ref_created_at=dt.datetime.utcnow()
+                                       ).execute()
 
                     m.reply(start_ref_txt(user.settings.lang), reply_markup=menu_kb)
 
@@ -95,7 +105,7 @@ def reg_user(_, m):
             elif ref_type == 't':
 
                 trade_id = int(comm[1][1:])
-                trade = True #  TODO  изменить на модель сделок
+                trade = True  # TODO  изменить на модель сделок
 
                 if trade:
                     # ref_user = trade.user_id

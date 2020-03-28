@@ -34,6 +34,6 @@ class UserSettings(BaseModel):
 
 
 class UserRef(BaseModel):
-    user_id = ForeignKeyField(User, backref='ref_', on_delete='CASCADE')
+    user_id = ForeignKeyField(User, unique=True, backref='ref_', on_delete='CASCADE')
     ref_user_id = IntegerField()
-    ref_created_at = DateTimeField()
+    ref_created_at = DateTimeField(null=True)
