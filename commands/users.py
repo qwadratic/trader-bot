@@ -31,28 +31,30 @@ def reg_user(_, m):
             if ref_type == 'u':
                 ref_user = User.get_or_none(id=int(comm[1][1:]))
 
-                if ref_user:
-
-                    try:
-                        UserRef.create(user_id=user.id,
-                                       ref_user_id=ref_user.id,
-                                       ref_created_at=dt.datetime.utcnow()
-                                       )
-
-                    except IntegrityError:
-                        UserRef.update(user_id=user.id,
-                                       ref_user_id=ref_user.id,
-                                       ref_created_at=dt.datetime.utcnow()
-                                       ).execute()
-
-                    m.reply(start_ref_txt(user.settings.lang), reply_markup=menu_kb)
-
-                else:
+                if ref_user == user.id:
                     m.reply(start_txt, reply_markup=menu_kb)
+                else:
+                    if ref_user:
+
+                        try:
+                            UserRef.create(user_id=user.id,
+                                           ref_user_id=ref_user.id,
+                                           ref_created_at=dt.datetime.utcnow()
+                                           )
+
+                        except IntegrityError:
+                            UserRef.update(user_id=user.id,
+                                           ref_user_id=ref_user.id,
+                                           ref_created_at=dt.datetime.utcnow()
+                                           ).execute()
+
+                        m.reply(start_ref_txt(user.settings.lang), reply_markup=menu_kb)
+                    else:
+                        m.reply(start_txt, reply_markup=menu_kb)
 
             elif ref_type == 't':
                 trade_id = int(comm[1][1:])
-                trade = True  # TODO  изменить на модель сделок
+                trade = True  # TODO  изменить на модель сделок, проверку реф и юзер айдишников
 
                 if trade:
                     user_ref = 1
@@ -98,7 +100,6 @@ def reg_user(_, m):
 
                     m.reply(start_ref_txt(user_set.lang))
                     m.reply(end_reg_ref_txt(user_set.lang), reply_markup=menu_kb)
-
                 else:
                     m.reply(choice_lang, reply_markup=choice_lang_kb)
 
@@ -124,7 +125,6 @@ def reg_user(_, m):
 
                 else:
                     m.reply(choice_lang, reply_markup=choice_lang_kb)
-
             else:
                 print(7)
                 m.reply(choice_lang, reply_markup=choice_lang_kb)
