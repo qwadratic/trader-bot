@@ -7,3 +7,5 @@
 /.idea
 /bot.cfg
 *.pyc
+*.venv
+*__pycache__

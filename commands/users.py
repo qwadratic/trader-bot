@@ -4,7 +4,7 @@ from pyrogram import Client, Filters
 
 from filters.cb_filters import UserCallbackFilter
 from keyboard.user_kb import choice_lang_kb, choice_currency_kb, menu_kb
-from models import User, UserSettings, UserRef
+from model import User, UserSettings, UserRef
 from text.basiq_texts import choice_lang, choice_currency_txt, end_reg_txt, start_ref_txt, start_txt, end_reg_ref_txt
 
 
@@ -18,21 +18,24 @@ def reg_user(_, m):
             m.reply(start_txt, reply_markup=menu_kb)
 
         elif len(comm) > 1:
-            ref_user = User.get(int(comm[1]))
+            ref_user = User.get_or_none(id=int(comm[1]))
 
-            user_ref = user.ref
-            user_ref.ref_user_id = ref_user.id
-            user_ref.ref_created_at = dt.datetime.utcnow()
-            user_ref.save()
+            if ref_user:
+                user_ref = user.ref
+                user_ref.ref_user_id = ref_user.id
+                user_ref.ref_created_at = dt.datetime.utcnow()
+                user_ref.save()
 
-            if len(comm) == 2:
-                m.reply(start_ref_txt(user.settings.lang), reply_markup=menu_kb)
+                if len(comm) == 2:
+                    m.reply(start_ref_txt(user.settings.lang), reply_markup=menu_kb)
 
-            elif len(comm) == 3:
-                ref_user = User.get_by_id(int(comm[1]))
-                trade_id = int(comm[2])
+                elif len(comm) == 3:
+                    ref_user = User.get_by_id(int(comm[1]))
+                    trade_id = int(comm[2])
 
-                m.reply('Тут сделка c и кнопки под ней')
+                    m.reply('Тут сделка c и кнопки под ней')
+            else:
+                m.reply(start_txt, reply_markup=menu_kb)
     else:
         # TODO дописать создание профиля и кошелька
         user = User.create(tg_id=tg_user.id,
@@ -48,26 +51,29 @@ def reg_user(_, m):
             m.reply(choice_lang, reply_markup=choice_lang_kb)
 
         elif len(comm) > 1:
-            ref_user = User.get_by_id(int(comm[1]))
+            ref_user = User.get_or_none(int(comm[1]))
 
-            user_set.lang = ref_user.settings.lang
-            user_set.currency = ref_user.settings.currency
-            user_set.save()
+            if ref_user:
+                user_set.lang = ref_user.settings.lang
+                user_set.currency = ref_user.settings.currency
+                user_set.save()
 
-            UserRef.create(user_id=user.id,
-                           ref_user_id=ref_user.id,
-                           ref_created_at=dt.datetime.utcnow()
-                           )
+                UserRef.create(user_id=user.id,
+                               ref_user_id=ref_user.id,
+                               ref_created_at=dt.datetime.utcnow()
+                               )
 
-            if len(comm) == 2:
-                m.reply(start_ref_txt(user_set.lang))
-                m.reply(end_reg_ref_txt(user_set.lang), reply_markup=menu_kb)
+                if len(comm) == 2:
+                    m.reply(start_ref_txt(user_set.lang))
+                    m.reply(end_reg_ref_txt(user_set.lang), reply_markup=menu_kb)
 
-            elif len(comm) == 3:
-                trade_id = int(comm[2])
+                elif len(comm) == 3:
+                    trade_id = int(comm[2])
 
-                m.reply(start_ref_txt(user_set.lang))
-                m.reply('Тут сделка c и кнопки под ней')
+                    m.reply(start_ref_txt(user_set.lang))
+                    m.reply('Тут сделка c и кнопки под ней')
+            else:
+                m.reply(choice_lang, reply_markup=choice_lang_kb)
 
 
 @Client.on_callback_query(UserCallbackFilter.choice_lang)
