@@ -1,18 +1,37 @@
-from models.db_models import UserSet
 
-new_user_txt = 'Hello!\n' \
+choice_lang = 'Hello!\n' \
                 'choose a language\n\n' \
                 'Привет!!\n' \
                 'Выбери язык'
 
+start_txt = '*текст нажатия кнопки старт для существующего юзера*'
 
-def choice_currency_txt(user_id):
-    lang = UserSet.get_by_id(user_id)
+
+def start_ref_txt(lang, name=None):
+    if lang == 1:
+        txt = f'Пользователь /{name} теперь является Вашим рефералом'
+    else:
+        txt = f'Пользователь /{name} теперь является Вашим рефералом'
+
+    return txt
+
+
+def end_reg_ref_txt(lang):
+    if lang == 1:
+        txt = '*Текст приветствия, когда юзер регнулся через рефку*\n' \
+              'Валюту и язык можно изменить в настройкаъ'
+    else:
+        txt = '*Текст приветствия, когда юзер регнулся через рефку*\n' \
+              'Валюту и язык можно изменить в настройкаъ'
+
+    return txt
+
+
+def choice_currency_txt(lang):
 
     if lang == 1:
         txt = 'Отлично!\n' \
               'С какой валютой работаем?'
-
     else:
         txt = 'Отлично!\n' \
               'С какой валютой работаем?'
@@ -23,3 +42,5 @@ def choice_currency_txt(user_id):
 end_reg_txt = 'Поздравляю!\n' \
               'Регистрация окончена, язык и валюту можно изменить в настройках\n' \
               '*какой-то еще текст*'
+
+
