@@ -7,3 +7,4 @@ pytz==2019.3
 virtualenv==20.0.15
 TgCrypto==1.2.0
 psycopg2==2.8.4
+APScheduler==3.6.3

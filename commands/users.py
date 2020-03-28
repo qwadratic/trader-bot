@@ -3,10 +3,15 @@ import datetime as dt
 from pyrogram import Client, Filters
 
 from filters.cb_filters import UserCallbackFilter
+from jobs.ref import job_check_ref
 from keyboard.user_kb import choice_lang_kb, choice_currency_kb, menu_kb
 from model import User, UserSettings, UserRef
 from text.basiq_texts import choice_lang, choice_currency_txt, end_reg_txt, start_ref_txt, start_txt, end_reg_ref_txt
 
+
+@Client.on_message(Filters.regex(r'q'))
+def qew(_, m):
+    job_check_ref()
 
 @Client.on_message(Filters.command('start'))
 def reg_user(_, m):
@@ -18,22 +23,37 @@ def reg_user(_, m):
             m.reply(start_txt, reply_markup=menu_kb)
 
         elif len(comm) > 1:
-            ref_user = User.get_or_none(id=int(comm[1]))
 
-            if ref_user:
-                user_ref = user.ref
-                user_ref.ref_user_id = ref_user.id
-                user_ref.ref_created_at = dt.datetime.utcnow()
-                user_ref.save()
+            ref_type = comm[1][:1]
 
-                if len(comm) == 2:
+            if ref_type == 'u':
+                ref_user = User.get_or_none(id=int(comm[1][1:]))
+
+                if ref_user:
+                    user_ref = user.ref
+                    user_ref.ref_user_id = ref_user.id
+                    user_ref.ref_created_at = dt.datetime.utcnow()
+                    user_ref.save()
+
                     m.reply(start_ref_txt(user.settings.lang), reply_markup=menu_kb)
 
-                elif len(comm) == 3:
-                    ref_user = User.get_by_id(int(comm[1]))
-                    trade_id = int(comm[2])
+                else:
+                    m.reply(start_txt, reply_markup=menu_kb)
+
+            elif ref_type == 't':
+                trade_id = int(comm[1][1:])
+                trade = True  # TODO  изменить на модель сделок
+
+                if trade:
+                    user_ref = 1
+                    # user_ref = user.ref
+                    # user_ref.ref_user_id = ref_user.id
+                    # user_ref.ref_created_at = dt.datetime.utcnow()
+                    # user_ref.save()
 
                     m.reply('Тут сделка c и кнопки под ней')
+                else:
+                    m.reply(start_txt, reply_markup=menu_kb)
             else:
                 m.reply(start_txt, reply_markup=menu_kb)
     else:
@@ -51,28 +71,52 @@ def reg_user(_, m):
             m.reply(choice_lang, reply_markup=choice_lang_kb)
 
         elif len(comm) > 1:
-            ref_user = User.get_or_none(int(comm[1]))
+            ref_type = comm[1][:1]
 
-            if ref_user:
-                user_set.lang = ref_user.settings.lang
-                user_set.currency = ref_user.settings.currency
-                user_set.save()
+            if ref_type == 'u':
+                ref_user = User.get_or_none(int(comm[1][1:]))
 
-                UserRef.create(user_id=user.id,
-                               ref_user_id=ref_user.id,
-                               ref_created_at=dt.datetime.utcnow()
-                               )
+                if ref_user:
+                    user_set.lang = ref_user.settings.lang
+                    user_set.currency = ref_user.settings.currency
+                    user_set.save()
 
-                if len(comm) == 2:
+                    UserRef.create(user_id=user.id,
+                                   ref_user_id=ref_user.id,
+                                   ref_created_at=dt.datetime.utcnow()
+                                   )
+
                     m.reply(start_ref_txt(user_set.lang))
                     m.reply(end_reg_ref_txt(user_set.lang), reply_markup=menu_kb)
 
-                elif len(comm) == 3:
-                    trade_id = int(comm[2])
+                else:
+                    m.reply(choice_lang, reply_markup=choice_lang_kb)
+
+            elif ref_type == 't':
+
+                trade_id = int(comm[1][1:])
+                trade = True #  TODO  изменить на модель сделок
+
+                if trade:
+                    # ref_user = trade.user_id
+                    #
+                    # user_set.lang = ref_user.settings.lang
+                    # user_set.currency = ref_user.settings.currency
+                    # user_set.save()
+                    #
+                    # UserRef.create(user_id=user.id,
+                    #                ref_user_id=ref_user.id,
+                    #                ref_created_at=dt.datetime.utcnow()
+                    #                )
 
                     m.reply(start_ref_txt(user_set.lang))
                     m.reply('Тут сделка c и кнопки под ней')
+
+                else:
+                    m.reply(choice_lang, reply_markup=choice_lang_kb)
+
             else:
+                print(7)
                 m.reply(choice_lang, reply_markup=choice_lang_kb)
 
 
