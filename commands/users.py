@@ -48,7 +48,7 @@ def reg_user(_, m):
                                            ref_created_at=dt.datetime.utcnow()
                                            ).execute()
 
-                        m.reply(start_ref_txt(user.settings.lang), reply_markup=menu_kb)
+                        m.reply(start_ref_txt(), reply_markup=menu_kb)
                     else:
                         m.reply(start_txt, reply_markup=menu_kb)
 
@@ -98,8 +98,8 @@ def reg_user(_, m):
                                    ref_created_at=dt.datetime.utcnow()
                                    )
 
-                    m.reply(start_ref_txt(user_set.lang))
-                    m.reply(end_reg_ref_txt(user_set.lang), reply_markup=menu_kb)
+                    m.reply(start_ref_txt())
+                    m.reply(end_reg_ref_txt, reply_markup=menu_kb)
                 else:
                     m.reply(choice_lang, reply_markup=choice_lang_kb)
 
@@ -120,7 +120,7 @@ def reg_user(_, m):
                     #                ref_created_at=dt.datetime.utcnow()
                     #                )
 
-                    m.reply(start_ref_txt(user_set.lang))
+                    m.reply(start_ref_txt())
                     m.reply('Тут сделка c и кнопки под ней')
 
                 else:
@@ -140,7 +140,7 @@ def choice_lang_cb(_, cb):
     user_set.lang = choice
     user_set.save()
 
-    cb.message.edit(choice_currency_txt(user_set.lang), reply_markup=choice_currency_kb)
+    cb.message.edit(choice_currency_txt, reply_markup=choice_currency_kb)
 
 
 @Client.on_callback_query(UserCallbackFilter.choice_currency)
