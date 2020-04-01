@@ -1,4 +1,4 @@
-from model import TempPaymentCurrency
+from model import TempPaymentCurrency, ListCurrency
 
 trade_menu = '💸 **Обмен**\n\n' \
                'Здесь Вы совершаете сделки с людьми, а бот выступает в качестве гаранта безопасности при проведении сделки.'
@@ -18,6 +18,15 @@ enter_count = 'Введите точное количество валюты, к
 
 
 sale = '📋 Доступны объявления на покупку в следующих категориях платёжных инструментов'
+
+await_respond_from_seller = 'Ожидайте подтверждения продавца'
+
+
+def start_deal_for_seller(announcement_id):
+    from core.trade_core import deal_info
+    txt = '**Пользователь хочет начать с Вами сделку по этому объявлению**\n\n'
+    txt += deal_info(announcement_id)
+    return txt
 
 
 def error_limit(limit):
@@ -39,7 +48,8 @@ def choice_payment_currency(user_id):
     return txt
 
 
-def indicate_requisites(currency_name):
+def indicate_requisites(currency_id):
+    currency_name =ListCurrency.get_by_id(currency_id).name
     txt = f'В портмоне у вас отсутствуют реквизиты для **{currency_name}**\n\n' \
         f'Введите, пожалуйста, реквизиты'
 
@@ -63,5 +73,13 @@ def pending_payment(trade_currency):
 def enter_amount_for_sale(limit):
     txt = f'Введите точную сумму сколько желаете продать\n' \
         f'Или диапазон от 0 до {limit}'
+
+    return txt
+
+
+def payment_details(deal, requisites):
+    announc = deal.announcement
+    txt = f'Переведите на этот счёт {requisites}\n\n' \
+        f'Сумму денег'
 
     return txt

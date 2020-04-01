@@ -55,16 +55,23 @@ class UserRef(BaseModel):
     ref_created_at = DateTimeField(null=True)
 
 
+class ListCurrency(BaseModel):
+    id = PrimaryKeyField()
+    name = CharField()
+
+
 class UserPurse(BaseModel):
     user_id = IntegerField()
-    currency_id = IntegerField(unique=True)
+    currency = ForeignKeyField(ListCurrency)
     address = CharField()
+    created_at = DateTimeField(null=True)
 
 
 class UserFlag(BaseModel):
     user_id = ForeignKeyField(User, unique=True, backref='flag_', on_delete='CASCADE')
     flag = IntegerField(null=True)
     purse_flag = IntegerField(null=True)
+    announcement_id = IntegerField(null=True)
 
 
 class MsgId(BaseModel):
@@ -75,11 +82,7 @@ class MsgId(BaseModel):
     await_requisites = IntegerField(null=True)
     await_payment_pending = IntegerField(null=True)
     await_limit = IntegerField(null=True)
-
-
-class ListCurrency(BaseModel):
-    id = PrimaryKeyField()
-    name = CharField()
+    await_requisites_from_seller = IntegerField(null=True)
 
 
 class TempAnnouncement(BaseModel):
@@ -97,7 +100,7 @@ class TempPaymentCurrency(BaseModel):
 
 
 class Announcement(BaseModel):
-    user_id = ForeignKeyField(User, backref='announc_', on_delete='CASCADE')
+    user = ForeignKeyField(User, backref='announc_', on_delete='CASCADE')
     type_operation = IntegerField()
     trade_currency = ForeignKeyField(ListCurrency)
     amount = IntegerField()
@@ -126,7 +129,9 @@ class TradeStatus(BaseModel):
 
 class Trade(BaseModel):
     announcement = ForeignKeyField(Announcement, backref='trade_', on_delete='CASCADE')
+    user = ForeignKeyField(User, backref='trade_', on_delete='CASCADE')
     status = ForeignKeyField(TradeStatus)
+    user_currency = IntegerField(null=True)
 
 
 

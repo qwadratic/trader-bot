@@ -3,7 +3,9 @@ import datetime as dt
 from peewee import IntegrityError
 from pyrogram import Client, Filters
 
+from core.trade_core import deal_info
 from filters.cb_filters import UserCallbackFilter
+from keyboard import trade_kb
 from keyboard.user_kb import choice_lang_kb, choice_currency_kb, menu_kb
 from model import User, UserSettings, UserRef, MsgId, UserFlag, UserPurse
 from text.basiq_texts import choice_lang, choice_currency_txt, end_reg_txt, start_ref_txt, start_txt, end_reg_ref_txt
@@ -58,8 +60,7 @@ def reg_user(_, m):
                     # user_ref.ref_user_id = ref_user.id
                     # user_ref.ref_created_at = dt.datetime.utcnow()
                     # user_ref.save()
-
-                    m.reply('Тут сделка c и кнопки под ней')
+                    m.reply(deal_info(trade_id), reply_markup=trade_kb.deal_for_user(trade_id))
                 else:
                     m.reply(start_txt, reply_markup=menu_kb)
             else:
@@ -116,8 +117,7 @@ def reg_user(_, m):
                     #                ref_created_at=dt.datetime.utcnow()
                     #                )
 
-                    m.reply(start_ref_txt())
-                    m.reply('Тут сделка c и кнопки под ней')
+                    m.reply(deal_info(trade_id), reply_markup=trade_kb.deal_for_user(trade_id))
 
                 else:
                     m.reply(choice_lang, reply_markup=choice_lang_kb)

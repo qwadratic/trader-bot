@@ -30,4 +30,7 @@ class TradeFilter:
 
     open_announcement = create(lambda _, cb: cb.data[:12] == 'open announc')
 
+    start_deal_from_seller = create(lambda _, cb: cb.data[:17] == 'start deal seller')
+
+    confirm_trade = create(lambda _, cb: cb.data[:9] == 'conftrade')
 

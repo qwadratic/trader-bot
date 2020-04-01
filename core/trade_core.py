@@ -3,7 +3,8 @@ import math
 
 from pyrogram import InlineKeyboardMarkup, InlineKeyboardButton
 
-from model import Announcement, PaymentCurrency, Trade
+from keyboard import trade_kb
+from model import Announcement, PaymentCurrency, Trade, User
 from text import trade_text
 
 
@@ -11,7 +12,7 @@ def await_money_for_trade(user, cli, m):
     # TODO Настроить проверку платежа
     sleep(2)
 
-    amount = 500
+    amount = 500 # то, якобы сколько скинул продвец
     commission = 5
     max_limit = amount * (1 - commission / 100)
 
@@ -28,6 +29,14 @@ def await_money_for_trade(user, cli, m):
     temp_anounc = user.temp_announcement
     temp_anounc.max_limit = max_limit
     temp_anounc.save()
+
+
+def check_seller_wallet_on_payment(cli, wallet, seller_id, trade_id):
+    tg_seller_id = User.get_by_id(seller_id).tg_id
+    transaction = True
+
+    if transaction:
+        cli.send_message(tg_seller_id, 'Оплата пришла, проверьте кошелек!', reply_markup=trade_kb.confirm_paymend_from_buyer(trade_id))
 
 
 def deal_info(announc_id):
@@ -115,8 +124,8 @@ def announcement_list_kb(type_operation, offset):
         kb_list.append([InlineKeyboardButton('🔙 Назад', callback_data=f'annlist b')])
 
     else:
-        numb_list_l = f'/{math.ceil(all_announc/7)}'
-        numb_list_r = f'/{math.ceil(all_announc/7)}'
+        numb_list_l = f'/{math.ceil(len(all_announc)/7)}'
+        numb_list_r = f'/{math.ceil(len(all_announc)/7)}'
         kb_list.append([InlineKeyboardButton(f'⇐ {numb_list_l}', callback_data=f'annlist l {type_operation} {offset}'),
                         InlineKeyboardButton('🔙 Назад', callback_data=f'annlist b'),
                         InlineKeyboardButton(f'{numb_list_r} ⇒', callback_data=f'annlist r {type_operation} {offset}')])

@@ -26,3 +26,5 @@ class UserMessageFilter:
     await_requisite_uag = create(lambda _, m: User.get(tg_id=m.from_user.id).user_flag.purse_flag == 7)
 
     requisites_for_trade = create(lambda _, m: User.get(tg_id=m.from_user.id).user_flag.flag == 3)
+
+    requisites_for_start_deal = create(lambda _, m: User.get_or_none(tg_id=m.from_user.id).user_flag.flag == 4)

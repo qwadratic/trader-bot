@@ -188,11 +188,34 @@ def deal_for_user(announcement_id):
     kb = InlineKeyboardMarkup(
         [
             [InlineKeyboardButton('📣 Поделиться', callback_data=f'deal share {announcement_id}')],
-            [InlineKeyboardButton('🛎 Начать сделку', callback_data=f'deal start {announcement_id}'),
-             InlineKeyboardButton('🔙 Назад', callback_data='deal back')]
+            [InlineKeyboardButton('🔙 Назад', callback_data='deal back'),
+             InlineKeyboardButton('🛎 Начать сделку', callback_data=f'deal start {announcement_id}')]
 
         ]
     )
 
     return kb
 
+
+def start_deal_for_seller(trade_id):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton('❌ Отклонить', callback_data='start deal seller 2'),
+             InlineKeyboardButton('🛎 Начать сделку', callback_data=f'start deal seller 1 {trade_id}')]
+
+        ]
+    )
+
+    return kb
+
+
+def confirm_paymend_from_buyer(trade_id):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton('❌ Отклонить', callback_data='sss'),
+             InlineKeyboardButton('✅ Подтверждаю', callback_data=f'conftrade {trade_id}')]
+
+        ]
+    )
+
+    return kb

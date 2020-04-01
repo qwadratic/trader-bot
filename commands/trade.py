@@ -1,13 +1,14 @@
 from time import sleep
+import datetime as dt
 
 from peewee import IntegrityError
 from pyrogram import Client, Filters
 
-from core.trade_core import await_money_for_trade, deal_info, announcement_list_kb
+from core.trade_core import await_money_for_trade, deal_info, announcement_list_kb, check_seller_wallet_on_payment
 from filters.cb_filters import TradeFilter
 from filters.m_filters import UserMessageFilter
 from keyboard import trade_kb
-from model import User, TempAnnouncement, TempPaymentCurrency, UserFlag, UserPurse, Announcement, PaymentCurrency
+from model import User, TempAnnouncement, TempPaymentCurrency, UserFlag, UserPurse, Announcement, PaymentCurrency, Trade
 from text import trade_text
 
 
@@ -177,7 +178,7 @@ def choice_payment_instrument(cli, cb):
         else:
 
             for curr in temp_payment_currency:
-                requisite = UserPurse.select().where((UserPurse.user_id == user.id) & (UserPurse.currency_id == curr.payment_currency))
+                requisite = UserPurse.select().where((UserPurse.user_id == user.id) & (UserPurse.currency_id == curr.payment_currency_id))
                 if not requisite:
                     user_flag = user.user_flag
                     user_flag.purse_flag = curr.payment_currency
@@ -248,7 +249,7 @@ def requisite_for_trade(cli, m):
 
     for curr in temp_payment_currency:
         requisite = UserPurse.select().where(
-            (UserPurse.user_id == user.id) & (UserPurse.currency_id == curr.payment_currency))
+            (UserPurse.user_id == user.id) & (UserPurse.currency_id == curr.payment_currency_id))
 
         if not requisite:
             user_flag.purse_flag = curr.payment_currency
@@ -354,7 +355,7 @@ def await_amount(cli, m):
     TempPaymentCurrency.delete().where(TempPaymentCurrency.user_id == user.id)
 
     deal = deal_info(announcement.id)
-    if announcement.user_id_id == user.id:
+    if announcement.user_id == user.id:
         m.reply(deal, reply_markup=trade_kb.deal_for_author(announcement, 1))
 
     else:
@@ -371,14 +372,117 @@ def open_announc(cli, cb):
     announcement = Announcement.get(id=announc_id)
     deal = deal_info(announcement.id)
 
-    if announcement.user_id_id == user.id:
+    if announcement.user_id == user.id:
 
         cb.message.reply(deal, reply_markup=trade_kb.deal_for_author(announcement, 2))
 
     else:
         cb.message.reply(deal, reply_markup=trade_kb.deal_for_user(announcement.id))
 
-#
-# @Client.on_callback_query(TradeFilter.deal_start)
-# def start_deal(cli, cb):
-#     announc_id = int(cb.data[11:])
+
+@Client.on_callback_query(TradeFilter.deal_start)
+def start_deal(cli, cb):
+    tg_id = cb.from_user.id
+    user = User.get(tg_id=tg_id)
+    announcement_id = int(cb.data[11:])
+
+    trade_currency = Announcement.get(id=announcement_id).trade_currency_id
+    requisite = UserPurse.select().where((UserPurse.user_id == user.id) & (UserPurse.currency_id == trade_currency))
+
+    msg_ids = user.msgid
+    if not requisite:
+        user_flag = user.user_flag
+        user_flag.purse_flag = trade_currency
+        user_flag.flag = 4
+        user_flag.announcemen_id = announcement_id
+        user_flag.save()
+
+        msg = cb.message.reply(trade_text.indicate_requisites(trade_currency))
+        msg_ids.await_requisites = msg.message_id
+        msg_ids.save()
+
+        cli.delete_messages(cb.message.chat.id, msg_ids.trade_menu)
+        return
+
+    cli.delete_messages(cb.message.chat.id, msg_ids.await_requisites)
+
+    trade = Trade.create(user_id=user.id, announcement_id=announcement_id, status=1)
+
+    msg = cb.message.reply(trade_text.await_respond_from_seller)
+
+    msg_ids.await_requisites_from_seller = msg.message_id
+    msg_ids.save()
+
+    seller_id = User.get_by_id(Announcement.get(id=announcement_id).user_id).tg_id
+
+    cli.send_message(seller_id, trade_text.start_deal_for_seller(announcement_id),
+                     reply_markup=trade_kb.start_deal_for_seller(trade.id))
+
+
+@Client.on_message(UserMessageFilter.requisites_for_start_deal)
+def requisites_for_start_deal(cli, m):
+    m.delete()
+    tg_id = m.from_user.id
+    user = User.get(tg_id=tg_id)
+    currency_id = user.user_flag.purse_flag
+    address = m.text
+    UserPurse.create(user_id=user.id, currency_id=currency_id, address=address)
+
+    user_flag = user.user_flag
+    user_flag.purse_flag = None
+    user_flag.flag = 0
+    user_flag.save()
+    announcement_id = user_flag.announcement_id
+
+    msg_ids = user.msgid
+    cli.delete_messages(m.chat.id, msg_ids.await_requisites)
+
+    trade = Trade.create(user_id=user.id, status=1)
+
+    msg = m.reply(trade_text.await_respond_from_seller)
+
+    msg_ids.await_requisites_from_seller = msg.message_id
+    msg_ids.save()
+
+    seller_id = User.get_by_id(Announcement.get(id=announcement_id).user_id).tg_id
+
+    cli.send_message(seller_id, trade_text.start_deal_for_seller(announcement_id),
+                     reply_markup=trade_kb.start_deal_for_seller(trade.id))
+
+
+@Client.on_callback_query(TradeFilter.start_deal_from_seller)
+def start_deal_from_seller(cli, cb):
+    action = int(cb.data[18:19])
+    trade_id = int(cb.data[20:])
+
+    if action == 1:
+        deal = Trade.get_by_id(trade_id)
+        deal.status = 2
+        deal.created_at = dt.datetime.utcnow()
+        deal.save()
+
+        user_currency = PaymentCurrency.get(announcement_id=deal.announcement_id).payment_currency
+        requisite = UserPurse.get(currency=user_currency).address
+        tg_user_id = User.get_by_id(deal.user_id).tg_id
+        cli.send_message(tg_user_id, trade_text.payment_details(deal, requisite))
+
+        check_seller_wallet_on_payment(cli, requisite, deal.announcement.user_id, trade_id)
+
+
+@Client.on_callback_query(TradeFilter.confirm_trade)
+def conf_trade(cli, cb):
+    trade_id = int(cb.data[10:])
+    deal = Trade.get_by_id(trade_id)
+    deal.status = 3
+    deal.save()
+
+    sleep(5)
+    deal.status = 4
+    deal.save()
+
+    cb.message.edit('Сделка прошла успешно!')
+    tg_user_id = User.get_by_id(deal.user_id).tg_id
+    cli.send_message(tg_user_id, 'Сделка прошла успешно!')
+
+
+
