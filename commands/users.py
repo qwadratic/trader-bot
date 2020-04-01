@@ -4,19 +4,15 @@ from peewee import IntegrityError
 from pyrogram import Client, Filters
 
 from filters.cb_filters import UserCallbackFilter
-from jobs.ref import job_check_ref
 from keyboard.user_kb import choice_lang_kb, choice_currency_kb, menu_kb
-from model import User, UserSettings, UserRef
+from model import User, UserSettings, UserRef, MsgId, UserFlag, UserPurse
 from text.basiq_texts import choice_lang, choice_currency_txt, end_reg_txt, start_ref_txt, start_txt, end_reg_ref_txt
-
-
-@Client.on_message(Filters.regex(r'q'))
-def qew(_, m):
-    job_check_ref()
 
 
 @Client.on_message(Filters.command('start'))
 def reg_user(_, m):
+    m.delete()
+
     tg_user = m.from_user
     user = User.get_or_none(tg_id=tg_user.id)
     comm = m.command
@@ -71,12 +67,12 @@ def reg_user(_, m):
     else:
         # TODO дописать создание профиля и кошелька
         user = User.create(tg_id=tg_user.id,
-                           user_name=tg_user.username,
-                           first_name=tg_user.first_name,
+                           user_name=tg_user.username, first_name=tg_user.first_name,
                            last_name=tg_user.last_name,
                            date_reg=dt.datetime.utcnow()
                            )
-
+        MsgId.create(user_id=user.id)
+        UserFlag.create(user_id=user.id)
         user_set = UserSettings.create(user_id=user.id)
 
         if len(comm) == 1:
@@ -126,7 +122,6 @@ def reg_user(_, m):
                 else:
                     m.reply(choice_lang, reply_markup=choice_lang_kb)
             else:
-                print(7)
                 m.reply(choice_lang, reply_markup=choice_lang_kb)
 
 
