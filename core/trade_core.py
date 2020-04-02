@@ -37,7 +37,7 @@ def await_money_for_trade(user, cli, m):
 
 
 def check_wallet_on_payment(cli, wallet, user_tg_id, trade_id):
-    #tg_id = User.get_by_id(user_id).tg_id
+    # tg_id = User.get_by_id(user_id).tg_id
     transaction = True
 
     if transaction:
@@ -84,22 +84,21 @@ def announcement_list_kb(type_operation, offset):
     # .where((Announcement.type_operation == type_operation) & (Trade.status != 2) & (Trade.status != 3))
     anc = Announcement
     announcs = (Announcement
-                .select(anc.id,
-                        anc.type_operation,
-                        anc.amount,
-                        anc.max_limit,
-                        anc.trade_currency)
+                .select()
+                .where((anc.id not in (Trade.select(Trade.announcement_id).where(Trade.status == 2)))
+                       & (anc.type_operation == type_operation)
+                       & (anc.status == 1))
                 .order_by(order_by)
                 .offset(offset)
                 .limit(7))
 
     all_announc = (Announcement
-                   .select(anc.id,
-                           anc.type_operation,
-                           anc.amount,
-                           anc.max_limit,
-                           anc.trade_currency)
-                   .order_by(order_by))
+                   .select()
+                   .where((anc.id not in (Trade.select(Trade.announcement_id).where(Trade.status == 2)))
+                          & (anc.type_operation == type_operation)
+                          & (anc.status == 1))
+                   .order_by(order_by)
+                   )
 
     # icon = {1: 'Ⓜ️', 2: '🏵',
     #         3: '💸', 4: '',

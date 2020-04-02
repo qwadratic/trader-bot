@@ -99,7 +99,7 @@ def navi_announcement_menu(cli, cb):
             pass
         else:
             offset -= 7
-    else:
+    elif act == 'r':
         offset += 7
 
     cb.message.edit('Меню объявлений', reply_markup=announcement_list_kb(type_operation, offset))
