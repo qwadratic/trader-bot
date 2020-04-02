@@ -23,8 +23,10 @@ sale = '📋 Доступны объявления на покупку в сле
 
 await_respond_from_seller = 'Ожидайте подтверждения продавца'
 
+await_respond_from_buyer = 'Ожадайте подтверждения покупателя'
 
-def start_deal_for_seller(announcement_id):
+
+def start_deal(announcement_id):
     from core.trade_core import deal_info
     txt = '**Пользователь хочет начать с Вами сделку по этому объявлению**\n\n'
     txt += deal_info(announcement_id)
@@ -103,8 +105,8 @@ def enter_amount_for_buy(limit):
     return txt
 
 
-def payment_details(deal, requisites):
-    announc = deal.announcement
+def payment_details(requisites):
+
     txt = f'Переведите на этот счёт {requisites}\n\n' \
         f'Сумму денег'
 

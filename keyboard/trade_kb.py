@@ -197,11 +197,11 @@ def deal_for_user(announcement_id):
     return kb
 
 
-def start_deal_for_seller(trade_id):
+def start_deal(trade_id):
     kb = InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton('❌ Отклонить', callback_data='start deal seller 2'),
-             InlineKeyboardButton('🛎 Начать сделку', callback_data=f'start deal seller 1 {trade_id}')]
+            [InlineKeyboardButton('❌ Отклонить', callback_data='start deal 2'),
+             InlineKeyboardButton('🛎 Начать сделку', callback_data=f'start deal 1 {trade_id}')]
 
         ]
     )

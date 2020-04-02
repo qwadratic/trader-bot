@@ -64,7 +64,6 @@ class UserPurse(BaseModel):
     user_id = IntegerField()
     currency = ForeignKeyField(ListCurrency)
     address = CharField()
-    created_at = DateTimeField(null=True)
 
 
 class UserFlag(BaseModel):
@@ -83,6 +82,10 @@ class MsgId(BaseModel):
     await_payment_pending = IntegerField(null=True)
     await_limit = IntegerField(null=True)
     await_requisites_from_seller = IntegerField(null=True)
+    await_requisites_from_buyer = IntegerField(null=True)
+    await_respond_from_seller = IntegerField(null=True)
+    await_respond_from_buyer = IntegerField(null=True)
+    await_payment_details = IntegerField(null=True)
 
 
 class TempAnnouncement(BaseModel):
@@ -132,6 +135,7 @@ class Trade(BaseModel):
     user = ForeignKeyField(User, backref='trade_', on_delete='CASCADE')
     status = ForeignKeyField(TradeStatus)
     user_currency = IntegerField(null=True)
+    created_at = DateTimeField(null=True)
 
 
 

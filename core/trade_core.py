@@ -36,12 +36,12 @@ def await_money_for_trade(user, cli, m):
     temp_announcement.save()
 
 
-def check_seller_wallet_on_payment(cli, wallet, seller_id, trade_id):
-    tg_seller_id = User.get_by_id(seller_id).tg_id
+def check_wallet_on_payment(cli, wallet, user_tg_id, trade_id):
+    #tg_id = User.get_by_id(user_id).tg_id
     transaction = True
 
     if transaction:
-        cli.send_message(tg_seller_id, 'Оплата пришла, проверьте кошелек!',
+        cli.send_message(user_tg_id, 'Оплата пришла, проверьте кошелек!',
                          reply_markup=trade_kb.confirm_paymend_from_buyer(trade_id))
 
 

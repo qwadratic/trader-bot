@@ -7,7 +7,7 @@ from core.trade_core import deal_info
 from filters.cb_filters import UserCallbackFilter
 from keyboard import trade_kb
 from keyboard.user_kb import choice_lang_kb, choice_currency_kb, menu_kb
-from model import User, UserSettings, UserRef, MsgId, UserFlag, UserPurse
+from model import User, UserSettings, UserRef, MsgId, UserFlag, UserPurse, Trade
 from text.basiq_texts import choice_lang, choice_currency_txt, end_reg_txt, start_ref_txt, start_txt, end_reg_ref_txt
 
 
@@ -103,19 +103,19 @@ def reg_user(_, m):
             elif ref_type == 't':
 
                 trade_id = int(comm[1][1:])
-                trade = True  # TODO  изменить на модель сделок
+                trade = Trade.get_by_id(trade_id)
 
                 if trade:
-                    # ref_user = trade.user_id
-                    #
-                    # user_set.lang = ref_user.settings.lang
-                    # user_set.currency = ref_user.settings.currency
-                    # user_set.save()
-                    #
-                    # UserRef.create(user_id=user.id,
-                    #                ref_user_id=ref_user.id,
-                    #                ref_created_at=dt.datetime.utcnow()
-                    #                )
+                    ref_user = trade.user_id
+
+                    user_set.lang = ref_user.settings.lang
+                    user_set.currency = ref_user.settings.currency
+                    user_set.save()
+
+                    UserRef.create(user_id=user.id,
+                                   ref_user_id=ref_user.id,
+                                   ref_created_at=dt.datetime.utcnow()
+                                   )
 
                     m.reply(deal_info(trade_id), reply_markup=trade_kb.deal_for_user(trade_id))
 
