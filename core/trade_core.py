@@ -85,18 +85,18 @@ def announcement_list_kb(type_operation, offset):
     anc = Announcement
     announcs = (Announcement
                 .select()
-                .where((anc.id not in (Trade.select(Trade.announcement_id).where(Trade.status == 2)))
-                       & (anc.type_operation == type_operation)
-                       & (anc.status == 1))
+                .where((Announcement.id.not_in(Trade.select(Trade.announcement_id).where(Trade.status_id == 2)))
+                       & (Announcement.type_operation == type_operation)
+                       & (Announcement.status == 1))
                 .order_by(order_by)
                 .offset(offset)
                 .limit(7))
 
     all_announc = (Announcement
                    .select()
-                   .where((anc.id not in (Trade.select(Trade.announcement_id).where(Trade.status == 2)))
-                          & (anc.type_operation == type_operation)
-                          & (anc.status == 1))
+                   .where((Announcement.id.not_in(Trade.select(Trade.announcement_id).where(Trade.status_id == 2)))
+                          & (Announcement.type_operation == type_operation)
+                          & (Announcement.status == 1))
                    .order_by(order_by)
                    )
 
