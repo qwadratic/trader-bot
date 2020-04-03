@@ -263,7 +263,7 @@ def choice_payment_instrument(cli, cb):
             (TempPaymentCurrency
              .delete()
              .where(
-                (TempPaymentCurrency.user_id == user.id) & (TempPaymentCurrency.payment_currency == payment_currency))
+                (TempPaymentCurrency.user_id == user.id) & (TempPaymentCurrency.payment_currency_id == payment_currency))
              .execute()
              )
 
