@@ -4,11 +4,12 @@ from peewee import IntegrityError
 from pyrogram import Client, Filters
 
 from core.trade_core import deal_info
+from filters.cb_filters import UserCallbackFilter
 from filters.m_filters import ref_link
-from keyboard import trade_kb2
-from keyboard.user_kb import choice_lang_kb, menu_kb
+from keyboard import trade_kb
+from keyboard import user_kb
 from model import User, UserSettings, UserRef, MsgId, UserFlag, Announcement
-from text.basiq_texts import choice_language, start_ref_txt, start_txt
+from text import basiq_texts
 
 
 @Client.on_message(Filters.command('start') & ~ref_link)
@@ -29,11 +30,11 @@ def start_command(_, m):
         UserFlag.create(user_id=user.id)
         UserSettings.create(user_id=user.id)
 
-        m.reply(choice_language, reply_markup=choice_lang_kb)
+        m.reply(basiq_texts.choice_language, reply_markup=user_kb.choice_lang)
 
         return
 
-    m.reply(start_txt, reply_markup=menu_kb)
+    m.reply(basiq_texts.start, reply_markup=user_kb.menu)
 
 
 @Client.on_message(Filters.command('start') & ref_link)
@@ -63,6 +64,7 @@ def ref_start(_, m):
                                     currency=ref.settings.currency)
             else:
                 UserSettings.create(user_id=user.id)
+
         elif ref_type == 't':
             trade_id = int(comm[1][1:])
 
@@ -82,7 +84,7 @@ def ref_start(_, m):
         ref = User.get_or_none(id=int(comm[1][1:]))
 
         if ref == user.id:
-            return m.reply(start_txt, reply_markup=menu_kb)
+            return m.reply(basiq_texts.start, reply_markup=user_kb.menu)
 
         if ref:
 
@@ -98,9 +100,9 @@ def ref_start(_, m):
                                ref_created_at=dt.datetime.utcnow()
                                ).execute()
 
-            return m.reply(start_ref_txt(), reply_markup=menu_kb)
+            return m.reply(basiq_texts.start_ref(), reply_markup=user_kb.menu)
 
-        return m.reply(start_txt, reply_markup=menu_kb)
+        return m.reply(basiq_texts.start, reply_markup=user_kb.menu)
 
     if ref_type == 't':  # trade ref link
         trade_id = int(comm[1][1:])
@@ -122,7 +124,32 @@ def ref_start(_, m):
                                ref_created_at=dt.datetime.utcnow()
                                ).execute()
 
-            return m.reply(deal_info(trade_id), reply_markup=trade_kb2.deal_for_user(trade_id))
+            return m.reply(deal_info(trade_id), reply_markup=trade_kb.deal_for_user(trade_id))
 
-        return m.reply(start_txt, reply_markup=menu_kb)
+        return m.reply(basiq_texts.start, reply_markup=user_kb.menu)
 
+
+@Client.on_callback_query(UserCallbackFilter.choice_language)
+def choice_lang_cb(_, cb):
+    tg_id = cb.from_user.id
+    user = User.get(tg_id=tg_id)
+    language = cb.data[5:]
+
+    user_set = user.settings
+    user_set.language = language
+    user_set.save()
+
+    cb.message.edit(basiq_texts.choice_currency, reply_markup=user_kb.choice_currency)
+
+
+@Client.on_callback_query(UserCallbackFilter.choice_currency)
+def choice_curr_cb(_, cb):
+    tg_id = cb.from_user.id
+    currency = cb.data[9:]
+
+    user_set = User.get(tg_id=tg_id).settings
+    user_set.currency = currency
+    user_set.save()
+
+    cb.message.delete()
+    cb.message.reply(basiq_texts.end_reg, reply_markup=user_kb.menu)

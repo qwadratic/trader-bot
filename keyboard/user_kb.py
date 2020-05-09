@@ -1,7 +1,7 @@
 from pyrogram import ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 
 
-choice_lang_kb = InlineKeyboardMarkup(
+choice_lang = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton('🇬🇧 English', callback_data=f'lang en')],
                 [InlineKeyboardButton('🇷🇺 Русский', callback_data=f'lang ru')]
@@ -9,7 +9,7 @@ choice_lang_kb = InlineKeyboardMarkup(
         )
 
 
-choice_currency_kb = InlineKeyboardMarkup(
+choice_currency = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton('🇺🇸 Американский доллар (USD)', callback_data=f'currency USD')],
                 [InlineKeyboardButton('🇺🇦 Украинская гривна (UAH)', callback_data=f'currency UAH')],
@@ -18,7 +18,7 @@ choice_currency_kb = InlineKeyboardMarkup(
         )
 
 
-menu_kb = ReplyKeyboardMarkup(
+menu = ReplyKeyboardMarkup(
             [
                 ['💸 Обмен'],
                 ['📁 Профиль', '💳 Кошелёк'],
