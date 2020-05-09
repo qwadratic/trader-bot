@@ -15,7 +15,7 @@ class User(BaseModel):
     user_name = CharField(null=True)
     first_name = CharField(null=True)
     last_name = CharField(null=True)
-    last_active = DateTimeField(null=True)
+    last_activity = DateTimeField(null=True)
     date_reg = DateTimeField()
 
     @property
@@ -43,10 +43,14 @@ class User(BaseModel):
         return self.purse_.get()
 
 
+class UserFlag(BaseModel):
+    user = ForeignKeyField(User, unique=True, backref='flags_', on_delete='CASCADE')
+
+
 class UserSettings(BaseModel):
     user_id = ForeignKeyField(User, backref='settings_', on_delete='CASCADE')
-    lang = IntegerField(null=True)
-    currency = IntegerField(null=True)
+    language = CharField(default='ru')
+    currency = CharField(default='usd')
 
 
 class UserRef(BaseModel):
@@ -64,13 +68,6 @@ class UserPurse(BaseModel):
     user_id = IntegerField()
     currency = ForeignKeyField(ListCurrency)
     address = CharField()
-
-
-class UserFlag(BaseModel):
-    user_id = ForeignKeyField(User, unique=True, backref='flag_', on_delete='CASCADE')
-    flag = IntegerField(null=True)
-    purse_flag = IntegerField(null=True)
-    announcement_id = IntegerField(null=True)
 
 
 class MsgId(BaseModel):
@@ -104,7 +101,7 @@ class TempPaymentCurrency(BaseModel):
 
 class Announcement(BaseModel):
     user = ForeignKeyField(User, backref='announc_', on_delete='CASCADE')
-    type_operation = IntegerField()
+    type_operation = CharField()
     trade_currency = ForeignKeyField(ListCurrency)
     amount = IntegerField()
     max_limit = IntegerField()

@@ -4,148 +4,125 @@ from peewee import IntegrityError
 from pyrogram import Client, Filters
 
 from core.trade_core import deal_info
-from filters.cb_filters import UserCallbackFilter
-from keyboard import trade_kb
-from keyboard.user_kb import choice_lang_kb, choice_currency_kb, menu_kb
-from model import User, UserSettings, UserRef, MsgId, UserFlag, UserPurse, Trade
-from text.basiq_texts import choice_lang, choice_currency_txt, end_reg_txt, start_ref_txt, start_txt, end_reg_ref_txt
+from filters.m_filters import ref_link
+from keyboard import trade_kb2
+from keyboard.user_kb import choice_lang_kb, menu_kb
+from model import User, UserSettings, UserRef, MsgId, UserFlag, Announcement
+from text.basiq_texts import choice_language, start_ref_txt, start_txt
 
 
-@Client.on_message(Filters.command('start'))
-def reg_user(_, m):
-    m.delete()
-
+@Client.on_message(Filters.command('start') & ~ref_link)
+def start_command(_, m):
     tg_user = m.from_user
+
     user = User.get_or_none(tg_id=tg_user.id)
-    comm = m.command
-    if user:
-        if len(comm) == 1:
-            m.reply(start_txt, reply_markup=menu_kb)
 
-        elif len(comm) > 1:
-
-            ref_type = comm[1][:1]
-
-            if ref_type == 'u':
-                ref_user = User.get_or_none(id=int(comm[1][1:]))
-
-                if ref_user == user.id:
-                    m.reply(start_txt, reply_markup=menu_kb)
-                else:
-                    if ref_user:
-
-                        try:
-                            UserRef.create(user_id=user.id,
-                                           ref_user_id=ref_user.id,
-                                           ref_created_at=dt.datetime.utcnow()
-                                           )
-
-                        except IntegrityError:
-                            UserRef.update(user_id=user.id,
-                                           ref_user_id=ref_user.id,
-                                           ref_created_at=dt.datetime.utcnow()
-                                           ).execute()
-
-                        m.reply(start_ref_txt(), reply_markup=menu_kb)
-                    else:
-                        m.reply(start_txt, reply_markup=menu_kb)
-
-            elif ref_type == 't':
-                trade_id = int(comm[1][1:])
-                trade = True  # TODO  изменить на модель сделок, проверку реф и юзер айдишников
-
-                if trade:
-                    user_ref = 1
-                    # user_ref = user.ref
-                    # user_ref.ref_user_id = ref_user.id
-                    # user_ref.ref_created_at = dt.datetime.utcnow()
-                    # user_ref.save()
-                    m.reply(deal_info(trade_id), reply_markup=trade_kb.deal_for_user(trade_id))
-                else:
-                    m.reply(start_txt, reply_markup=menu_kb)
-            else:
-                m.reply(start_txt, reply_markup=menu_kb)
-    else:
-        # TODO дописать создание профиля и кошелька
+    if not user:  # register user
         user = User.create(tg_id=tg_user.id,
-                           user_name=tg_user.username, first_name=tg_user.first_name,
+                           user_name=tg_user.username,
+                           first_name=tg_user.first_name,
                            last_name=tg_user.last_name,
                            date_reg=dt.datetime.utcnow()
                            )
+
         MsgId.create(user_id=user.id)
         UserFlag.create(user_id=user.id)
-        user_set = UserSettings.create(user_id=user.id)
+        UserSettings.create(user_id=user.id)
 
-        if len(comm) == 1:
-            m.reply(choice_lang, reply_markup=choice_lang_kb)
+        m.reply(choice_language, reply_markup=choice_lang_kb)
 
-        elif len(comm) > 1:
-            ref_type = comm[1][:1]
+        return
 
-            if ref_type == 'u':
-                ref_user = User.get_or_none(int(comm[1][1:]))
+    m.reply(start_txt, reply_markup=menu_kb)
 
-                if ref_user:
-                    user_set.lang = ref_user.settings.lang
-                    user_set.currency = ref_user.settings.currency
-                    user_set.save()
 
-                    UserRef.create(user_id=user.id,
-                                   ref_user_id=ref_user.id,
-                                   ref_created_at=dt.datetime.utcnow()
-                                   )
+@Client.on_message(Filters.command('start') & ref_link)
+def ref_start(_, m):
+    comm = m.command
+    ref_type = comm[1][:1]
+    tg_user = m.from_user
 
-                    m.reply(start_ref_txt())
-                    m.reply(end_reg_ref_txt, reply_markup=menu_kb)
-                else:
-                    m.reply(choice_lang, reply_markup=choice_lang_kb)
+    user = User.get_or_none(tg_id=tg_user.id)
 
-            elif ref_type == 't':
+    if not user:  # Регистрация пользователя
+        user = User.create(tg_id=tg_user.id,
+                           user_name=tg_user.username,
+                           first_name=tg_user.first_name,
+                           last_name=tg_user.last_name,
+                           date_reg=dt.datetime.utcnow()
+                           )
 
-                trade_id = int(comm[1][1:])
-                trade = Trade.get_by_id(trade_id)
+        MsgId.create(user_id=user.id)
+        UserFlag.create(user_id=user.id)
 
-                if trade:
-                    ref_user = trade.user_id
-
-                    user_set.lang = ref_user.settings.lang
-                    user_set.currency = ref_user.settings.currency
-                    user_set.save()
-
-                    UserRef.create(user_id=user.id,
-                                   ref_user_id=ref_user.id,
-                                   ref_created_at=dt.datetime.utcnow()
-                                   )
-
-                    m.reply(deal_info(trade_id), reply_markup=trade_kb.deal_for_user(trade_id))
-
-                else:
-                    m.reply(choice_lang, reply_markup=choice_lang_kb)
+        if ref_type == 'u':  # user invite
+            ref = User.get_or_none(id=int(comm[1][1:]))
+            if ref:
+                UserSettings.create(user_id=user.id,
+                                    language=ref.settings.language,
+                                    currency=ref.settings.currency)
             else:
-                m.reply(choice_lang, reply_markup=choice_lang_kb)
+                UserSettings.create(user_id=user.id)
+        elif ref_type == 't':
+            trade_id = int(comm[1][1:])
 
+            ref = Announcement.get_or_none(id=trade_id).user
 
-@Client.on_callback_query(UserCallbackFilter.choice_lang)
-def choice_lang_cb(_, cb):
-    tg_id = cb.from_user.id
-    user = User.get(tg_id=tg_id)
-    choice = int(cb.data[5:])
+            if ref:
 
-    user_set = user.settings
-    user_set.lang = choice
-    user_set.save()
+                UserSettings.create(user_id=user.id,
+                                    language=ref.settings.language,
+                                    currency=ref.settings.currency)
+            else:
+                UserSettings.create(user_id=user.id)
+        else:
+            UserSettings.create(user_id=user.id)
 
-    cb.message.edit(choice_currency_txt, reply_markup=choice_currency_kb)
+    if ref_type == 'u':  # user invite
+        ref = User.get_or_none(id=int(comm[1][1:]))
 
+        if ref == user.id:
+            return m.reply(start_txt, reply_markup=menu_kb)
 
-@Client.on_callback_query(UserCallbackFilter.choice_currency)
-def choice_curr_cb(_, cb):
-    tg_id = cb.from_user.id
-    choice = int(cb.data[4:])
+        if ref:
 
-    user_set = User.get(tg_id=tg_id).settings
-    user_set.currency = choice
-    user_set.save()
+            try:
+                UserRef.create(user_id=user.id,
+                               ref_user_id=ref.id,
+                               ref_created_at=dt.datetime.utcnow()
+                               )
 
-    cb.message.delete()
-    cb.message.reply(end_reg_txt, reply_markup=menu_kb)
+            except IntegrityError:
+                UserRef.update(user_id=user.id,
+                               ref_user_id=ref.id,
+                               ref_created_at=dt.datetime.utcnow()
+                               ).execute()
+
+            return m.reply(start_ref_txt(), reply_markup=menu_kb)
+
+        return m.reply(start_txt, reply_markup=menu_kb)
+
+    if ref_type == 't':  # trade ref link
+        trade_id = int(comm[1][1:])
+
+        trade = Announcement.get_or_none(id=trade_id)
+
+        if trade:
+            ref = trade.user
+
+            try:
+                UserRef.create(user_id=user.id,
+                               ref_user_id=ref.id,
+                               ref_created_at=dt.datetime.utcnow()
+                               )
+
+            except IntegrityError:
+                UserRef.update(user_id=user.id,
+                               ref_user_id=ref.id,
+                               ref_created_at=dt.datetime.utcnow()
+                               ).execute()
+
+            return m.reply(deal_info(trade_id), reply_markup=trade_kb2.deal_for_user(trade_id))
+
+        return m.reply(start_txt, reply_markup=menu_kb)
+

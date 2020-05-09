@@ -1,5 +1,5 @@
 
-choice_lang = 'Hello!\n' \
+choice_language = 'Hello!\n' \
                 'choose a language\n\n' \
                 'Привет!!\n' \
                 'Выбери язык'

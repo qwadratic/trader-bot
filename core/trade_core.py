@@ -3,7 +3,7 @@ import math
 
 from pyrogram import InlineKeyboardMarkup, InlineKeyboardButton
 
-from keyboard import trade_kb
+from keyboard import trade_kb2
 from model import Announcement, PaymentCurrency, Trade, User
 from text import trade_text
 
@@ -42,7 +42,7 @@ def check_wallet_on_payment(cli, wallet, user_tg_id, trade_id):
 
     if transaction:
         cli.send_message(user_tg_id, 'Оплата пришла, проверьте кошелек!',
-                         reply_markup=trade_kb.confirm_paymend_from_buyer(trade_id))
+                         reply_markup=trade_kb2.confirm_paymend_from_buyer(trade_id))
 
 
 def deal_info(announc_id):
