@@ -3,7 +3,7 @@ import math
 
 from pyrogram import InlineKeyboardMarkup, InlineKeyboardButton
 
-from keyboard import trade_kb2
+from keyboard import trade_kb
 from model import Announcement, PaymentCurrency, Trade, User
 from text import trade_text
 
@@ -80,8 +80,6 @@ def announcement_list_kb(type_operation, offset):
     else:
         order_by = Announcement.exchange_rate
 
-    # .join(Trade, on=(Announcement.id == Trade.announcement_id))
-    # .where((Announcement.type_operation == type_operation) & (Trade.status != 2) & (Trade.status != 3))
     anc = Announcement
     announcs = (Announcement
                 .select()
@@ -105,10 +103,10 @@ def announcement_list_kb(type_operation, offset):
     #         5: '', 6: '',
     #         7: ''}
 
-    buttons = {1: {'name': 'Смотреть список на продажу',
-                   'cb': 2},
-               2: {'name': 'Смотреть список на покупку',
-                   'cb': 1}}
+    buttons = {'buy': {'name': 'Смотреть список на продажу',
+                   'cb': 'sell'},
+               'sell': {'name': 'Смотреть список на покупку',
+                   'cb': 'buy'}}
 
     kb_list = []
     kb_list.append([InlineKeyboardButton(buttons[type_operation]['name'],
@@ -126,14 +124,14 @@ def announcement_list_kb(type_operation, offset):
         kb_list.append([InlineKeyboardButton(name, callback_data=f'open announc {an.id}')])
 
     if len(all_announc) < 7:
-        kb_list.append([InlineKeyboardButton('🔙 Назад', callback_data=f'annlist b')])
+        kb_list.append([InlineKeyboardButton('🔙 Назад', callback_data=f'annlist back {type_operation} {offset}')])
 
     else:
         numb_list_l = f'/{math.ceil(len(all_announc) / 7)}'
         numb_list_r = f'/{math.ceil(len(all_announc) / 7)}'
-        kb_list.append([InlineKeyboardButton(f'⇐ {numb_list_l}', callback_data=f'annlist l {type_operation} {offset}'),
-                        InlineKeyboardButton('🔙 Назад', callback_data=f'annlist b'),
-                        InlineKeyboardButton(f'{numb_list_r} ⇒', callback_data=f'annlist r {type_operation} {offset}')])
+        kb_list.append([InlineKeyboardButton(f'⇐ {numb_list_l}', callback_data=f'annlist left {type_operation} {offset}'),
+                        InlineKeyboardButton('🔙 Назад', callback_data=f'annlist back {type_operation} {offset}'),
+                        InlineKeyboardButton(f'{numb_list_r} ⇒', callback_data=f'annlist right {type_operation} {offset}')])
 
     kb = InlineKeyboardMarkup(kb_list)
 
