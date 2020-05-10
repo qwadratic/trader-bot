@@ -1,24 +1,24 @@
 from pyrogram import ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 
 
-choice_lang_kb = InlineKeyboardMarkup(
+choice_lang = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton('🇬🇧 English', callback_data=f'lang 1')],
-                [InlineKeyboardButton('🇷🇺 Русский', callback_data=f'lang 2')]
+                [InlineKeyboardButton('🇬🇧 English', callback_data=f'lang en')],
+                [InlineKeyboardButton('🇷🇺 Русский', callback_data=f'lang ru')]
             ]
         )
 
 
-choice_currency_kb = InlineKeyboardMarkup(
+choice_currency = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton('🇺🇸 Американский доллар (USD)', callback_data=f'val 1')],
-                [InlineKeyboardButton('🇺🇦 Украинская гривна (UAH)', callback_data=f'val 2')],
-                [InlineKeyboardButton('🇷🇺 Российский рубль (RUB)', callback_data=f'val 3')]
+                [InlineKeyboardButton('🇺🇸 Американский доллар (USD)', callback_data=f'currency USD')],
+                [InlineKeyboardButton('🇺🇦 Украинская гривна (UAH)', callback_data=f'currency UAH')],
+                [InlineKeyboardButton('🇷🇺 Российский рубль (RUB)', callback_data=f'currency RUB')]
             ]
         )
 
 
-menu_kb = ReplyKeyboardMarkup(
+menu = ReplyKeyboardMarkup(
             [
                 ['💸 Обмен'],
                 ['📁 Профиль', '💳 Кошелёк'],

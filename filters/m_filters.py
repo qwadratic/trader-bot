@@ -2,14 +2,16 @@ from pyrogram import Filters
 
 from model import User
 
+ref_link = Filters.create(lambda _, m: len(m.command) > 1)
+
 
 class UserMessageFilter:
 
     create = Filters.create
 
-    await_exchange_rate = create(lambda _, m: User.get_or_none(tg_id=m.from_user.id) and User.get_or_none(tg_id=m.from_user.id).user_flag.flag == 1)
+    #await_exchange_rate = create(lambda _, m: User.get_or_none(tg_id=m.from_user.id) and User.get_or_none(tg_id=m.from_user.id).flags.flag == 1)
 
-    await_amount = create(lambda _, m: User.get_or_none(tg_id=m.from_user.id) and User.get_or_none(tg_id=m.from_user.id).user_flag.flag == 2)
+    await_amount = create(lambda _, m: User.get_or_none(tg_id=m.from_user.id) and User.get_or_none(tg_id=m.from_user.id).flags.await_amount_for_trade)
 
     await_requisite_bip = create(lambda _, m: User.get(tg_id=m.from_user.id).user_flag.purse_flag == 1)
 
@@ -25,6 +27,6 @@ class UserMessageFilter:
 
     await_requisite_uag = create(lambda _, m: User.get(tg_id=m.from_user.id).user_flag.purse_flag == 7)
 
-    requisites_for_trade = create(lambda _, m: User.get_or_none(tg_id=m.from_user.id) and User.get_or_none(tg_id=m.from_user.id).user_flag.flag == 3)
+    requisites_for_trade = create(lambda _, m: User.get_or_none(tg_id=m.from_user.id) and User.get_or_none(tg_id=m.from_user.id).flags.requisites_for_trade)
 
-    requisites_for_start_deal = create(lambda _, m: User.get_or_none(tg_id=m.from_user.id) and User.get_or_none(tg_id=m.from_user.id).user_flag.flag == 4)
+    requisites_for_start_deal = create(lambda _, m: User.get_or_none(tg_id=m.from_user.id) and User.get_or_none(tg_id=m.from_user.id).flags.requisites_for_start_deal)

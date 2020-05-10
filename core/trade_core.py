@@ -16,11 +16,11 @@ def await_money_for_trade(user, cli, m):
     commission = 5
     max_limit = amount * (1 - commission / 100)
 
-    msg_ids = user.msgid
+    msg_ids = user.msg
     cli.delete_messages(m.chat.id, msg_ids.await_payment_pending)
 
     temp_announcement = user.temp_announcement
-    if temp_announcement.type_operation == 1:  # покупка
+    if temp_announcement.type_operation == 'buy':  # покупка
         msg = cli.send_message(m.chat.id, trade_text.enter_amount_for_buy(max_limit))
     else:  # == 2 продажа
         msg = cli.send_message(m.chat.id, trade_text.enter_amount_for_sale(max_limit))
@@ -28,8 +28,8 @@ def await_money_for_trade(user, cli, m):
     msg_ids.await_limit = msg.message_id
     msg_ids.save()
 
-    user_flag = user.user_flag
-    user_flag.flag = 2
+    user_flag = user.flags
+    user_flag.await_amount_for_trade = True
     user_flag.save()
 
     temp_announcement.max_limit = max_limit
@@ -46,15 +46,15 @@ def check_wallet_on_payment(cli, wallet, user_tg_id, trade_id):
 
 
 def deal_info(announc_id):
-    trade_direction = {1: {'type': 'Покупка',
+    trade_direction = {'buy': {'type': 'Покупка',
                            'icon': '📈'},
-                       2: {'type': 'Продажа',
+                       'sale': {'type': 'Продажа',
                            'icon': '📉'}}
-    status = {1: '⚪️ Активно'}
+    status = {'open': '⚪️ Активно'}
 
     announcement = Announcement.get(id=announc_id)
     type_operation = announcement.type_operation
-    trade_currency = announcement.trade_currency.name
+    trade_currency = announcement.trade_currency
     announc_status = announcement.status
     amount = announcement.amount
 
@@ -67,7 +67,7 @@ def deal_info(announc_id):
         f'**Платёжные инструменты:**\n'
 
     for curr in payment_currency:
-        txt += f'**{curr.payment_currency.name}**\n'
+        txt += f'**{curr.payment_currency}**\n'
 
     txt += f'\n\n**Статус:** {status[announc_status]}'
 
@@ -75,28 +75,26 @@ def deal_info(announc_id):
 
 
 def announcement_list_kb(type_operation, offset):
-    if type_operation == 1:
+    if type_operation == 'buy':
         order_by = Announcement.exchange_rate.desc()
     else:
         order_by = Announcement.exchange_rate
 
-    # .join(Trade, on=(Announcement.id == Trade.announcement_id))
-    # .where((Announcement.type_operation == type_operation) & (Trade.status != 2) & (Trade.status != 3))
     anc = Announcement
     announcs = (Announcement
                 .select()
-                .where((Announcement.id.not_in(Trade.select(Trade.announcement_id).where(Trade.status_id == 2)))
+                .where((Announcement.id.not_in(Trade.select(Trade.announcement_id).where(Trade.status == 'in processing')))
                        & (Announcement.type_operation == type_operation)
-                       & (Announcement.status == 1))
+                       & (Announcement.status == 'open'))
                 .order_by(order_by)
                 .offset(offset)
                 .limit(7))
 
     all_announc = (Announcement
                    .select()
-                   .where((Announcement.id.not_in(Trade.select(Trade.announcement_id).where(Trade.status_id == 2)))
+                   .where((Announcement.id.not_in(Trade.select(Trade.announcement_id).where(Trade.status == 'in processing')))
                           & (Announcement.type_operation == type_operation)
-                          & (Announcement.status == 1))
+                          & (Announcement.status == 'open'))
                    .order_by(order_by)
                    )
 
@@ -105,35 +103,35 @@ def announcement_list_kb(type_operation, offset):
     #         5: '', 6: '',
     #         7: ''}
 
-    buttons = {1: {'name': 'Смотреть список на продажу',
-                   'cb': 2},
-               2: {'name': 'Смотреть список на покупку',
-                   'cb': 1}}
+    buttons = {'buy': {'name': 'Смотреть список на продажу',
+                   'cb': 'sale'},
+               'sale': {'name': 'Смотреть список на покупку',
+                   'cb': 'buy'}}
 
     kb_list = []
     kb_list.append([InlineKeyboardButton(buttons[type_operation]['name'],
                                          callback_data=f'annlist t {buttons[type_operation]["cb"]} {offset}')])
     for an in announcs:
-        currency_trade = an.trade_currency.name
+        currency_trade = an.trade_currency
         amount = an.amount
         # pay_curr = an.payment_currency
         pay_curr = PaymentCurrency.select().where(PaymentCurrency.announcement_id == an.id)
         curs = ''
         for curr in pay_curr:
-            curs += f'{curr.payment_currency.name} '
+            curs += f'{curr.payment_currency} '
         name = f'{currency_trade} (1 USD): {amount} {curs}'
 
         kb_list.append([InlineKeyboardButton(name, callback_data=f'open announc {an.id}')])
 
     if len(all_announc) < 7:
-        kb_list.append([InlineKeyboardButton('🔙 Назад', callback_data=f'annlist b')])
+        kb_list.append([InlineKeyboardButton('🔙 Назад', callback_data=f'annlist back {type_operation} {offset}')])
 
     else:
         numb_list_l = f'/{math.ceil(len(all_announc) / 7)}'
         numb_list_r = f'/{math.ceil(len(all_announc) / 7)}'
-        kb_list.append([InlineKeyboardButton(f'⇐ {numb_list_l}', callback_data=f'annlist l {type_operation} {offset}'),
-                        InlineKeyboardButton('🔙 Назад', callback_data=f'annlist b'),
-                        InlineKeyboardButton(f'{numb_list_r} ⇒', callback_data=f'annlist r {type_operation} {offset}')])
+        kb_list.append([InlineKeyboardButton(f'⇐ {numb_list_l}', callback_data=f'annlist left {type_operation} {offset}'),
+                        InlineKeyboardButton('🔙 Назад', callback_data=f'annlist back {type_operation} {offset}'),
+                        InlineKeyboardButton(f'{numb_list_r} ⇒', callback_data=f'annlist right {type_operation} {offset}')])
 
     kb = InlineKeyboardMarkup(kb_list)
 

@@ -15,7 +15,7 @@ class User(BaseModel):
     user_name = CharField(null=True)
     first_name = CharField(null=True)
     last_name = CharField(null=True)
-    last_active = DateTimeField(null=True)
+    last_activity = DateTimeField(null=True)
     date_reg = DateTimeField()
 
     @property
@@ -27,7 +27,7 @@ class User(BaseModel):
         return self.ref_.get()
 
     @property
-    def msgid(self):
+    def msg(self):
         return self.msgid_.get()
 
     @property
@@ -35,18 +35,26 @@ class User(BaseModel):
         return self.tempannounc_.get()
 
     @property
-    def user_flag(self):
-        return self.flag_.get()
+    def flags(self):
+        return self.flags_.get()
 
     @property
     def purse(self):
         return self.purse_.get()
 
 
+class UserFlag(BaseModel):
+    user = ForeignKeyField(User, unique=True, backref='flags_', on_delete='CASCADE')
+    temp_currency = CharField(null=True)
+    requisites_for_trade = BooleanField(default=False)
+    requisites_for_start_deal = BooleanField(default=False)
+    await_amount_for_trade = BooleanField(default=False)
+
+
 class UserSettings(BaseModel):
     user_id = ForeignKeyField(User, backref='settings_', on_delete='CASCADE')
-    lang = IntegerField(null=True)
-    currency = IntegerField(null=True)
+    language = CharField(default='ru')
+    currency = CharField(default='USD')
 
 
 class UserRef(BaseModel):
@@ -55,22 +63,10 @@ class UserRef(BaseModel):
     ref_created_at = DateTimeField(null=True)
 
 
-class ListCurrency(BaseModel):
-    id = PrimaryKeyField()
-    name = CharField()
-
-
 class UserPurse(BaseModel):
     user_id = IntegerField()
-    currency = ForeignKeyField(ListCurrency)
+    currency = CharField()
     address = CharField()
-
-
-class UserFlag(BaseModel):
-    user_id = ForeignKeyField(User, unique=True, backref='flag_', on_delete='CASCADE')
-    flag = IntegerField(null=True)
-    purse_flag = IntegerField(null=True)
-    announcement_id = IntegerField(null=True)
 
 
 class MsgId(BaseModel):
@@ -90,26 +86,26 @@ class MsgId(BaseModel):
 
 class TempAnnouncement(BaseModel):
     user_id = ForeignKeyField(User, unique=True, backref='tempannounc_', on_delete='CASCADE')
-    type_operation = IntegerField(null=True)
-    trade_currency = ForeignKeyField(ListCurrency, null=True)
-    amount = IntegerField(null=True)
+    type_operation = CharField(null=True)
+    trade_currency = CharField(null=True)
+    amount = FloatField(null=True)
     max_limit = IntegerField(null=True)
     exchange_rate = FloatField(null=True)
 
 
 class TempPaymentCurrency(BaseModel):
     user_id = IntegerField()
-    payment_currency = ForeignKeyField(ListCurrency, unique=True, null=True)
+    payment_currency = CharField(unique=True, null=True)
 
 
 class Announcement(BaseModel):
     user = ForeignKeyField(User, backref='announc_', on_delete='CASCADE')
-    type_operation = IntegerField()
-    trade_currency = ForeignKeyField(ListCurrency)
+    type_operation = CharField()
+    trade_currency = CharField()
     amount = IntegerField()
     max_limit = IntegerField()
     exchange_rate = FloatField(null=True)
-    status = IntegerField()
+    status = CharField()
 
     @property
     def payment_currency(self):
@@ -122,20 +118,13 @@ class Announcement(BaseModel):
 
 class PaymentCurrency(BaseModel):
     announcement = ForeignKeyField(Announcement, backref='paycurr_', on_delete='CASCADE')
-    payment_currency = ForeignKeyField(ListCurrency)
-
-
-class TradeStatus(BaseModel):
-    id = PrimaryKeyField()
-    name = CharField()
+    payment_currency = CharField()
 
 
 class Trade(BaseModel):
     announcement = ForeignKeyField(Announcement, backref='trade_', on_delete='CASCADE')
     user = ForeignKeyField(User, backref='trade_', on_delete='CASCADE')
-    status = ForeignKeyField(TradeStatus)
+    status = CharField()
     user_currency = IntegerField(null=True)
     created_at = DateTimeField(null=True)
-
-
 
