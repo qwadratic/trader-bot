@@ -50,12 +50,12 @@ def payment_currency(trade_currency):
         kb = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton('✅ Подтвердить', callback_data='paycurr accept')],
-                [InlineKeyboardButton('BTC', callback_data='paycurr 2'),
-                 InlineKeyboardButton('USDT', callback_data='paycurr 3'),
-                 InlineKeyboardButton('ETH', callback_data='paycurr 4')],
-                [InlineKeyboardButton('USD', callback_data='paycurr 5'),
-                 InlineKeyboardButton('RUB', callback_data='paycurr 6'),
-                 InlineKeyboardButton('UAH', callback_data='paycurr 7')],
+                [InlineKeyboardButton('BTC', callback_data='paycurr BTC'),
+                 InlineKeyboardButton('USDT', callback_data='paycurr USDT'),
+                 InlineKeyboardButton('ETH', callback_data='paycurr ETH')],
+                [InlineKeyboardButton('USD', callback_data='paycurr USD'),
+                 InlineKeyboardButton('RUB', callback_data='paycurr RUB'),
+                 InlineKeyboardButton('UAH', callback_data='paycurr UAH')],
                 [InlineKeyboardButton('🔙 Назад', callback_data='paycurr back')]
 
             ])
@@ -64,12 +64,12 @@ def payment_currency(trade_currency):
         kb = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton('✅ Подтвердить', callback_data='paycurr accept')],
-                [InlineKeyboardButton('BIP', callback_data='paycurr 1'),
-                 InlineKeyboardButton('USDT', callback_data='paycurr 3'),
-                 InlineKeyboardButton('ETH', callback_data='paycurr 4')],
-                [InlineKeyboardButton('USD', callback_data='paycurr 5'),
-                 InlineKeyboardButton('RUB', callback_data='paycurr 6'),
-                 InlineKeyboardButton('UAH', callback_data='paycurr 7')],
+                [InlineKeyboardButton('BIP', callback_data='paycurr BIP'),
+                 InlineKeyboardButton('USDT', callback_data='paycurr USDT'),
+                 InlineKeyboardButton('ETH', callback_data='paycurr ETH')],
+                [InlineKeyboardButton('USD', callback_data='paycurr USD'),
+                 InlineKeyboardButton('RUB', callback_data='paycurr RUB'),
+                 InlineKeyboardButton('UAH', callback_data='paycurr UAH')],
                 [InlineKeyboardButton('🔙 Назад', callback_data='paycurr back')]
 
             ])
@@ -78,12 +78,12 @@ def payment_currency(trade_currency):
         kb = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton('✅ Подтвердить', callback_data='paycurr accept')],
-                [InlineKeyboardButton('BIP', callback_data='paycurr 1'),
-                 InlineKeyboardButton('BTC', callback_data='paycurr 2'),
-                 InlineKeyboardButton('ETH', callback_data='paycurr 4')],
-                [InlineKeyboardButton('USD', callback_data='paycurr 5'),
-                 InlineKeyboardButton('RUB', callback_data='paycurr 6'),
-                 InlineKeyboardButton('UAH', callback_data='paycurr 7')],
+                [InlineKeyboardButton('BIP', callback_data='paycurr BIP'),
+                 InlineKeyboardButton('BTC', callback_data='paycurr BTC'),
+                 InlineKeyboardButton('ETH', callback_data='paycurr ETH')],
+                [InlineKeyboardButton('USD', callback_data='paycurr USD'),
+                 InlineKeyboardButton('RUB', callback_data='paycurr RUB'),
+                 InlineKeyboardButton('UAH', callback_data='paycurr UAH')],
                 [InlineKeyboardButton('🔙 Назад', callback_data='paycurr back')]
 
             ])
@@ -92,12 +92,12 @@ def payment_currency(trade_currency):
         kb = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton('✅ Подтвердить', callback_data='paycurr accept')],
-                [InlineKeyboardButton('BIP', callback_data='paycurr 1'),
-                 InlineKeyboardButton('BTC', callback_data='paycurr 2'),
-                 InlineKeyboardButton('USDT', callback_data='paycurr 3')],
-                [InlineKeyboardButton('USD', callback_data='paycurr 5'),
-                 InlineKeyboardButton('RUB', callback_data='paycurr 6'),
-                 InlineKeyboardButton('UAH', callback_data='paycurr 7')],
+                [InlineKeyboardButton('BIP', callback_data='paycurr BIP'),
+                 InlineKeyboardButton('BTC', callback_data='paycurr BTC'),
+                 InlineKeyboardButton('USDT', callback_data='paycurr USDT')],
+                [InlineKeyboardButton('USD', callback_data='paycurr USD'),
+                 InlineKeyboardButton('RUB', callback_data='paycurr RUB'),
+                 InlineKeyboardButton('UAH', callback_data='paycurr UAH')],
                 [InlineKeyboardButton('🔙 Назад', callback_data='paycurr back')]
 
             ])
@@ -106,12 +106,12 @@ def payment_currency(trade_currency):
         kb = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton('✅ Подтвердить', callback_data='paycurr accept')],
-                [InlineKeyboardButton('BIP', callback_data='paycurr 1'),
-                 InlineKeyboardButton('BTC', callback_data='paycurr 2'),
-                 InlineKeyboardButton('USDT', callback_data='paycurr 3'),
-                 [InlineKeyboardButton('ETH', callback_data='paycurr 4')],
-                 InlineKeyboardButton('RUB', callback_data='paycurr 6'),
-                 InlineKeyboardButton('UAH', callback_data='paycurr 7')],
+                [InlineKeyboardButton('BIP', callback_data='paycurr BIP'),
+                 InlineKeyboardButton('BTC', callback_data='paycurr BTC'),
+                 InlineKeyboardButton('USDT', callback_data='paycurr USDT'),
+                 [InlineKeyboardButton('ETH', callback_data='paycurr ETH')],
+                 InlineKeyboardButton('RUB', callback_data='paycurr RUB'),
+                 InlineKeyboardButton('UAH', callback_data='paycurr UAH')],
                 [InlineKeyboardButton('🔙 Назад', callback_data='paycurr back')]
 
             ])
@@ -120,12 +120,12 @@ def payment_currency(trade_currency):
         kb = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton('✅ Подтвердить', callback_data='paycurr accept')],
-                [InlineKeyboardButton('BIP', callback_data='paycurr 1'),
-                 InlineKeyboardButton('BTC', callback_data='paycurr 2'),
-                 InlineKeyboardButton('USDT', callback_data='paycurr 3'),
-                 InlineKeyboardButton('ETH', callback_data='paycurr 4')],
-                [InlineKeyboardButton('USD', callback_data='paycurr 5'),
-                 InlineKeyboardButton('UAH', callback_data='paycurr 7')],
+                [InlineKeyboardButton('BIP', callback_data='paycurr BIP'),
+                 InlineKeyboardButton('BTC', callback_data='paycurr BTC'),
+                 InlineKeyboardButton('USDT', callback_data='paycurr USDT'),
+                 InlineKeyboardButton('ETH', callback_data='paycurr ETH')],
+                [InlineKeyboardButton('USD', callback_data='paycurr USD'),
+                 InlineKeyboardButton('UAH', callback_data='paycurr UAH')],
                 [InlineKeyboardButton('🔙 Назад', callback_data='paycurr back')]
 
             ])
@@ -134,10 +134,10 @@ def payment_currency(trade_currency):
         kb = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton('✅ Подтвердить', callback_data='paycurr accept')],
-                [InlineKeyboardButton('BIP', callback_data='paycurr 1'),
-                 InlineKeyboardButton('BTC', callback_data='paycurr 2'),
-                 InlineKeyboardButton('USDT', callback_data='paycurr 3'),
-                 InlineKeyboardButton('ETH', callback_data='paycurr 4')],
+                [InlineKeyboardButton('BIP', callback_data='paycurr BIP'),
+                 InlineKeyboardButton('BTC', callback_data='paycurr BTC'),
+                 InlineKeyboardButton('USDT', callback_data='paycurr USDT'),
+                 InlineKeyboardButton('ETH', callback_data='paycurr ETH')],
                 [InlineKeyboardButton('USD', callback_data='paycurr 5'),
                  InlineKeyboardButton('RUB', callback_data='paycurr 6')],
                 [InlineKeyboardButton('🔙 Назад', callback_data='paycurr back')]
