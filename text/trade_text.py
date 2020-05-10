@@ -1,4 +1,4 @@
-from model import TempPaymentCurrency, ListCurrency
+from model import TempPaymentCurrency
 
 trade_menu = '💸 **Обмен**\n\n' \
                'Здесь Вы совершаете сделки с людьми, а бот выступает в качестве гаранта безопасности при проведении сделки.'
@@ -47,26 +47,27 @@ def choice_payment_currency(user_id):
     if payment_currency:
         txt += 'Ваш выбор:\n'
         for curr in payment_currency:
-            txt += f'**{curr.payment_currency.name}**\n'
+            txt += f'**{curr.payment_currency}**\n'
 
     return txt
 
 
-def indicate_requisites(currency_id):
-    currency_name =ListCurrency.get_by_id(currency_id).name
-    txt = f'В портмоне у вас отсутствуют реквизиты для **{currency_name}**\n\n' \
+def indicate_requisites(currency):
+    txt = f'В портмоне у вас отсутствуют реквизиты для **{currency}**\n\n' \
         f'Введите, пожалуйста, реквизиты'
 
     return txt
 
 
 def pending_payment_for_sale(trade_currency):
-    bot_addresses = {1: 'bip address',
-                     2: 'btc address',
-                     3: 'usdt address',
-                     4: 'eth address',
-                     5: 'usd address',
-                     6: 'rub address'}
+    #  TODO реальные адреса
+    bot_addresses = {'BIP': 'bip address',
+                     'BTC': 'btc address',
+                     'USDT': 'usdt address',
+                     'ETH': 'eth address',
+                     'USD': 'usd address',
+                     'RUB': 'rub address',
+                     'UAH': 'uah address'}
 
     txt = f'Сбросьте сюда денюжку {bot_addresses[trade_currency]}\n\n' \
         f'Подтверждение платежа в автоматическом режиме'
@@ -75,13 +76,13 @@ def pending_payment_for_sale(trade_currency):
 
 
 def pending_payment_for_buy(temp_payment_currency):
-    bot_addresses = {1: 'bip address',
-                     2: 'btc address',
-                     3: 'usdt address',
-                     4: 'eth address',
-                     5: 'usd address',
-                     6: 'rub address',
-                     7: 'uah address'}
+    bot_addresses = {'BIP': 'bip address',
+                     'BTC': 'btc address',
+                     'USDT': 'usdt address',
+                     'ETH': 'eth address',
+                     'USD': 'usd address',
+                     'RUB': 'rub address',
+                     'UAH': 'uah address'}
     txt = 'Сбросьте сюда денюжку\n\n'
     for curr in temp_payment_currency:
         txt += f'{bot_addresses[curr.payment_currency_id]}\n'
