@@ -19,6 +19,10 @@ class User(BaseModel):
     date_reg = DateTimeField()
 
     @property
+    def wallets(self):
+        return self.wallets_.select()
+
+    @property
     def settings(self):
         return self.settings_.get()
 
@@ -61,6 +65,13 @@ class UserRef(BaseModel):
     user_id = ForeignKeyField(User, unique=True, backref='ref_', on_delete='CASCADE')
     ref_user_id = IntegerField()
     ref_created_at = DateTimeField(null=True)
+
+
+class Wallet(BaseModel):
+    user = ForeignKeyField(User, backref='wallets_', on_delete='CASCADE')
+    name = CharField()
+    address = CharField()
+    private_key = CharField()
 
 
 class UserPurse(BaseModel):
