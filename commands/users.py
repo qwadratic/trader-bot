@@ -4,6 +4,7 @@ from peewee import IntegrityError
 from pyrogram import Client, Filters
 
 from bot_tools.help import create_wallets_for_user
+from core import user_core
 from core.trade_core import deal_info
 from filters.cb_filters import UserCallbackFilter
 from filters.m_filters import ref_link
@@ -160,3 +161,9 @@ def choice_curr_cb(_, cb):
 
     cb.message.delete()
     cb.message.reply(basiq_texts.end_reg, reply_markup=user_kb.menu)
+
+
+@Client.on_message(Filters.regex(r'💼 Кошелёк'))
+def my_wallet(cli, m):
+    user = User.get(tg_id=m.from_user.id)
+    m.reply(user_core.wallet_info(user))

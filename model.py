@@ -23,6 +23,10 @@ class User(BaseModel):
         return self.wallets_.select()
 
     @property
+    def virt_wallets(self):
+        return self.virt_wallets_.select()
+
+    @property
     def settings(self):
         return self.settings_.get()
 

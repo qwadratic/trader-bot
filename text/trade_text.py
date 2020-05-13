@@ -34,7 +34,7 @@ def start_deal(announcement_id):
 
 
 def error_limit(limit):
-    txt = f'Ошибка. Превышен лими.\n' \
+    txt = f'Ошибка. Превышен лимит.\n' \
         f'Ваш лимит {limit}'
 
     return txt
