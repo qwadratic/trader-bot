@@ -394,7 +394,7 @@ def deal_start(cli, cb):
 
     trade_currency = Announcement.get(id=announcement_id).trade_currency
 
-    msg_ids = user.msgid
+    msg_ids = user.msg
     announcement = Announcement.get_by_id(announcement_id)
     payment_currency = PaymentCurrency.select().where(PaymentCurrency.announcement_id == announcement_id)
 

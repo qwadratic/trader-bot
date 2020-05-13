@@ -71,7 +71,14 @@ class Wallet(BaseModel):
     user = ForeignKeyField(User, backref='wallets_', on_delete='CASCADE')
     name = CharField()
     address = CharField()
+    mnemonic = CharField(null=True)
     private_key = CharField()
+
+
+class VirtualWallet(BaseModel):
+    user = ForeignKeyField(User, backref='virt_wallets_', on_delete='CASCADE')
+    currency = CharField()
+    balance = DecimalField(40, 0, default=0)
 
 
 class UserPurse(BaseModel):
