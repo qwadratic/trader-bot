@@ -1,12 +1,15 @@
 from mintersdk.shortcuts import to_bip
 from web3.exceptions import TransactionNotFound
 
+from blockchain import ethAPI
 from blockchain.ethAPI import w3, Web3
-from model import Service, Wallet
+from keyboard import user_kb
+from model import Service, Wallet, VirtualWallet
 from hexbytes import HexBytes
 
 
-def check_refill_eth():
+def check_refill_eth(cli):
+
     usdt_address = '0xdac17f958d2ee523a2206206994597c13d831ec7'
     current_block = w3.eth.blockNumber
     addresses = [w.address.lower() for w in Wallet.select().where(Wallet.currency == 'ETH')]
@@ -22,7 +25,7 @@ def check_refill_eth():
 
     block_diff = current_block - last_block
 
-    refill_txs = []
+    refill_txs = {}
     if block_diff > 1:
         for block in range(1, block_diff + 1):
             txs_in_block = w3.eth.getBlock(last_block + block).transactions
@@ -44,8 +47,11 @@ def check_refill_eth():
                         continue
 
                     if tx.to and tx.to.lower() in addresses:
+                        to_and_currency = (tx.to.lower(), 'ETH')
+                        if to_and_currency in refill_txs:
+                            continue
 
-                        refill_txs.append(dict(to=tx.to.lower(), amount=tx.value, currency='ETH'))
+                        refill_txs[to_and_currency] = 1
 
                     continue
 
@@ -76,11 +82,14 @@ def check_refill_eth():
                     else:
                         receiver_address = '0x' + element['topics'][2].hex()[len_0x + len_gap:]
 
-                    amount = Web3.toWei(int(element['data'], 16) / 1000000, 'ether')
+                    #amount = Web3.toWei(int(element['data'], 16) / 1000000, 'ether')
 
                     if receiver_address in addresses:
-                        print(receiver_address)
-                        refill_txs.append(dict(to=receiver_address, amount=amount, currency='USDT'))
+                        to_and_currency = (receiver_address, 'USDT')
+                        if to_and_currency in refill_txs:
+                            continue
+
+                        refill_txs[to_and_currency] = 1
 
                 if not topics_flag:
                     continue
@@ -104,7 +113,11 @@ def check_refill_eth():
                     continue
 
                 if tx.to and tx.to.lower() in addresses:
-                    refill_txs.append(dict(to=tx.to.lower(), amount=tx.value, currency='ETH'))
+                    to_and_currency = (tx.to.lower(), 'ETH')
+                    if to_and_currency in refill_txs:
+                        continue
+
+                    refill_txs[to_and_currency] = 1
 
                 continue
 
@@ -138,17 +151,47 @@ def check_refill_eth():
                 amount = int(element['data'], 16) / 1000000
 
                 if receiver_address.lower() in addresses:
-                    refill_txs.append(dict(to=receiver_address, amount=amount, currency='USDT'))
+                    to_and_currency = (receiver_address, 'USDT')
+                    if to_and_currency in refill_txs:
+                        continue
+
+                    refill_txs[to_and_currency] = 1
 
             if not topics_flag:
                 continue
 
     service.last_block = current_block
     service.save()
-    update_eth_balance(refill_txs)
+    update_eth_balance(cli, refill_txs)
 
 
-def update_eth_balance(refill_txs):
-    print(refill_txs)
-    return refill_txs
+def update_eth_balance(cli, refill_txs):
+    address_refills = {}
+    for (address, coin), refill_pip in refill_txs.items():
+        address_refills.setdefault(address, {})
+        address_refills[address][coin] = refill_pip
+
+    for address in address_refills:
+        user = Wallet.get(address=address).user
+
+        txt_refills = ''
+        for currency in address_refills[address]:
+            balance = ethAPI.get_balance(address, currency)
+            virt_wallet = VirtualWallet.get_or_none(user_id=user.id, currency=currency)
+
+            if not virt_wallet:
+                VirtualWallet.create(user_id=user.id, currency=currency, balance=balance)
+                txt_refills += f'**{to_bip(balance)} {currency}**\n'
+            else:
+                refill = balance - virt_wallet.balance
+                virt_wallet.balance = balance
+                virt_wallet.save()
+
+                txt_refills += f'**{to_bip(refill)} {currency}**\n'
+
+        try:
+            cli.send_message(user.tg_id, f'💸 Ваш баланс пополнен на\n' + txt_refills,
+                             reply_markup=user_kb.hide_notification)
+        except Exception as e:
+            print(e)
 

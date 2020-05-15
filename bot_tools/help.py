@@ -22,7 +22,7 @@ def create_wallets_for_user(user):
 
     Wallet.create(user_id=user.id,
                   currency='ETH',
-                  address=eth_wallet.address,
+                  address=eth_wallet.address.lower(),
                   private_key=ethAPI.Web3.toHex(eth_wallet.privateKey))
 
     VirtualWallet.create(user_id=user.id,

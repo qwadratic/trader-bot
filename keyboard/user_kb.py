@@ -27,3 +27,8 @@ menu = ReplyKeyboardMarkup(
             ],
             resize_keyboard=True,
         )
+
+hide_notification = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(f'« cкрыть »', callback_data='hide notify')]
+        ])

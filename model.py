@@ -60,7 +60,7 @@ class UserFlag(BaseModel):
 
 
 class UserSettings(BaseModel):
-    user_id = ForeignKeyField(User, backref='settings_', on_delete='CASCADE')
+    user = ForeignKeyField(User, backref='settings_', on_delete='CASCADE')
     language = CharField(default='ru')
     currency = CharField(default='USD')
 

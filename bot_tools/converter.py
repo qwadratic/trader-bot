@@ -22,7 +22,6 @@ def bip_in_usd(amount):
     }
     response = session.get(url, params=parameters)
     data = json.loads(response.text)
-    print(data)
     return data['data']['quote']['USD']['price']
 
 
