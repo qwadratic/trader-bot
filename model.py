@@ -73,7 +73,7 @@ class UserRef(BaseModel):
 
 class Wallet(BaseModel):
     user = ForeignKeyField(User, backref='wallets_', on_delete='CASCADE')
-    name = CharField()
+    currency = CharField()
     address = CharField()
     mnemonic = CharField(null=True)
     private_key = CharField()
@@ -150,3 +150,7 @@ class Trade(BaseModel):
     user_currency = IntegerField(null=True)
     created_at = DateTimeField(null=True)
 
+
+class Service(BaseModel):
+    currency = CharField(unique=True)
+    last_block = IntegerField()

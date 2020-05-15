@@ -15,13 +15,13 @@ def create_wallets_for_user(user):
     eth_wallet = ethAPI.create_wallet()
 
     Wallet.create(user_id=user.id,
-                  name='BIP',
+                  currency='BIP',
                   address=minter_wallet['address'],
                   mnemonic=minter_wallet['mnemonic'],
                   private_key=minter_wallet['private_key'])
 
     Wallet.create(user_id=user.id,
-                  name='ETH',
+                  currency='ETH',
                   address=eth_wallet.address,
                   private_key=ethAPI.Web3.toHex(eth_wallet.privateKey))
 
