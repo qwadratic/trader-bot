@@ -8,7 +8,7 @@ from requests import ReadTimeout, ConnectTimeout, HTTPError
 from bot_tools.misc import retry
 from model import Wallet
 
-API = MinterAPI('https://api.minter.stakeholder.space')
+API = MinterAPI('https://api.minter.one')
 
 to_handle = ReadTimeout, ConnectTimeout, ConnectionError, HTTPError, ValueError, KeyError
 
@@ -17,21 +17,16 @@ def create_wallet(user_id):
     return MinterWallet.create()
 
 
-
 def get_minter_wallet(mnemonic):
     wallet = MinterWallet.create(mnemonic=mnemonic)
     return wallet
 
 
 @retry(to_handle, tries=3, delay=0.5, backoff=2)
-def get_wallet_balance(address, coin=None):
+def get_wallet_balance(address):
     r = API.get_balance(address)['result']
 
-    if coin:
-        return MinterConvertor.convert_value(r['balance'][coin], 'bip')
-
-    return {coin_name: MinterConvertor.convert_value(r['balance'][coin_name], 'bip')
-            for coin_name in r['balance']}
+    return r['balance']['BIP']
 
 
 # @retry(to_handle, tries=3, delay=0.5, backoff=2)

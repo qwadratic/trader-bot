@@ -1,8 +1,9 @@
-from mintersdk.shortcuts import to_bip
+from mintersdk.shortcuts import to_bip, to_pip
 from web3.exceptions import TransactionNotFound
 
-from blockchain import ethAPI
+from blockchain import ethAPI, minterAPI
 from blockchain.ethAPI import w3, Web3
+from bot_tools.misc import retry
 from keyboard import user_kb
 from model import Service, Wallet, VirtualWallet
 from hexbytes import HexBytes
@@ -193,5 +194,79 @@ def update_eth_balance(cli, refill_txs):
             cli.send_message(user.tg_id, f'💸 Ваш баланс пополнен на\n' + txt_refills,
                              reply_markup=user_kb.hide_notification)
         except Exception as e:
-            print(e)
+            print('check_refill, line 197\n', e)
 
+
+@retry(Exception, tries=3, delay=1)
+def check_refill_bip(cli):
+    current_block = minterAPI.API.get_latest_block_height()
+
+    service = Service.get_or_none(currency='BIP')
+    if not service:
+        Service.create(last_block=current_block, currency='BIP')
+        return
+
+    last_block = service.last_block
+    if current_block == service.last_block:
+        return
+
+    service.last_block = current_block
+    service.save()
+
+    block_diff = current_block - last_block
+    addresses = [w.address for w in Wallet.select().where(Wallet.currency == 'BIP')]
+
+    if block_diff > 1:
+        refills = {}
+        for i in range(1, block_diff + 1):
+            txs = list(filter(lambda t: t['type'] == 1 and t['data']['to'] in addresses and t['data']['coin'] == 'BIP',
+                              minterAPI.API.get_block(last_block + i)['result']['transactions']))
+
+            for tx in txs:
+                value = tx['data']['value']
+                coin = tx['data']['coin']
+                refills[tx['data']['to'], coin] = value
+
+    else:
+        refill_txs = list(filter(lambda t: t['type'] == 1 and t['data']['to'] in addresses and t['data']['coin'] == 'BIP',
+                                 minterAPI.API.get_block(current_block)['result']['transactions']))
+
+        refills = {}
+        for tx in refill_txs:
+            value = tx['data']['value']
+            coin = tx['data']['coin']
+            refills[tx['data']['to'], coin] = value
+
+    update_balance(cli, refills)
+    service.last_block = current_block
+    service.save()
+
+
+def update_balance(cli, refills):
+    address_refills = {}
+    for (address, coin), refill_pip in refills.items():
+        address_refills.setdefault(address, {})
+        address_refills[address][coin] = refill_pip
+
+    for address in address_refills:
+
+        user = Wallet.get(address=address).user
+        user_balance = minterAPI.get_wallet_balance(address)
+        txt_refills = ''
+        refill_in_pip = address_refills[address]['BIP']
+
+        virt_wallet = VirtualWallet.get_or_none(user_id=user.id, currency='BIP')
+        virt_wallet.balance += refill_in_pip
+        if user_balance != virt_wallet.balance:
+            virt_wallet.balance = user_balance
+
+        virt_wallet.save()
+
+        txt_refills += f'**{to_bip(refill_in_pip)} BIP**\n'
+
+
+        try:
+            cli.send_message(user.tg_id, f'💸 Ваш баланс пополнен на\n' + txt_refills,
+                             reply_markup=user_kb.hide_notification)
+        except Exception as e:
+            print('check_refill, line 272\n',e)
