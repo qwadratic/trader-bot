@@ -330,9 +330,9 @@ def await_amount_for_trade(cli, m):
         cli.delete_messages(m.chat.id, msg.message_id)
         return
 
-    temp_announcement.amount = amount
+    temp_announcement.amount = to_pip(amount)
     temp_announcement.save()
-
+ 
     user_flag = user.flags
     user_flag.await_amount_for_trade = False
     user_flag.save()
@@ -346,6 +346,7 @@ def await_amount_for_trade(cli, m):
     cli.delete_messages(m.chat.id, user.msg.await_amount_for_trade)
 
 
+#  Открыть объявление из списка
 @Client.on_callback_query(TradeFilter.open_announcement)
 def open_announc(cli, cb):
     tg_id = cb.from_user.id
@@ -361,6 +362,29 @@ def open_announc(cli, cb):
         cb.message.reply(deal, reply_markup=trade_kb.deal_for_user(announcement.id))
 
 
+@Client.on_callback_query(TradeFilter.user_announcement)
+def user_announc(cli, cb):
+    # TODO тут добавить всю логику
+    data = cb.data
+
+    if data[:15] == 'dealauth status':
+        announcement = Announcement.get_by_id(int(data[16:]))
+
+        print(announcement.status)
+        if announcement.status == 'close':
+
+            announcement.status = 'open'
+
+        elif announcement.status == 'open':
+            announcement.status = 'close'
+
+        announcement.save()
+        deal = deal_info(announcement.id)
+        return cb.message.edit(deal, reply_markup=trade_kb.deal_for_author(announcement, 1))
+
+
+
+#  Начало сделки
 @Client.on_callback_query(TradeFilter.deal_start)
 def deal_start(cli, cb):
     tg_id = cb.from_user.id

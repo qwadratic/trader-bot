@@ -1,6 +1,7 @@
 from time import sleep
 import math
 
+from mintersdk.shortcuts import to_bip
 from pyrogram import InlineKeyboardMarkup, InlineKeyboardButton
 
 from bot_tools.converter import currency_in_usd
@@ -65,19 +66,19 @@ def deal_info(announc_id):
     type_operation = announcement.type_operation
     trade_currency = announcement.trade_currency
     announc_status = announcement.status
-    amount = announcement.amount
+    amount = to_bip(announcement.amount)
     price_for_currency = currency_in_usd(trade_currency, 1)
     payment_currency = PaymentCurrency.select().where(PaymentCurrency.announcement_id == announc_id)
 
     txt = f'📰️  Объявление {announcement.id}\n\n' \
         f'**{trade_direction[type_operation]["type"]} {trade_currency} {trade_direction[type_operation]["icon"]}**\n\n' \
-        f'**Стоимость:** {price_for_currency} USD\n' \
+        f'**Стоимость:** {to_bip(announcement.exchange_rate)} USD\n' \
         f'**Сумма**: {amount} {trade_currency}\n\n' \
         f'**Платёжные инструменты:**\n'
 
     for curr in payment_currency:
         txt += f'**{curr.payment_currency}**\n'
-
+    print(announcement.status)
     txt += f'\n\n**Статус:** {status[announc_status]}'
 
     return txt

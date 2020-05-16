@@ -168,16 +168,16 @@ def deal_for_author(announcement, loc):
     marker_status_button = {'open': '🌕 Выключить',
                             'close': '🌑 Включить'}
 
-    loc_d = {1: {'name': '✖️ Закрыть',
+    loc_d = {1: {'name': 'Закрыть',
                  'cb': 'close'},
-             2: {'name': '⇐ Назад', 'cb': 'backk'}}
+             2: {'name': '⇐ Назад', 'cb': 'back'}}
 
     kb = InlineKeyboardMarkup(
         [
             [InlineKeyboardButton('📣 Поделиться', callback_data=f'deal share {announcement.id}')],
-            [InlineKeyboardButton(f'{marker_status_button[announcement.status]}', callback_data=f'dealauth statu {announcement.id}')],
+            [InlineKeyboardButton(f'{marker_status_button[announcement.status]}', callback_data=f'dealauth status {announcement.id}')],
             [InlineKeyboardButton(loc_d[loc]["name"], callback_data=f'dealauth {loc_d[loc]["cb"]} {announcement.id}'),
-             InlineKeyboardButton(f'❌ Удалить', callback_data=f'dealauth delet {announcement.id}')]
+             InlineKeyboardButton(f'❌ Удалить', callback_data=f'dealauth delete {announcement.id}')]
 
         ]
     )

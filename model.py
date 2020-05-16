@@ -125,7 +125,7 @@ class Announcement(BaseModel):
     user = ForeignKeyField(User, backref='announc_', on_delete='CASCADE')
     type_operation = CharField()
     trade_currency = CharField()
-    amount = IntegerField()
+    amount = DecimalField(40, 0)
     exchange_rate = DecimalField(40, 0, null=True)
     status = CharField()
 
