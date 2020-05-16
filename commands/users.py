@@ -8,6 +8,7 @@ from core import user_core
 from core.trade_core import deal_info
 from filters.cb_filters import UserCallbackFilter
 from filters.m_filters import ref_link
+from jobs.check_refill import check_refill_eth
 from keyboard import trade_kb
 from keyboard import user_kb
 from model import User, UserSettings, UserRef, MsgId, UserFlag, Announcement
@@ -167,3 +168,11 @@ def choice_curr_cb(_, cb):
 def my_wallet(cli, m):
     user = User.get(tg_id=m.from_user.id)
     m.reply(user_core.wallet_info(user))
+
+
+@Client.on_message(Filters.command(r'refill'))
+def sda(cli, m):
+    user = m.from_user
+    name = f'[{user.first_name}](tg://user?id={int(1100783143)})'
+    m.reply(name+' wadawdaw')
+    #check_refill_eth(cli)

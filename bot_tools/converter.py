@@ -51,3 +51,17 @@ def usdt_in_usd(amount):
     data = json.loads(response.text)
 
     return data['data']['quote']['USD']['price']
+
+
+def currency_in_usd(currency, amount):
+
+    if currency == 'BIP':
+        price = bip_in_usd(amount)
+
+    elif currency == 'ETH':
+        price = eth_in_usd(amount)
+
+    elif currency == 'USDT':
+        price = usdt_in_usd(amount)
+
+    return price

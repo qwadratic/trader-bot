@@ -3,37 +3,13 @@ import math
 
 from pyrogram import InlineKeyboardMarkup, InlineKeyboardButton
 
+from bot_tools.converter import currency_in_usd
 from keyboard import trade_kb
-from model import Announcement, PaymentCurrency, Trade, User
+from model import Announcement, PaymentCurrency, Trade, User, VirtualWallet, TempPaymentCurrency, TempAnnouncement
 from text import trade_text
 
 
-def await_money_for_trade(user, cli, m):
-    # TODO Настроить проверку платежа и разобрать моменты, когда юзер кидает на несколько кошельков
-    sleep(2)
-
-    amount = 500  # то, якобы сколько скинул продвец
-    commission = 5
-    max_limit = amount * (1 - commission / 100)
-
-    msg_ids = user.msg
-    cli.delete_messages(m.chat.id, msg_ids.await_payment_pending)
-
-    temp_announcement = user.temp_announcement
-    if temp_announcement.type_operation == 'buy':  # покупка
-        msg = cli.send_message(m.chat.id, trade_text.enter_amount_for_buy(max_limit))
-    else:  # == 2 продажа
-        msg = cli.send_message(m.chat.id, trade_text.enter_amount_for_sale(max_limit))
-
-    msg_ids.await_limit = msg.message_id
-    msg_ids.save()
-
-    user_flag = user.flags
-    user_flag.await_amount_for_trade = True
-    user_flag.save()
-
-    temp_announcement.max_limit = max_limit
-    temp_announcement.save()
+#
 
 
 def check_wallet_on_payment(cli, wallet, user_tg_id, trade_id):
@@ -45,25 +21,58 @@ def check_wallet_on_payment(cli, wallet, user_tg_id, trade_id):
                          reply_markup=trade_kb.confirm_paymend_from_buyer(trade_id))
 
 
+def create_announcement(temp_announcement):
+    user = temp_announcement.user
+    trade_currency = temp_announcement.trade_currency
+    announcement = Announcement.create(user_id=user.id,
+                                       type_operation=temp_announcement.type_operation,
+                                       trade_currency=trade_currency,
+                                       amount=temp_announcement.amount,
+                                       exchange_rate=temp_announcement.exchange_rate,
+                                       status='close')
+
+    temp_payment_currency = TempPaymentCurrency.select().where(TempPaymentCurrency.user_id == user.id)
+
+    for curr in temp_payment_currency:
+        PaymentCurrency.create(announcement=announcement.id,
+                               payment_currency=curr.payment_currency)
+
+    TempAnnouncement.delete().where(TempAnnouncement.user_id == user.id).execute()
+    TempPaymentCurrency.delete().where(TempPaymentCurrency.user_id == user.id).execute()
+
+    return announcement
+
+def get_max_limit(temp_announcement):
+    user = temp_announcement.user
+
+    if temp_announcement.type_operation_id == 'sale':
+        trade_currency = temp_announcement.trade_currency
+        trade_amount = temp_announcement.amount
+        rate = temp_announcement.exchange_rate
+
+        virt_balance = VirtualWallet.get(user_id=user.id, currency=trade_currency)
+
+
 def deal_info(announc_id):
     trade_direction = {'buy': {'type': 'Покупка',
-                           'icon': '📈'},
+                               'icon': '📈'},
                        'sale': {'type': 'Продажа',
-                           'icon': '📉'}}
-    status = {'open': '⚪️ Активно'}
+                                'icon': '📉'}}
+    status = {'open': '⚪️ Активно',
+              'close': '🔴 Отключено'}
 
     announcement = Announcement.get(id=announc_id)
     type_operation = announcement.type_operation
     trade_currency = announcement.trade_currency
     announc_status = announcement.status
     amount = announcement.amount
-
+    price_for_currency = currency_in_usd(trade_currency, 1)
     payment_currency = PaymentCurrency.select().where(PaymentCurrency.announcement_id == announc_id)
 
     txt = f'📰️  Объявление {announcement.id}\n\n' \
         f'**{trade_direction[type_operation]["type"]} {trade_currency} {trade_direction[type_operation]["icon"]}**\n\n' \
-        f'**Стоимость:** 1\n' \
-        f'**Сумма**: {amount}\n\n' \
+        f'**Стоимость:** {price_for_currency} USD\n' \
+        f'**Сумма**: {amount} {trade_currency}\n\n' \
         f'**Платёжные инструменты:**\n'
 
     for curr in payment_currency:
@@ -83,18 +92,20 @@ def announcement_list_kb(type_operation, offset):
     anc = Announcement
     announcs = (Announcement
                 .select()
-                .where((Announcement.id.not_in(Trade.select(Trade.announcement_id).where(Trade.status == 'in processing')))
-                       & (Announcement.type_operation == type_operation)
-                       & (Announcement.status == 'open'))
+                .where(
+        (Announcement.id.not_in(Trade.select(Trade.announcement_id).where(Trade.status == 'in processing')))
+        & (Announcement.type_operation == type_operation)
+        & (Announcement.status == 'open'))
                 .order_by(order_by)
                 .offset(offset)
                 .limit(7))
 
     all_announc = (Announcement
                    .select()
-                   .where((Announcement.id.not_in(Trade.select(Trade.announcement_id).where(Trade.status == 'in processing')))
-                          & (Announcement.type_operation == type_operation)
-                          & (Announcement.status == 'open'))
+                   .where(
+        (Announcement.id.not_in(Trade.select(Trade.announcement_id).where(Trade.status == 'in processing')))
+        & (Announcement.type_operation == type_operation)
+        & (Announcement.status == 'open'))
                    .order_by(order_by)
                    )
 
@@ -104,9 +115,9 @@ def announcement_list_kb(type_operation, offset):
     #         7: ''}
 
     buttons = {'buy': {'name': 'Смотреть список на продажу',
-                   'cb': 'sale'},
+                       'cb': 'sale'},
                'sale': {'name': 'Смотреть список на покупку',
-                   'cb': 'buy'}}
+                        'cb': 'buy'}}
 
     kb_list = []
     kb_list.append([InlineKeyboardButton(buttons[type_operation]['name'],
@@ -129,9 +140,10 @@ def announcement_list_kb(type_operation, offset):
     else:
         numb_list_l = f'/{math.ceil(len(all_announc) / 7)}'
         numb_list_r = f'/{math.ceil(len(all_announc) / 7)}'
-        kb_list.append([InlineKeyboardButton(f'⇐ {numb_list_l}', callback_data=f'annlist left {type_operation} {offset}'),
-                        InlineKeyboardButton('🔙 Назад', callback_data=f'annlist back {type_operation} {offset}'),
-                        InlineKeyboardButton(f'{numb_list_r} ⇒', callback_data=f'annlist right {type_operation} {offset}')])
+        kb_list.append(
+            [InlineKeyboardButton(f'⇐ {numb_list_l}', callback_data=f'annlist left {type_operation} {offset}'),
+             InlineKeyboardButton('🔙 Назад', callback_data=f'annlist back {type_operation} {offset}'),
+             InlineKeyboardButton(f'{numb_list_r} ⇒', callback_data=f'annlist right {type_operation} {offset}')])
 
     kb = InlineKeyboardMarkup(kb_list)
 

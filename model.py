@@ -57,6 +57,7 @@ class UserFlag(BaseModel):
     requisites_for_trade = BooleanField(default=False)
     requisites_for_start_deal = BooleanField(default=False)
     await_amount_for_trade = BooleanField(default=False)
+    await_exchange_rate = BooleanField(default=False)
 
 
 class UserSettings(BaseModel):
@@ -95,7 +96,7 @@ class MsgId(BaseModel):
     user_id = ForeignKeyField(User, unique=True, backref='msgid_', on_delete='CASCADE')
     trade_menu = IntegerField(null=True)
     await_exchange_rate = IntegerField(null=True)
-    await_count = IntegerField(null=True)
+    await_amount_for_trade = IntegerField(null=True)
     await_requisites = IntegerField(null=True)
     await_payment_pending = IntegerField(null=True)
     await_limit = IntegerField(null=True)
@@ -107,12 +108,12 @@ class MsgId(BaseModel):
 
 
 class TempAnnouncement(BaseModel):
-    user_id = ForeignKeyField(User, unique=True, backref='tempannounc_', on_delete='CASCADE')
+    user = ForeignKeyField(User, unique=True, backref='tempannounc_', on_delete='CASCADE')
     type_operation = CharField(null=True)
     trade_currency = CharField(null=True)
     amount = FloatField(null=True)
     max_limit = IntegerField(null=True)
-    exchange_rate = FloatField(null=True)
+    exchange_rate = DecimalField(40, 0, null=True)
 
 
 class TempPaymentCurrency(BaseModel):
@@ -125,8 +126,7 @@ class Announcement(BaseModel):
     type_operation = CharField()
     trade_currency = CharField()
     amount = IntegerField()
-    max_limit = IntegerField()
-    exchange_rate = FloatField(null=True)
+    exchange_rate = DecimalField(40, 0, null=True)
     status = CharField()
 
     @property
