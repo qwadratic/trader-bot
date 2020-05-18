@@ -34,5 +34,5 @@ class TradeFilter:
 
     start_deal = create(lambda _, cb: cb.data[:10] == 'start deal')
 
-    confirm_trade = create(lambda _, cb: cb.data[:9] == 'conftrade')
+    finally_deal = create(lambda _, cb: cb.data[:5] == 'trade')
 

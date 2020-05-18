@@ -27,6 +27,7 @@ def check_refill_eth(cli):
     block_diff = current_block - last_block
 
     refill_txs = {}
+
     if block_diff > 1:
         for block in range(1, block_diff + 1):
             txs_in_block = w3.eth.getBlock(last_block + block).transactions
@@ -160,6 +161,7 @@ def check_refill_eth(cli):
 
             if not topics_flag:
                 continue
+
 
     service.last_block = current_block
     service.save()

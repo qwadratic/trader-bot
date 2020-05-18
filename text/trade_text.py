@@ -100,9 +100,13 @@ def enter_amount_for_sale(limit):
     return txt
 
 
-def enter_amount_for_buy(limit):
-    txt = f'Введите точную сумму сколько желаете купить\n' \
-        f'Или диапазон от 0 до {limit}'
+def enter_amount_for_buy(user_currency):
+    currency_in_usd = converter.currency_in_usd(user_currency, 1)
+
+    
+
+    txt = f'Введите сумму сколько желаете купить\n' \
+        f'Цена за '
 
     return txt
 

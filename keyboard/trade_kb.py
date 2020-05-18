@@ -220,3 +220,24 @@ def confirm_paymend_from_buyer(trade_id):
     )
 
     return kb
+
+
+def confirm_deal(trade_id):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton('Начать сделку', callback_data=f'trade confirm {trade_id}'),
+             InlineKeyboardButton('Отменить', callback_data=f'trade cancel {trade_id}')]
+
+        ]
+    )
+    return kb
+
+
+def cancel_deal_before_start():
+    kb = InlineKeyboardMarkup(
+        [
+             [InlineKeyboardButton('Отменить', callback_data=f'trcel')]
+
+        ]
+    )
+    return kb

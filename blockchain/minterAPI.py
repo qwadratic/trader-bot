@@ -1,3 +1,5 @@
+from time import sleep
+
 from mintersdk import MinterConvertor
 from mintersdk.minterapi import MinterAPI
 from mintersdk.sdk.transactions import MinterSendCoinTx, MinterMultiSendCoinTx
@@ -48,19 +50,19 @@ def get_wallet_balance(address):
 #         return False
 
 
-# @retry(to_handle, tries=3, delay=0.5, backoff=2)
-# def create_transaction(wallet, coin, address, amount, gas_coin):
-#     nonce = API.get_nonce(wallet['address'])
-#     tx = MinterSendCoinTx(coin, address, to_bip(amount), gas_coin=gas_coin, nonce=nonce)
-#
-#     tx.sign(wallet['private_key'])
-#     return tx.signed_tx
-#
-#
-# @retry(to_handle, tries=3, delay=0.5, backoff=2)
-# def get_commission(tx):
-#     fee = API.estimate_tx_commission(tx)
-#     return fee['result']['commission']
+@retry(to_handle, tries=3, delay=0.5, backoff=2)
+def create_transaction(wallet, address, amount):
+    nonce = API.get_nonce(wallet.address)
+    tx = MinterSendCoinTx('BIP', address, to_bip(amount), gas_coin='BIP', nonce=nonce)
+
+    tx.sign(wallet.private_key)
+    return tx.signed_tx
+
+
+@retry(to_handle, tries=3, delay=0.5, backoff=2)
+def get_commission(tx):
+    fee = API.estimate_tx_commission(tx)
+    return fee['result']['commission']
 #
 #
 # @retry(to_handle, tries=3, delay=0.5, backoff=2)
@@ -77,9 +79,10 @@ def get_wallet_balance(address):
 #     return tx.signed_tx
 #
 #
-# @retry(to_handle, tries=3, delay=0.5, backoff=2)
-# def send_transaction(tx):
-#     response = API.send_transaction(tx)
+@retry(to_handle, tries=3, delay=0.5, backoff=2)
+def send_transaction(tx):
+    sleep(3)
+    return API.send_transaction(tx)
 #
 #
 # def get_multicommission(txs_count):

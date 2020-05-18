@@ -1,20 +1,23 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from re import search
 from time import sleep
 import datetime as dt
 
-from mintersdk.shortcuts import to_pip
+from mintersdk.shortcuts import to_pip, to_bip
 from peewee import IntegrityError
 from pyrogram import Client, Filters
 
+from bot_tools import converter
 from bot_tools.help import delete_msg
 from core import trade_core
 from core.trade_core import deal_info, announcement_list_kb, check_wallet_on_payment
 from filters.cb_filters import TradeFilter
 from filters.m_filters import UserMessageFilter
 from keyboard import trade_kb
-from model import User, TempAnnouncement, TempPaymentCurrency, UserFlag, UserPurse, Announcement, PaymentCurrency, Trade
+from model import User, TempAnnouncement, TempPaymentCurrency, UserFlag, UserPurse, Announcement, PaymentCurrency, \
+    Trade, HoldMoney, VirtualWallet
 from text import trade_text
+from trade_errors import InsufficientFundsUser
 
 
 @Client.on_message(Filters.regex(r'💸 Обмен'))
@@ -332,7 +335,7 @@ def await_amount_for_trade(cli, m):
 
     temp_announcement.amount = to_pip(amount)
     temp_announcement.save()
- 
+
     user_flag = user.flags
     user_flag.await_amount_for_trade = False
     user_flag.save()
@@ -383,17 +386,16 @@ def user_announc(cli, cb):
         return cb.message.edit(deal, reply_markup=trade_kb.deal_for_author(announcement, 1))
 
 
-
 #  Начало сделки
 @Client.on_callback_query(TradeFilter.deal_start)
 def deal_start(cli, cb):
     tg_id = cb.from_user.id
     user = User.get(tg_id=tg_id)
-    user_flag = user.user_flag
+    user_flag = user.flags
+    user_set = user.settings
     announcement_id = int(cb.data[11:])
-    user_flag.announcement_id = announcement_id
-    user_flag.save()
-
+    user_set.announcement_id = announcement_id
+    user_set.save()
     trade_currency = Announcement.get(id=announcement_id).trade_currency
 
     msg_ids = user.msg
@@ -436,10 +438,10 @@ def deal_start(cli, cb):
 
     elif announcement.type_operation == 'sale':  # Продажа
         buyer_requisite = UserPurse.select().where(
-            (UserPurse.user_id == user.id) & (UserPurse.currency_id == announcement.trade_currency))
+            (UserPurse.user_id == user.id) & (UserPurse.currency == announcement.trade_currency))
 
         if not buyer_requisite:
-            user_flag.purse_flag = announcement.trade_currency
+            user_flag.temp_currency = announcement.trade_currency
             user_flag.requisites_for_start_deal = True
             user_flag.save()
 
@@ -459,13 +461,117 @@ def deal_start(cli, cb):
 
         trade = Trade.create(user_id=user.id, announcement_id=announcement_id, user_currency=user_currency, status='open')
 
-        msg = cb.message.edit(trade_text.await_respond_from_seller)
-        msg_ids.await_respond_from_seller = msg.message_id
+        msg = cb.message.edit(trade_text.enter_amount_for_buy(user_currency))
+        msg_ids.await_amount_for_trade = msg.message_id
         msg_ids.save()
 
-        seller_id = User.get_by_id(announcement.user_id).tg_id
+        user_flag.await_amount_for_deal = True
+        user_flag.save()
 
-        cli.send_message(seller_id, trade_text.start_deal(announcement_id), reply_markup=trade_kb.start_deal(trade.id))
+
+        user_set.active_deal = trade.id
+        user_set.save()
+
+
+@Client.on_message(UserMessageFilter.await_amount_for_deal)
+def amount_for_deal(cli, m):
+    user = User.get(tg_id=m.from_user.id)
+
+    try:
+        amount = Decimal(m.text)
+        if amount == 0:
+            raise TypeError
+    except (TypeError, InvalidOperation):
+        m.delete()
+        msg = m.reply(trade_text.error_enter)
+        sleep(5)
+        msg.delete()
+        return
+
+    trade = Trade.get(user_id=user.id, id=user.settings.active_deal)
+    trade_limit = trade.announcement.amount
+    trade_currency = trade.announcement.trade_currency
+
+    if to_pip(amount) > trade_limit:
+        m.delete()
+        txt = f'Вы не можете купить больше чем {to_bip(trade_limit)} {trade_currency}'
+        msg = m.reply(txt, reply_markup=trade_kb.cancel_deal_before_start())
+        sleep(5)
+        msg.delete()
+        return
+
+    trade.amount = to_pip(amount)
+    trade.save()
+
+
+    owner_trade_currency_price = trade.announcement.exchange_rate
+    cost_user_currency_in_usd = Decimal(converter.currency_in_usd(trade.user_currency, 1))
+    price_deal_in_usd = to_bip(trade.amount) * to_bip(owner_trade_currency_price)
+
+    #  Сколько нужно юзеру заплатить
+    price_deal_in_user_currency = price_deal_in_usd / cost_user_currency_in_usd
+    type_operation = 'купить' if trade.announcement.type_operation == 'sale' else 'продать'
+    trade_txt = f'Вы желаете {type_operation} {amount} {trade_currency}\n' \
+        f'за {price_deal_in_user_currency} {trade.user_currency}?'
+    m.reply(trade_txt, reply_markup=trade_kb.confirm_deal(trade.id))
+
+    user_flag = user.flags
+    user_flag.await_amount_for_deal = False
+    user_flag.save()
+
+
+@Client.on_callback_query(TradeFilter.finally_deal)
+def finally_deal(cli, cb):
+    user = User.get(tg_id=cb.from_user.id)
+
+    data = cb.data
+
+    if data[:13] == 'trade confirm':
+        trade = Trade.get_by_id(int(data[14:]))
+        cb.message.edit('Ожидайте подтверждения сделки')
+        try:
+            trade_final = trade_core.auto_trade(trade)
+        except InsufficientFundsUser as e:
+            return cb.message.reply(e)
+        except ValueError as e:
+            print(e)
+            deposite = HoldMoney.get_or_none(trade_id=trade.id)
+            if deposite:
+                owner = trade.announcement.user
+                hold_amount = deposite.amount
+
+                owner_wallet = VirtualWallet.get(user_id=owner.id, currency=trade.announcement.trade_currency)
+                owner_wallet.balance += hold_amount
+                owner_wallet.save()
+
+                HoldMoney.delete().where(HoldMoney.trade_id == trade.id).execute()
+
+            return cb.message.reply('У вас нехватает денег')
+
+        operation = 'Купили' if trade.announcement.type_operation == 'sale' else 'продали'
+        txt = f'Вы {operation} {to_bip(trade.amount)} {trade.announcement.trade_currency} за {trade_final} {trade.user_currency}'
+        cb.message.edit(txt)
+
+        txt2 = f'Вы {trade.announcement.type_operation} {to_bip(trade.amount)} {trade.announcement.trade_currency} за {trade_final} {trade.user_currency}'
+        return cli.send_message(trade.announcement.user.tg_id, txt2)
+
+    if data[:12] == 'trade cancel':
+        trade = Trade.get_by_id(int(cb.data[13:]))
+
+        Trade.delete().where(Trade.id == trade.id).execute()
+
+        deposite = HoldMoney.get_or_none(trade_id=trade.id)
+        if deposite:
+            owner = trade.announcement.user
+            hold_amount = deposite.amount
+
+            owner_wallet = VirtualWallet.get(user_id=owner.id, currency=trade.announcement.trade_currency)
+            owner_wallet.balance += hold_amount
+            owner_wallet.save()
+
+            HoldMoney.delete().where(HoldMoney.trade_id == trade.id).execute()
+
+        cb.message.edit('Сделка отменена')
 
 
 @Client.on_message(UserMessageFilter.requisites_for_start_deal)
@@ -476,14 +582,14 @@ def requisites_for_start_deal(cli, m):
     msg_ids = user.msg
     currency = user.flags.temp_currency
     address = m.text
-    UserPurse.create(user_id=user.id, currency_id=currency, address=address)
+    UserPurse.create(user_id=user.id, currency=currency, address=address)
 
     user_flag = user.flags
     user_flag.temp_currency = None
     user_flag.requisites_for_start_deal = False
     user_flag.save()
 
-    announcement_id = user_flag.announcement_id
+    announcement_id = user.settings.announcement_id
     announcement = Announcement.get(id=announcement_id)
 
     if announcement.type_operation == 'buy':  # Покупка
@@ -505,17 +611,20 @@ def requisites_for_start_deal(cli, m):
             user_currency = curr.payment_currency
             break
 
-        trade = Trade.create(user_id=user.id, announcement_id=announcement_id, user_currency=user_currency, status='open')
+        trade = Trade.create(user_id=user.id, announcement_id=announcement_id, user_currency=user_currency,
+                             status='open')
 
-        msg = m.reply(trade_text.await_respond_from_seller)
-        msg_ids.await_respond_from_seller = msg.message_id
+        msg = m.reply(trade_text.enter_amount_for_buy(user_currency))
+        msg_ids.await_amount_for_trade = msg.message_id
         msg_ids.save()
 
-        seller_id = User.get_by_id(announcement.user_id).tg_id
+        user_flag.await_amount_for_deal = True
+        user_flag.save()
+        user_set = user.settings
+        user_set.active_deal = trade.id
+        user_set.save()
 
-        cli.send_message(seller_id, trade_text.start_deal(announcement_id), reply_markup=trade_kb.start_deal(trade.id))
-
-    cli.delete_messages(m.chat.id, msg_ids.await_requisites)
+        delete_msg(cli, user.tg_id, msg_ids.await_requisites)
 
 
 @Client.on_callback_query(TradeFilter.start_deal)
@@ -557,20 +666,44 @@ def start_deal(cli, cb):
 
     cb.message.delete()
 
+#
+# @Client.on_callback_query(TradeFilter.confirm_trade)
+# def conf_trade(cli, cb):
+#     trade_id = int(cb.data[10:])
+#     deal = Trade.get_by_id(trade_id)
+#     deal.status = 'payed'
+#     deal.save()
+#
+#     sleep(5)
+#     deal.status = 'close'
+#     deal.save()
+#
+#     cb.message.edit('Сделка прошла успешно!')
+#     tg_user_id = User.get_by_id(deal.user_id).tg_id
+#     msgid = User.get(tg_id=tg_user_id).msgid
+#     cli.delete_messages(tg_user_id, msgid.await_payment_details)
+#     cli.send_message(tg_user_id, 'Сделка прошла успешно!')
 
-@Client.on_callback_query(TradeFilter.confirm_trade)
-def conf_trade(cli, cb):
-    trade_id = int(cb.data[10:])
-    deal = Trade.get_by_id(trade_id)
-    deal.status = 'payed'
-    deal.save()
 
-    sleep(5)
-    deal.status = 'close'
-    deal.save()
+@Client.on_message(Filters.command('my_wallets'))
+def walles(cli, m):
+    user = User.get(tg_id=m.from_user.id)
 
-    cb.message.edit('Сделка прошла успешно!')
-    tg_user_id = User.get_by_id(deal.user_id).tg_id
-    msgid = User.get(tg_id=tg_user_id).msgid
-    cli.delete_messages(tg_user_id, msgid.await_payment_details)
-    cli.send_message(tg_user_id, 'Сделка прошла успешно!')
+    wallets = user.wallets
+
+    for w in wallets:
+        wal = f'{w.currency}\n' \
+            f'```{w.address}```'
+        m.reply(wal)
+
+
+@Client.on_callback_query(Filters.callback_data('trcel'))
+def tr_cel(cli, cb):
+    user = User.get(tg_id=cb.from_user.id)
+    user_flag = user.flags
+    user_flag.await_amount_for_deal = False
+    user_flag.save()
+    cb.message.delete()
+    announcement = Announcement.get_by_id(user.settings.announcement_id)
+    deal = deal_info(announcement.id)
+    cb.message.reply(deal, reply_markup=trade_kb.deal_for_user(announcement.id))

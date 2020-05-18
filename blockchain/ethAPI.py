@@ -1,6 +1,7 @@
 import json
 from decimal import Decimal
 
+from hexbytes import HexBytes
 from web3 import Web3, HTTPProvider
 
 import string
@@ -19,10 +20,11 @@ def create_wallet():
 
 
 def create_transaction(address, recipient_address, value, private_key):
-    nonce = w3.eth.getTransactionCount(address)
+    nonce = w3.eth.getTransactionCount(Web3.toChecksumAddress(address))
     gasPrice = w3.eth.gasPrice
-    #gas_limit = Web3.eth.estimateGas()
-    tx = (dict(nonce=nonce, gasPrice=gasPrice, gas=21000, to=recipient_address, value=Web3.toWei(value, 'ether')))
+    print(recipient_address)
+    print(address)
+    tx = (dict(nonce=nonce, gasPrice=gasPrice, gas=21000, to=Web3.toChecksumAddress(recipient_address), value=w3.toWei(value, 'ether')))
 
     signed_tx = w3.eth.account.signTransaction(tx, private_key)
     return signed_tx
@@ -31,7 +33,7 @@ def create_transaction(address, recipient_address, value, private_key):
 def send_tx(signed_tx):
     tx_hash = w3.eth.sendRawTransaction(signed_tx.rawTransaction)
 
-    return w3.eth.waitForTransactionReceipt(tx_hash, timeout=720)
+    return w3.eth.waitForTransactionReceipt(tx_hash, timeout=20000)
 
 
 def create_usdt_tx(from_address, to_address, value, private_key):

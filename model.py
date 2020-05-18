@@ -58,12 +58,16 @@ class UserFlag(BaseModel):
     requisites_for_start_deal = BooleanField(default=False)
     await_amount_for_trade = BooleanField(default=False)
     await_exchange_rate = BooleanField(default=False)
+    await_amount_for_deal = BooleanField(default=False)
 
 
 class UserSettings(BaseModel):
     user = ForeignKeyField(User, backref='settings_', on_delete='CASCADE')
     language = CharField(default='ru')
     currency = CharField(default='USD')
+    announcement_id = IntegerField(null=True)
+    active_deal = IntegerField(null=True)
+
 
 
 class UserRef(BaseModel):
@@ -147,8 +151,14 @@ class Trade(BaseModel):
     announcement = ForeignKeyField(Announcement, backref='trade_', on_delete='CASCADE')
     user = ForeignKeyField(User, backref='trade_', on_delete='CASCADE')
     status = CharField()
-    user_currency = IntegerField(null=True)
+    user_currency = CharField()
+    amount = DecimalField(40, 0, default=0)
     created_at = DateTimeField(null=True)
+
+
+class HoldMoney(BaseModel):
+    trade = ForeignKeyField(Trade, on_delete='CASCADE')
+    amount = DecimalField(40, 0)
 
 
 class Service(BaseModel):

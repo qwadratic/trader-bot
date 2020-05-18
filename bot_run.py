@@ -13,7 +13,7 @@ app = Client(session_name=get_session_name(), bot_token=get_token(), config_file
 shed = BackgroundScheduler()
 shed.add_job(job_check_ref, 'interval', hours=2)
 shed.add_job(check_refill_bip, 'interval', seconds=5, args=[app])
-shed.add_job(check_refill_eth, 'interval', seconds=20, args=[app])
+shed.add_job(check_refill_eth, 'interval', seconds=10, args=[app])
 
 shed.start()
 
