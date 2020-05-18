@@ -198,9 +198,13 @@ def auto_trade(cli, trade):
     broadcast_action(cli, log)
 
     if user_wallet.balance < to_pip(price_deal_in_user_currency):
-        txt_error = f'Недостаточно средств для совершения сделки\n\n' \
+        txt_error = f'Недостаточно средств для начала сделки\n\n' \
             f'Ваш баланс: {to_bip(user_wallet.balance)} {trade.user_currency}\n' \
             f'Сумма сделки: {price_deal_in_user_currency} {trade.user_currency}'
+        log = dict(trade_id=trade.id, error='InsufficientFundsUser', user_balance=to_bip(user_wallet.balance), price_trade_in_user_currency=price_deal_in_user_currency,
+                   currency=trade.user_currency)
+        broadcast_action(cli, log)
+        
         raise InsufficientFundsUser(txt_error)
 
     hold_money(trade)
