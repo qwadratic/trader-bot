@@ -461,7 +461,7 @@ def deal_start(cli, cb):
 
         trade = Trade.create(user_id=user.id, announcement_id=announcement_id, user_currency=user_currency, status='open')
 
-        msg = cb.message.edit(trade_text.enter_amount_for_buy(user_currency))
+        msg = cb.message.edit(trade_text.enter_amount_for_buy(user_currency), reply_markup=trade_kb.cancel_deal_before_start())
         msg_ids.await_amount_for_trade = msg.message_id
         msg_ids.save()
 
@@ -495,7 +495,7 @@ def amount_for_deal(cli, m):
     if to_pip(amount) > trade_limit:
         m.delete()
         txt = f'Вы не можете купить больше чем {to_bip(trade_limit)} {trade_currency}'
-        msg = m.reply(txt, reply_markup=trade_kb.cancel_deal_before_start())
+        msg = m.reply(txt)
         sleep(5)
         msg.delete()
         return
@@ -530,7 +530,7 @@ def finally_deal(cli, cb):
         trade = Trade.get_by_id(int(data[14:]))
         cb.message.edit('Ожидайте подтверждения сделки')
         try:
-            trade_final = trade_core.auto_trade(trade)
+            trade_final = trade_core.auto_trade(cli, trade)
         except InsufficientFundsUser as e:
             return cb.message.reply(e)
         except ValueError as e:

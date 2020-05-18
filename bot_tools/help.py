@@ -29,3 +29,28 @@ def create_wallets_for_user(user):
                          currency='BIP')
     VirtualWallet.create(user_id=user.id,
                          currency='ETH')
+
+
+def broadcast_action(cli, log):
+    channel_id = '-1001376981650'
+
+    txt = ''
+
+    for e in log:
+        txt += f'{e} {log[e]}\n\n'
+
+    cli.send_message(-1001376981650, txt)
+
+
+def correct_name(user):
+    name = None
+    # if user.user_name:
+    #     return f'@{user.user_name}'
+
+    if user.first_name and not user.last_name:
+
+        name = f'[{user.first_name}](tg://user?id={int(user.tg_id)})'
+
+    elif user.first_name and user.last_name:
+        name = f'[{user.first_name} {user.last_name}](tg://user?id={int(user.tg_id)})'
+    return name
