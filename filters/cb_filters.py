@@ -24,6 +24,8 @@ class TradeFilter:
 
     sale_menu = create(lambda _, cb: cb.data[:4] == 'sale')
 
+    user_announcement = create(lambda _, cb: cb.data[:8] == 'dealauth')
+
     deal_start = create(lambda _, cb: cb.data[:10] == 'deal start')
 
     announcement_menu = create(lambda _, cb: cb.data[:7] == 'annlist')
@@ -32,5 +34,5 @@ class TradeFilter:
 
     start_deal = create(lambda _, cb: cb.data[:10] == 'start deal')
 
-    confirm_trade = create(lambda _, cb: cb.data[:9] == 'conftrade')
+    finally_deal = create(lambda _, cb: cb.data[:5] == 'trade')
 

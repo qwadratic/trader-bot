@@ -23,6 +23,10 @@ class User(BaseModel):
         return self.wallets_.select()
 
     @property
+    def virt_wallets(self):
+        return self.virt_wallets_.select()
+
+    @property
     def settings(self):
         return self.settings_.get()
 
@@ -53,12 +57,17 @@ class UserFlag(BaseModel):
     requisites_for_trade = BooleanField(default=False)
     requisites_for_start_deal = BooleanField(default=False)
     await_amount_for_trade = BooleanField(default=False)
+    await_exchange_rate = BooleanField(default=False)
+    await_amount_for_deal = BooleanField(default=False)
 
 
 class UserSettings(BaseModel):
-    user_id = ForeignKeyField(User, backref='settings_', on_delete='CASCADE')
+    user = ForeignKeyField(User, backref='settings_', on_delete='CASCADE')
     language = CharField(default='ru')
     currency = CharField(default='USD')
+    announcement_id = IntegerField(null=True)
+    active_deal = IntegerField(null=True)
+
 
 
 class UserRef(BaseModel):
@@ -69,9 +78,16 @@ class UserRef(BaseModel):
 
 class Wallet(BaseModel):
     user = ForeignKeyField(User, backref='wallets_', on_delete='CASCADE')
-    name = CharField()
+    currency = CharField()
     address = CharField()
+    mnemonic = CharField(null=True)
     private_key = CharField()
+
+
+class VirtualWallet(BaseModel):
+    user = ForeignKeyField(User, backref='virt_wallets_', on_delete='CASCADE')
+    currency = CharField()
+    balance = DecimalField(40, 0, default=0)
 
 
 class UserPurse(BaseModel):
@@ -84,7 +100,7 @@ class MsgId(BaseModel):
     user_id = ForeignKeyField(User, unique=True, backref='msgid_', on_delete='CASCADE')
     trade_menu = IntegerField(null=True)
     await_exchange_rate = IntegerField(null=True)
-    await_count = IntegerField(null=True)
+    await_amount_for_trade = IntegerField(null=True)
     await_requisites = IntegerField(null=True)
     await_payment_pending = IntegerField(null=True)
     await_limit = IntegerField(null=True)
@@ -96,12 +112,12 @@ class MsgId(BaseModel):
 
 
 class TempAnnouncement(BaseModel):
-    user_id = ForeignKeyField(User, unique=True, backref='tempannounc_', on_delete='CASCADE')
+    user = ForeignKeyField(User, unique=True, backref='tempannounc_', on_delete='CASCADE')
     type_operation = CharField(null=True)
     trade_currency = CharField(null=True)
     amount = FloatField(null=True)
     max_limit = IntegerField(null=True)
-    exchange_rate = FloatField(null=True)
+    exchange_rate = DecimalField(40, 0, null=True)
 
 
 class TempPaymentCurrency(BaseModel):
@@ -113,9 +129,8 @@ class Announcement(BaseModel):
     user = ForeignKeyField(User, backref='announc_', on_delete='CASCADE')
     type_operation = CharField()
     trade_currency = CharField()
-    amount = IntegerField()
-    max_limit = IntegerField()
-    exchange_rate = FloatField(null=True)
+    amount = DecimalField(40, 0)
+    exchange_rate = DecimalField(40, 0, null=True)
     status = CharField()
 
     @property
@@ -136,6 +151,16 @@ class Trade(BaseModel):
     announcement = ForeignKeyField(Announcement, backref='trade_', on_delete='CASCADE')
     user = ForeignKeyField(User, backref='trade_', on_delete='CASCADE')
     status = CharField()
-    user_currency = IntegerField(null=True)
+    user_currency = CharField()
+    amount = DecimalField(40, 0, default=0)
     created_at = DateTimeField(null=True)
 
+
+class HoldMoney(BaseModel):
+    trade = ForeignKeyField(Trade, on_delete='CASCADE')
+    amount = DecimalField(40, 0)
+
+
+class Service(BaseModel):
+    currency = CharField(unique=True)
+    last_block = IntegerField()

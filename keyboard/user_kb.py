@@ -21,9 +21,14 @@ choice_currency = InlineKeyboardMarkup(
 menu = ReplyKeyboardMarkup(
             [
                 ['💸 Обмен'],
-                ['📁 Профиль', '💳 Кошелёк'],
+                ['📁 Профиль', '💼 Кошелёк'],
                 ['🤝 Партнёрская программа'],
                 ['⚙️ Настройки']
             ],
             resize_keyboard=True,
         )
+
+hide_notification = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(f'« cкрыть »', callback_data='hide notify')]
+        ])

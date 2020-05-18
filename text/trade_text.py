@@ -1,3 +1,4 @@
+from bot_tools import converter
 from model import TempPaymentCurrency
 
 trade_menu = '💸 **Обмен**\n\n' \
@@ -12,7 +13,7 @@ choice_trade_currency_for_buy = 'Выберите какую валюту Вы �
 
 error_empty_trade_currency = 'Сначала выбери валюту'
 
-enter_exchange_rate = 'Введите стоимость'
+enter_exchange_rate2 = 'Введите стоимость'
 
 error_enter = 'Некорректные данные'
 
@@ -34,7 +35,7 @@ def start_deal(announcement_id):
 
 
 def error_limit(limit):
-    txt = f'Ошибка. Превышен лими.\n' \
+    txt = f'Ошибка. Превышен лимит.\n' \
         f'Ваш лимит {limit}'
 
     return txt
@@ -99,9 +100,13 @@ def enter_amount_for_sale(limit):
     return txt
 
 
-def enter_amount_for_buy(limit):
-    txt = f'Введите точную сумму сколько желаете купить\n' \
-        f'Или диапазон от 0 до {limit}'
+def enter_amount_for_buy(user_currency):
+    currency_in_usd = converter.currency_in_usd(user_currency, 1)
+
+    
+
+    txt = f'Введите сумму сколько желаете купить\n' \
+        f'Цена за '
 
     return txt
 
@@ -110,5 +115,14 @@ def payment_details(requisites):
 
     txt = f'Переведите на этот счёт {requisites}\n\n' \
         f'Сумму денег'
+
+    return txt
+
+
+def enter_exchange_rate(trade_currency):
+    txt = f'Введите желаемую стоимость криптовалюты в долларах\n\n'
+    price = converter.currency_in_usd(trade_currency, 1)
+
+    txt += f'Средняя цена за {trade_currency}: {price} USD'
 
     return txt

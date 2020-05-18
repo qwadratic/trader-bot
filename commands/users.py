@@ -3,14 +3,22 @@ import datetime as dt
 from peewee import IntegrityError
 from pyrogram import Client, Filters
 
+from bot_tools.help import create_wallets_for_user
+from core import user_core
 from core.trade_core import deal_info
 from filters.cb_filters import UserCallbackFilter
 from filters.m_filters import ref_link
+from jobs.check_refill import check_refill_eth
 from keyboard import trade_kb
 from keyboard import user_kb
 from model import User, UserSettings, UserRef, MsgId, UserFlag, Announcement
 from text import basiq_texts
 
+
+# @Client.on_message(Filters.regex('w'))
+# def qwe(cli, m):
+#     user = User.get(tg_id=m.from_user.id)
+#     create_wallets_for_user(user)
 
 @Client.on_message(Filters.command('start') & ~ref_link)
 def start_command(_, m):
@@ -29,7 +37,7 @@ def start_command(_, m):
         MsgId.create(user_id=user.id)
         UserFlag.create(user_id=user.id)
         UserSettings.create(user_id=user.id)
-
+        create_wallets_for_user(user)
         m.reply(basiq_texts.choice_language, reply_markup=user_kb.choice_lang)
 
         return
@@ -55,6 +63,7 @@ def ref_start(_, m):
 
         MsgId.create(user_id=user.id)
         UserFlag.create(user_id=user.id)
+        create_wallets_for_user(user)
 
         if ref_type == 'u':  # user invite
             ref = User.get_or_none(id=int(comm[1][1:]))
@@ -153,3 +162,19 @@ def choice_curr_cb(_, cb):
 
     cb.message.delete()
     cb.message.reply(basiq_texts.end_reg, reply_markup=user_kb.menu)
+
+
+@Client.on_message(Filters.regex(r'💼 Кошелёк'))
+def my_wallet(cli, m):
+    user = User.get(tg_id=m.from_user.id)
+    m.reply(user_core.wallet_info(user))
+
+
+@Client.on_message(Filters.command(r'refill'))
+def sda(cli, m):
+    user = m.from_user
+    name = f'[{user.first_name}](tg://user?id={int(1100783143)})'
+    m.reply(name+' wadawdaw')
+    #check_refill_eth(cli)
+
+
