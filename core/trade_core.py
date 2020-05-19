@@ -197,7 +197,7 @@ def auto_trade(cli, trade):
 
     #  Сколько нужно юзеру заплатить
     price_deal_in_user_currency = price_deal_in_usd / cost_user_currency_in_usd
-
+    user_currency_wallet = Wallet.get(user_id=user.id, currency=trade.user_currency)
     owner_name = correct_name(owner)
     user_name = correct_name(user)
     log = f'Начало торговой сделки №{trade.id}\n\n' \
@@ -223,7 +223,7 @@ def auto_trade(cli, trade):
         log = f'❌ Ошибка: У пользователя {user_name} недостаточно средств для начала сделки\n\n' \
             f'Сделка №{trade.id}\n' \
             f'Требуемая сумма для начала операции: {price_deal_in_user_currency} {trade.user_currency}\n' \
-            f'Реальный баланс пользователя: {to_bip(get_balance_from_currency(user_wallet.address, trade.user_currency))}' \
+            f'Реальный баланс пользователя: {to_bip(get_balance_from_currency(user_currency_wallet.address, trade.user_currency))}' \
             f'Баланс пользователя: {to_bip(user_wallet.balance)} {trade.user_currency}\n\n' \
             f'Время события:  ```{dt.utcnow()} UTC-0```'
         broadcast_action(cli, log)
@@ -234,7 +234,6 @@ def auto_trade(cli, trade):
 
     if trade.announcement.trade_currency == 'ETH':
         owner_eth_wallet = Wallet.get(user_id=owner.id, currency='ETH')
-        user_currency_wallet = Wallet.get(user_id=user.id, currency=trade.user_currency)
         user_recipient_address = UserPurse.get(user_id=user.id, currency='ETH').address
 
         owner_recipient_address = UserPurse.get(user_id=owner.id, currency=trade.user_currency).address
