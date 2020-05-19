@@ -103,7 +103,6 @@ def enter_amount_for_sale(limit):
 def enter_amount_for_buy(user_currency):
     currency_in_usd = converter.currency_in_usd(user_currency, 1)
 
-    
 
     txt = f'Введите сумму сколько желаете купить\n' \
         f'Цена за '

@@ -1,3 +1,5 @@
+from pyrogram import InlineKeyboardMarkup
+
 from blockchain import minterAPI, ethAPI
 from model import Wallet, VirtualWallet
 
@@ -31,15 +33,13 @@ def create_wallets_for_user(user):
                          currency='ETH')
 
 
-def broadcast_action(cli, log):
+def broadcast_action(cli, log, kb=None):
     channel_id = '-1001376981650'
 
-    txt = ''
+    if kb:
+        return cli.send_message(-1001376981650, log, reply_markup=InlineKeyboardMarkup(kb))
 
-    for e in log:
-        txt += f'{e} {log[e]}\n\n'
-
-    cli.send_message(-1001376981650, txt)
+    cli.send_message(-1001376981650, log)
 
 
 def correct_name(user):
@@ -54,3 +54,12 @@ def correct_name(user):
     elif user.first_name and user.last_name:
         name = f'[{user.first_name} {user.last_name}](tg://user?id={int(user.tg_id)})'
     return name
+
+
+def get_balance_from_currency(address, currency):
+
+    if currency == 'BIP':
+        return minterAPI.get_wallet_balance(address)
+
+    if currency == 'ETH':
+        return ethAPI.get_balance(address, currency)

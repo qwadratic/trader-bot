@@ -69,7 +69,6 @@ class UserSettings(BaseModel):
     active_deal = IntegerField(null=True)
 
 
-
 class UserRef(BaseModel):
     user_id = ForeignKeyField(User, unique=True, backref='ref_', on_delete='CASCADE')
     ref_user_id = IntegerField()
