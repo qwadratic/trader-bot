@@ -223,7 +223,7 @@ def auto_trade(cli, trade):
         log = f'❌ Ошибка: У пользователя {user_name} недостаточно средств для начала сделки\n\n' \
             f'Сделка №{trade.id}\n' \
             f'Требуемая сумма для начала операции: {price_deal_in_user_currency} {trade.user_currency}\n' \
-            f'Реальный баланс пользователя: {to_bip(get_balance_from_currency(user_currency_wallet.address, trade.user_currency))}' \
+            f'Реальный баланс пользователя: {to_bip(get_balance_from_currency(user_currency_wallet.address, trade.user_currency))}\n' \
             f'Баланс пользователя: {to_bip(user_wallet.balance)} {trade.user_currency}\n\n' \
             f'Время события:  ```{dt.utcnow()} UTC-0```'
         broadcast_action(cli, log)
