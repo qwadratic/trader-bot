@@ -404,37 +404,37 @@ def deal_start(cli, cb):
 
     if announcement.type_operation == 'buy':  # Покупка
         user_currency = None
-        for curr in payment_currency:
-            requisite = UserPurse.select().where(
-                (UserPurse.user_id == user.id) & (UserPurse.currency == curr.payment_currency))
-
-            if not requisite:  # имитация выбора валюты
-                user_flag.purse_flag = curr.payment_currency
-                user_flag.requisites_for_start_deal = True
-                user_flag.save()
-
-                msg_ids = user.msgid
-                cli.delete_messages(cb.message.chat.id, msg_ids.await_requisites)
-
-                msg = cb.message.edit(trade_text.indicate_requisites(curr.payment_currency))
-                msg_ids.await_requisites = msg.message_id
-                msg_ids.save()
-
-                return
-
-            user_currency = curr.payment_currency
-
-            break
-
-        trade = Trade.create(user_id=user.id, status='open', announcement_id=announcement_id, user_currency=user_currency)
-
-        msg = cb.message.edit(trade_text.await_respond_from_buyer)
-        msg_ids.await_respond_from_buyer = msg.message_id
-        msg_ids.save()
-
-        buyer_id = User.get_by_id(announcement.user_id).tg_id
-
-        cli.send_message(buyer_id, trade_text.start_deal(announcement_id), reply_markup=trade_kb.start_deal(trade.id))
+        # for curr in payment_currency:
+        #     requisite = UserPurse.select().where(
+        #         (UserPurse.user_id == user.id) & (UserPurse.currency == curr.payment_currency))
+        #
+        #     if not requisite:  # имитация выбора валюты
+        #         user_flag.purse_flag = curr.payment_currency
+        #         user_flag.requisites_for_start_deal = True
+        #         user_flag.save()
+        #
+        #         msg_ids = user.msgid
+        #         cli.delete_messages(cb.message.chat.id, msg_ids.await_requisites)
+        #
+        #         msg = cb.message.edit(trade_text.indicate_requisites(curr.payment_currency))
+        #         msg_ids.await_requisites = msg.message_id
+        #         msg_ids.save()
+        #
+        #         return
+        #
+        #     user_currency = curr.payment_currency
+        #
+        #     break
+        #
+        # trade = Trade.create(user_id=user.id, status='open', announcement_id=announcement_id, user_currency=user_currency)
+        #
+        # msg = cb.message.edit(trade_text.await_respond_from_buyer)
+        # msg_ids.await_respond_from_buyer = msg.message_id
+        # msg_ids.save()
+        #
+        # buyer_id = User.get_by_id(announcement.user_id).tg_id
+        #
+        # cli.send_message(buyer_id, trade_text.start_deal(announcement_id), reply_markup=trade_kb.start_deal(trade.id))
 
     elif announcement.type_operation == 'sale':  # Продажа
         buyer_requisite = UserPurse.select().where(
@@ -460,14 +460,13 @@ def deal_start(cli, cb):
             break
 
         trade = Trade.create(user_id=user.id, announcement_id=announcement_id, user_currency=user_currency, status='open')
-
-        msg = cb.message.edit(trade_text.enter_amount_for_buy(user_currency), reply_markup=trade_kb.cancel_deal_before_start())
+        txt = f'Введите желаемую сумму для обмена\n'
+        msg = cb.message.reply(txt, reply_markup=trade_kb.cancel_deal_before_start())
         msg_ids.await_amount_for_trade = msg.message_id
         msg_ids.save()
 
         user_flag.await_amount_for_deal = True
         user_flag.save()
-
 
         user_set.active_deal = trade.id
         user_set.save()
@@ -503,7 +502,6 @@ def amount_for_deal(cli, m):
     trade.amount = to_pip(amount)
     trade.save()
 
-
     owner_trade_currency_price = trade.announcement.exchange_rate
     cost_user_currency_in_usd = Decimal(converter.currency_in_usd(trade.user_currency, 1))
     price_deal_in_usd = to_bip(trade.amount) * to_bip(owner_trade_currency_price)
@@ -518,6 +516,7 @@ def amount_for_deal(cli, m):
     user_flag = user.flags
     user_flag.await_amount_for_deal = False
     user_flag.save()
+    delete_msg(cli, user.id, user.msg.await_amount_for_trade)
 
 
 @Client.on_callback_query(TradeFilter.finally_deal)
