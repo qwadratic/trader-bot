@@ -38,7 +38,7 @@ def broadcast_action(cli, log, kb=None):
 
     if kb:
         try:
-            cli.send_message(-1001376981650, log, reply_markup=InlineKeyboardMarkup([kb]))
+            cli.send_message(-1001376981650, log, reply_markup=InlineKeyboardMarkup([[kb]]))
         except Exception as e:
             print(e)
         return
