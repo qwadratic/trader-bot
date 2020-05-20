@@ -82,10 +82,9 @@ def get_commission(tx):
 
 @retry(to_handle, tries=3, delay=0.5, backoff=2)
 def send_transaction(tx):
-    API.send_transaction(tx)
+    tx = API.send_transaction(tx)
     sleep(3)
-    return
-#
+    return tx
 #
 # def get_multicommission(txs_count):
 #     commission_per_recipient = 5
