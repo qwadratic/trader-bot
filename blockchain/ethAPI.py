@@ -22,8 +22,7 @@ def create_wallet():
 def create_transaction(address, recipient_address, value, private_key):
     nonce = w3.eth.getTransactionCount(Web3.toChecksumAddress(address))
     gasPrice = w3.eth.gasPrice
-    print(recipient_address)
-    print(address)
+
     tx = (dict(nonce=nonce, gasPrice=gasPrice, gas=21000, to=Web3.toChecksumAddress(recipient_address), value=w3.toWei(value, 'ether')))
 
     signed_tx = w3.eth.account.signTransaction(tx, private_key)
@@ -38,11 +37,13 @@ def send_tx(signed_tx):
 
 def create_usdt_tx(from_address, to_address, value, private_key):
     contract_address = '0xdac17f958d2ee523a2206206994597c13d831ec7'
-    nonce = w3.eth.getTransactionCount(from_address)
+
+    nonce = w3.eth.getTransactionCount(Web3.toChecksumAddress(from_address))
     gasPrice = w3.eth.gasPrice
     token = w3.eth.contract(Web3.toChecksumAddress(contract_address), abi=usdtABI)
+
     v = value * 1000000
-    tx = token.functions.transfer(to_address, v).buildTransaction(
+    tx = token.functions.transfer(Web3.toChecksumAddress(to_address), int(v)).buildTransaction(
         {
             'chainId': w3.eth.chainId,
             'gas': 77000,
@@ -61,10 +62,11 @@ def get_balance(address, currency):
     if currency == 'ETH':
         return w3.eth.getBalance(Web3.toChecksumAddress(address))
 
-    contract_address = '0xdac17f958d2ee523a2206206994597c13d831ec7'
-    usdt_erc20 = w3.eth.contract(Web3.toChecksumAddress(contract_address), abi=usdtABI)
-    balance = usdt_erc20.functions.balanceOf(Web3.toChecksumAddress(address)).call()
-    decimals = usdt_erc20.functions.decimals().call()
-    balance_decimal = balance / Decimal(10 ** decimals)
-    return Web3.toWei(balance_decimal, 'ether')
+    if currency == 'USDT':
+        contract_address = '0xdac17f958d2ee523a2206206994597c13d831ec7'
+        usdt_erc20 = w3.eth.contract(Web3.toChecksumAddress(contract_address), abi=usdtABI)
+        balance = usdt_erc20.functions.balanceOf(Web3.toChecksumAddress(address)).call()
+        decimals = usdt_erc20.functions.decimals().call()
+        balance_decimal = balance / Decimal(10 ** decimals)
+        return Web3.toWei(balance_decimal, 'ether')
 

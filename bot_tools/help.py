@@ -37,15 +37,19 @@ def broadcast_action(cli, log, kb=None):
     channel_id = '-1001376981650'
 
     if kb:
-        return cli.send_message(-1001376981650, log, reply_markup=InlineKeyboardMarkup(kb))
-
-    cli.send_message(-1001376981650, log)
+        try:
+            cli.send_message(-1001183420859, log, reply_markup=InlineKeyboardMarkup(kb))
+        except Exception as e:
+            print(e)
+        return
+    try:
+        cli.send_message(-1001183420859, log)
+    except Exception as e:
+        print(e)
 
 
 def correct_name(user):
     name = None
-    # if user.user_name:
-    #     return f'@{user.user_name}'
 
     if user.first_name and not user.last_name:
 
@@ -61,5 +65,5 @@ def get_balance_from_currency(address, currency):
     if currency == 'BIP':
         return minterAPI.get_wallet_balance(address)
 
-    if currency == 'ETH':
+    if currency == 'ETH' or currency == 'USDT':
         return ethAPI.get_balance(address, currency)

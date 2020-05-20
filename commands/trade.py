@@ -1,3 +1,5 @@
+import sys
+import traceback
 from decimal import Decimal, InvalidOperation
 from re import search
 from time import sleep
@@ -533,7 +535,9 @@ def finally_deal(cli, cb):
         except InsufficientFundsUser as e:
             return cb.message.reply(e)
         except ValueError as e:
-            print(e)
+            tb = sys.exc_info()[2]
+            print(traceback.format_tb(tb))
+            print(e, traceback.format_tb(tb)[0])
             deposite = HoldMoney.get_or_none(trade_id=trade.id)
             if deposite:
                 owner = trade.announcement.user
@@ -544,8 +548,8 @@ def finally_deal(cli, cb):
                 owner_wallet.save()
 
                 HoldMoney.delete().where(HoldMoney.trade_id == trade.id).execute()
-
-            return cb.message.reply('У вас нехватает денег')
+            err = e
+            return cb.message.reply(f'Ошибка\n\n{err}')
 
         operation = 'Купили' if trade.announcement.type_operation == 'sale' else 'продали'
         txt = f'Вы {operation} {to_bip(trade.amount)} {trade.announcement.trade_currency} за {trade_final} {trade.user_currency}'
