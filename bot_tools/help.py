@@ -38,12 +38,12 @@ def broadcast_action(cli, log, kb=None):
 
     if kb:
         try:
-            cli.send_message(-1001183420859, log, reply_markup=InlineKeyboardMarkup(kb))
+            cli.send_message(-1001376981650, log, reply_markup=InlineKeyboardMarkup(kb))
         except Exception as e:
             print(e)
         return
     try:
-        cli.send_message(-1001183420859, log)
+        cli.send_message(-1001376981650, log)
     except Exception as e:
         print(e)
 
