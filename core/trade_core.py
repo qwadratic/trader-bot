@@ -171,13 +171,26 @@ def hold_money(cli, trade):
     HoldMoney.create(trade=trade.id, amount=trade.amount)
     log = f'Сделка №{trade.id}\n\n' \
         f'Депонирование средств владельца объявления №{trade.announcement.id}\n' \
-        f'Виртуальный баланс владельца: {to_bip(owner_wallet.balance)} {trade_currency}\n' \
+        f'Виртуальный баланс владельца:\n{to_bip(owner_wallet.balance)} {trade_currency}\n' \
         f'Сумма депонирования: {to_bip(trade.amount)} {trade_currency}\n\n'
+
+
+    old_balance = owner_wallet.balance
     owner_wallet.balance -= trade.amount
     owner_wallet.save()
 
-    log += f'Новый виртуальный баланс: {owner_wallet.balance} {trade_currency}\n\n' \
-        f'Время события:  ```{dt.utcnow()} UTC-0```'
+    try:
+        log += f'Новый виртуальный баланс: {to_bip(owner_wallet.balance)} {trade_currency}\n\n' \
+            f'Время события:  ```{dt.utcnow()} UTC-0```'
+    except Exception as e:
+        error_log = f'❌ Ошибка депонирования: {e}\n' \
+            f'Сделка №{trade.id}\n' \
+            f'Старый виртуальный баланс:\n{old_balance}\n\n' \
+            f'Новый виртуальный баланс:\n{owner_wallet.balance}\n\n' \
+            f'Сумма депонирования: {to_bip(trade.amount)} {trade_currency}\n\n' \
+            f'Время события:  ```{dt.utcnow()} UTC-0```'
+        broadcast_action(cli, error_log)
+        raise ValueError('балансам плохо')
 
     broadcast_action(cli, log)
 
@@ -187,26 +200,42 @@ def auto_trade(cli, trade):
     user_wallet = VirtualWallet.get(user_id=user.id, currency=trade.user_currency)
 
     owner = trade.announcement.user
-
-    owner_trade_currency_price = trade.announcement.exchange_rate
-
-    cost_user_currency_in_usd = Decimal(converter.currency_in_usd(trade.user_currency, 1))
-
-    #  Цена сделки в долларах
-    price_deal_in_usd = to_bip(trade.amount) * to_bip(owner_trade_currency_price)
-
-    #  Сколько нужно юзеру заплатить
-    price_deal_in_user_currency = price_deal_in_usd / cost_user_currency_in_usd
-    user_currency_wallet = Wallet.get(user_id=user.id, currency=trade.user_currency)
     owner_name = correct_name(owner)
     user_name = correct_name(user)
+
+    #  Продажа или покупка
+    type_operation = trade.announcement.type_operation
+
+    #  Валюта обмена
+    trade_currency = trade.announcement.trade_currency
+
+    #  Выбранный платёжный инструмент пользователя
+    user_currency = trade.user_currency
+
+    #  Цена лота от владельца объявления
+    trade_currency_price = trade.announcement.exchange_rate
+
+    #  Цена выбранной валюты
+    cost_payment_currency_in_usd = Decimal(converter.currency_in_usd(user_currency , 1))
+
+    #  Цена сделки в долларах
+    price_deal_in_usd = to_bip(trade.amount) * to_bip(trade_currency_price)
+
+    #  Сколько нужно юзеру заплатить
+    price_deal_in_user_currency = price_deal_in_usd / cost_payment_currency_in_usd
+
+    if user_currency == 'USDT':
+        user_currency_wallet = Wallet.get(user_id=user.id, currency='ETH')
+    else:
+        user_currency_wallet = Wallet.get(user_id=user.id, currency=trade.user_currency)
+
     log = f'Начало торговой сделки №{trade.id}\n\n' \
         f'Объвление №{trade.announcement.id}\n' \
         f'Автор объявления: {owner_name}\n' \
         f'Сумма объявления: {to_bip(trade.announcement.amount)} {trade.announcement.trade_currency}\n' \
-        f'Цена лота: {to_bip(trade.announcement.exchange_rate)} USD за 1 {trade.announcement.trade_currency}\n\n' \
+        f'Цена лота: {to_bip(trade_currency_price)} USD за 1 {trade_currency}\n\n' \
         f'Пользователь сделки: {user_name}\n' \
-        f'Тип операции: {trade.announcement.type_operation}\n' \
+        f'Тип операции: {type_operation}\n' \
         f'Валюта операции: {trade.announcement.trade_currency}\n' \
         f'Платежный инструмент: {trade.user_currency}\n' \
         f'Сумма сделки: {to_bip(trade.amount)}\n' \
@@ -224,7 +253,7 @@ def auto_trade(cli, trade):
             f'Сделка №{trade.id}\n' \
             f'Требуемая сумма для начала операции: {price_deal_in_user_currency} {trade.user_currency}\n' \
             f'Реальный баланс пользователя: {to_bip(get_balance_from_currency(user_currency_wallet.address, trade.user_currency))}\n' \
-            f'Баланс пользователя: {to_bip(user_wallet.balance)} {trade.user_currency}\n\n' \
+            f'Виртуальный баланс пользователя: {to_bip(user_wallet.balance)} {trade.user_currency}\n\n' \
             f'Время события:  ```{dt.utcnow()} UTC-0```'
         broadcast_action(cli, log)
 
@@ -235,50 +264,53 @@ def auto_trade(cli, trade):
     if trade.announcement.trade_currency == 'ETH':
         owner_eth_wallet = Wallet.get(user_id=owner.id, currency='ETH')
         user_recipient_address = UserPurse.get(user_id=user.id, currency='ETH').address
-
         owner_recipient_address = UserPurse.get(user_id=owner.id, currency=trade.user_currency).address
         owner_virtual_wallet_eth = VirtualWallet.get(user_id=owner.id, currency='ETH')
+
         # Отправляет пользователь
         if trade.user_currency == 'BIP':
-
-            signed_tx = minterAPI.create_transaction(user_currency_wallet, owner_recipient_address, to_pip(price_deal_in_user_currency))
+            # Первая часть сделки юзер отправляет овнеру
+            signed_tx = minterAPI.create_transaction(user_currency_wallet, owner_recipient_address,
+                                                     to_pip(price_deal_in_user_currency))
             send_tx = minterAPI.send_transaction(signed_tx)
             if 'error' in send_tx and send_tx['error']['tx_result']['code'] == 107:
                 err = send_tx['error']['tx_result']['code']['log']
 
                 error_log = f'❌ Первая транзакция Ошибка: {err}\n\n' \
                     f'Сделка №{trade.id}\n' \
-                    f'Отправитель: {user_currency_wallet.address}\n' \
-                    f'Получатель: {owner_recipient_address}\n\n' \
+                    f'Отправитель: ```{user_currency_wallet.address}```\n' \
+                    f'Получатель: ```{owner_recipient_address}```\n\n' \
                     f'Сумма транзакции: {price_deal_in_user_currency} {trade.user_currency}\n' \
                     f'Реальный баланс пользователя: {to_bip(minterAPI.get_wallet_balance(user_currency_wallet.address))} BIP\n\n' \
+                    f'Виртуальный баланс пользователя: {to_bip(user_wallet.balance)} {trade.user_currency}\n' \
                     f'Время события:  ```{dt.utcnow()} UTC-0```'
                 broadcast_action(cli, error_log)
                 raise MinterErrorTransaction(f"{err}\n")
 
             log = f'✅ Удачная первая транзакция!\n\n' \
                 f'Сделка №{trade.id}\n' \
-                f'Отправитель: {user_currency_wallet.address}\n' \
-                f'Получатель: {owner_recipient_address}\n' \
+                f'Отправитель: ```{user_currency_wallet.address}```\n' \
+                f'Получатель: ```{owner_recipient_address}```\n' \
                 f'Сумма транзакции: {price_deal_in_user_currency} {trade.user_currency}\n' \
                 f'Комиссия: 0.02 BIP\n\n' \
                 f'Время события:  ```{dt.utcnow()} UTC-0```'
-            tx_hash = 'Mt'+send_tx['result']['hash'].lower()
+            tx_hash = 'Mt' + send_tx['result']['hash'].lower()
             kb = InlineKeyboardButton(f'Транзакция', url=f'https://minterscan.net/tx/{tx_hash}')
             broadcast_action(cli, log, kb)
 
+            # Вторая часть сделки овнер платит юзеру
             gasPrice = ethAPI.w3.eth.gasPrice
             fee = gasPrice * 21000
 
-            signed_tx2 = ethAPI.create_transaction(owner_eth_wallet.address, user_recipient_address, to_bip(trade.amount), owner_eth_wallet.private_key)
-
+            signed_tx2 = ethAPI.create_transaction(owner_eth_wallet.address, user_recipient_address,
+                                                   to_bip(trade.amount), owner_eth_wallet.private_key)
             try:
                 send_tx2 = ethAPI.send_tx(signed_tx2)
 
                 log = f'✅ Удачная вторая транзакция!\n\n' \
                     f'Сделка №{trade.id}\n' \
-                    f'Отправитель: {owner_eth_wallet.address}\n' \
-                    f'Получатель: {user_recipient_address}\n' \
+                    f'Отправитель: ```{owner_eth_wallet.address}```\n' \
+                    f'Получатель: ```{user_recipient_address}```\n' \
                     f'Сумма транзакции: {to_bip(trade.amount)} {trade.announcement.trade_currency}\n' \
                     f'Комиссия: {to_bip(fee)} ETH\n\n' \
                     f'Время события:  ```{dt.utcnow()} UTC-0```'
@@ -290,8 +322,8 @@ def auto_trade(cli, trade):
 
                 error_log = f'❌ Вторая транзакция Ошибка: {e}\n\n' \
                     f'у владельца объявления недостаточно средств для проведения операции\n' \
-                    f'Отправитель: {owner_eth_wallet.address}\n' \
-                    f'Получатель: {user_recipient_address}\n' \
+                    f'Отправитель: ```{owner_eth_wallet.address}```\n' \
+                    f'Получатель: ```{user_recipient_address}```\n' \
                     f'Сумма транзакции: {to_bip(trade.amount)} ETH\n' \
                     f'Реальный баланс владельца: {to_bip(ethAPI.get_balance(owner_eth_wallet.address, "ETH"))} ETH\n' \
                     f'Виртуальный баланс владельца: {to_bip(owner_virtual_wallet_eth.balance)} ETH\n\n' \
@@ -301,32 +333,125 @@ def auto_trade(cli, trade):
                 raise ValueError('У владельца сделки не хватает средств')
 
             if send_tx2.status == 0:
-
                 error_log = f'❌ Ошибка: status: 0\n\n' \
                     f'Сделка №{trade.id}\n' \
-                    f'Отправитель: {owner_eth_wallet.address}\n' \
-                    f'Получатель: {user_recipient_address}\n' \
+                    f'Отправитель: ```{owner_eth_wallet.address}```\n' \
+                    f'Получатель: ```{user_recipient_address}```\n' \
                     f'Сума транзакции: {to_bip(trade.amount)} ETH\n\n' \
                     f'Время :  ```{dt.utcnow()} UTC-0```'
                 kb = InlineKeyboardButton(f'Транзакция', url=f'https://etherscan.io/tx/{tx_hash}')
                 broadcast_action(cli, error_log, kb)
                 raise EthErrorTransaction('Статус сделки 0')
 
-            close_trade(cli, user, owner, trade, send_tx2.transactionHash.hex(), fee, to_pip(0.02), price_deal_in_user_currency)
+            close_trade(cli, user, owner, trade, send_tx2.transactionHash.hex(), fee, to_pip(0.02),
+                        price_deal_in_user_currency)
+            return price_deal_in_user_currency
+
+        if trade.user_currency == 'USDT':
+            # Первая часть сделки юзер отправляет овнеру
+            signed_tx = ethAPI.create_usdt_tx(user_currency_wallet.address, owner_recipient_address, price_deal_in_user_currency, user_currency_wallet.private_key)
+
+            try:
+                send_tx = ethAPI.send_tx(signed_tx)
+
+                gasPrice = ethAPI.w3.eth.gasPrice
+                fee = gasPrice * send_tx.gasUsed
+
+                log = f'✅ Удачная первая транзакция!\n\n' \
+                    f'Сделка №{trade.id}\n' \
+                    f'Отправитель: ```{user_currency_wallet.address}```\n' \
+                    f'Получатель: ```{owner_recipient_address}```\n' \
+                    f'Сумма транзакции: {price_deal_in_user_currency} USDT\n' \
+                    f'Комиссия: {to_bip(fee)} ETH\n\n' \
+                    f'Время события:  ```{dt.utcnow()} UTC-0```'
+                tx_hash = send_tx.transactionHash.hex()
+                kb = InlineKeyboardButton(f'Транзакция', url=f'https://etherscan.io/tx/{tx_hash}')
+                broadcast_action(cli, log, kb)
+
+            except ValueError as e:
+                error_log = f'❌ Ошибка: {e}\n\n' \
+                    f'Сделка №{trade.id}\n' \
+                    f'Адрес пользователя: ```{user_currency_wallet.address}```\n' \
+                    f'Адрес владельца (получателя): ```{owner_recipient_address}```\n\n' \
+                    f'Сумма транзакции: {price_deal_in_user_currency} USDT\n' \
+                    f'Реальный баланс пользователя: {to_bip(ethAPI.get_balance(user_currency_wallet.address, "USDT"))} USDT\n\n' \
+                    f'Виртуальный баланс пользователя: {to_bip(user_wallet.balance)} {trade.user_currency}' \
+                    f'Время события:  ```{dt.utcnow()} UTC-0```'
+                broadcast_action(cli, error_log)
+
+                raise ValueError('У юзера не хватило средств')
+
+            if send_tx.status == 0:
+                error_log = f'❌ Ошибка: status: 0\n\n' \
+                    f'Сделка №{trade.id}\n' \
+                    f'Отправитель: ```{user_currency_wallet.address}```\n' \
+                    f'Получатель: ```{owner_recipient_address}```\n' \
+                    f'Сума транзакции: {to_bip(trade.amount)} USDT\n\n' \
+                    f'Время :  ```{dt.utcnow()} UTC-0```'
+                tx_hash = send_tx.transactionHash.hex()
+                kb = InlineKeyboardButton(f'Транзакция', url=f'https://etherscan.io/tx/{tx_hash}')
+                broadcast_action(cli, error_log, kb)
+                raise EthErrorTransaction('Статус сделки 0')
+
+            # Вторая часть сделки овнер платит юзеру
+            gasPrice = ethAPI.w3.eth.gasPrice
+            fee = gasPrice * 21000
+
+            signed_tx2 = ethAPI.create_transaction(owner_eth_wallet.address, user_recipient_address,
+                                                   to_bip(trade.amount), owner_eth_wallet.private_key)
+            try:
+                send_tx2 = ethAPI.send_tx(signed_tx2)
+
+                log = f'✅ Удачная вторая транзакция!\n\n' \
+                    f'Сделка №{trade.id}\n' \
+                    f'Отправитель: ```{owner_eth_wallet.address}```\n' \
+                    f'Получатель: ```{user_recipient_address}```\n' \
+                    f'Сумма транзакции: {to_bip(trade.amount)} {trade.announcement.trade_currency}\n' \
+                    f'Комиссия: {to_bip(fee)} ETH\n\n' \
+                    f'Время события:  ```{dt.utcnow()} UTC-0```'
+                tx_hash = send_tx2.transactionHash.hex()
+                kb = InlineKeyboardButton(f'Транзакция', url=f'https://etherscan.io/tx/{tx_hash}')
+                broadcast_action(cli, log, kb)
+
+            except ValueError as e:
+                error_log = f'❌ Вторая транзакция Ошибка: {e}\n\n' \
+                    f'у владельца объявления недостаточно средств для проведения операции\n' \
+                    f'Отправитель: ```{owner_eth_wallet.address}```\n' \
+                    f'Получатель: ```{user_recipient_address}```\n' \
+                    f'Сумма транзакции: {to_bip(trade.amount)} ETH\n' \
+                    f'Реальный баланс владельца: {to_bip(ethAPI.get_balance(owner_eth_wallet.address, "ETH"))} ETH\n' \
+                    f'Виртуальный баланс владельца: {to_bip(owner_virtual_wallet_eth.balance)} ETH\n\n' \
+                    f'Время :  ```{dt.utcnow()} UTC-0```'
+
+                broadcast_action(cli, error_log)
+                raise ValueError('У владельца сделки не хватает средств')
+
+            if send_tx2.status == 0:
+                error_log = f'❌ Ошибка: status: 0\n\n' \
+                    f'Сделка №{trade.id}\n' \
+                    f'Отправитель: ```{owner_eth_wallet.address}```\n' \
+                    f'Получатель: ```{user_recipient_address}```\n' \
+                    f'Сума транзакции: {to_bip(trade.amount)} ETH\n\n' \
+                    f'Время :  ```{dt.utcnow()} UTC-0```'
+                kb = InlineKeyboardButton(f'Транзакция', url=f'https://etherscan.io/tx/{tx_hash}')
+                broadcast_action(cli, error_log, kb)
+                raise EthErrorTransaction('Статус сделки 0')
+
+            close_trade(cli, user, owner, trade, send_tx2.transactionHash.hex(), fee, to_pip(0.02),
+                        price_deal_in_user_currency)
             return price_deal_in_user_currency
 
     if trade.announcement.trade_currency == 'BIP':
-        owner_bip_wallet = Wallet.get(user_id=owner.id, currency='BIP')
-        user_currency_wallet = Wallet.get(user_id=user.id, currency=trade.user_currency)
-        user_recipient_address = UserPurse.get(user_id=user.id, currency='BIP').address
 
+        owner_bip_wallet = Wallet.get(user_id=owner.id, currency='BIP')
+        user_recipient_address = UserPurse.get(user_id=user.id, currency='BIP').address
         owner_recipient_address = UserPurse.get(user_id=owner.id, currency=trade.user_currency).address
+        owner_virtual_wallet_bip = VirtualWallet.get(user_id=owner.id, currency='BIP')
 
         # Отправляет пользователь
         if trade.user_currency == 'ETH':
-
-            signed_tx = ethAPI.create_transaction(user_currency_wallet.address, owner_recipient_address,
-                                                   price_deal_in_user_currency, user_currency_wallet.private_key)
+            # Первая часть сделки юзер отправляет овнеру
+            signed_tx = ethAPI.create_transaction(user_currency_wallet.address, owner_recipient_address, price_deal_in_user_currency, user_currency_wallet.private_key)
 
             gasPrice = ethAPI.w3.eth.gasPrice
             fee = gasPrice * 21000
@@ -335,8 +460,254 @@ def auto_trade(cli, trade):
 
                 log = f'✅ Удачная первая транзакция!\n\n' \
                     f'Сделка №{trade.id}\n' \
-                    f'Отправитель: {user_currency_wallet.address}\n' \
-                    f'Получатель: {owner_recipient_address}\n' \
+                    f'Отправитель: ```{user_currency_wallet.address}```\n' \
+                    f'Получатель: ```{owner_recipient_address}```\n' \
+                    f'Сумма транзакции: {price_deal_in_user_currency} ETH\n' \
+                    f'Комиссия: {to_bip(fee)} ETH\n\n' \
+                    f'Время события:  ```{dt.utcnow()} UTC-0```'
+                tx_hash = send_tx.transactionHash.hex()
+                kb = InlineKeyboardButton(f'Транзакция', url=f'https://etherscan.io/tx/{tx_hash}')
+                broadcast_action(cli, log, kb)
+
+            except ValueError as e:
+
+                error_log = f'❌ Ошибка: {e}\n\n' \
+                    f'Сделка №{trade.id}\n' \
+                    f'Адрес пользователя: ```{user_currency_wallet.address}```\n' \
+                    f'Адрес владельца (получателя): ```{owner_recipient_address}```\n\n' \
+                    f'Сумма транзакции: {price_deal_in_user_currency} ETH\n' \
+                    f'Реальный баланс пользователя: {to_bip(ethAPI.get_balance(user_currency_wallet.address, "ETH"))} ETH\n\n' \
+                    f'Виртуальный баланс пользователя: {to_bip(user_wallet.balance)} {trade.user_currency}' \
+                    f'Время события:  ```{dt.utcnow()} UTC-0```'
+                broadcast_action(cli, error_log)
+
+                raise ValueError('У юзера не хватило средств')
+
+            if send_tx.status == 0:
+                error_log = f'❌ Ошибка: status: 0\n\n' \
+                    f'Сделка №{trade.id}\n' \
+                    f'Отправитель: ```{user_currency_wallet.address}```\n' \
+                    f'Получатель: ```{owner_recipient_address}```\n' \
+                    f'Сума транзакции: {to_bip(trade.amount)} ETH\n\n' \
+                    f'Время :  ```{dt.utcnow()} UTC-0```'
+                tx_hash = send_tx.transactionHash.hex()
+                kb = InlineKeyboardButton(f'Транзакция', url=f'https://etherscan.io/tx/{tx_hash}')
+                broadcast_action(cli, error_log, kb)
+                raise EthErrorTransaction('Статус сделки 0')
+
+            # Вторая часть сделки овнер платит юзеру
+            signed_tx2 = minterAPI.create_transaction(owner_bip_wallet, user_recipient_address,
+                                                      trade.amount)
+            send_tx2 = minterAPI.send_transaction(signed_tx2)
+            if 'error' in send_tx2 and send_tx2['error']['tx_result']['code'] == 107:
+                error = f"{send_tx2['error']['tx_result']['code']['log']}"
+
+                error_log = f'❌ Ошибка: {error}\n\n' \
+                    f'Сделка №{trade.id}\n' \
+                    f'Отправитель: ```{owner_bip_wallet.address}```\n' \
+                    f'Получатель: ```{user_recipient_address}```\n\n' \
+                    f'Сумма транзакции: {to_bip(trade.amount)} BIP\n' \
+                    f'Реальный баланс отправителя: {to_bip(minterAPI.get_wallet_balance(user_currency_wallet.address))} BIP\n\n' \
+                    f'Реальный баланс отправителя: {to_bip(owner_virtual_wallet_bip.balance)} BIP' \
+                    f'Время события:  ```{dt.utcnow()} UTC-0```'
+
+                broadcast_action(cli, error_log)
+                raise MinterErrorTransaction(f"{error}\n")
+
+            log = f'✅ Удачная вторая транзакция!\n\n' \
+                f'Сделка №{trade.id}\n' \
+                f'Отправитель: ```{owner_bip_wallet.address}```\n' \
+                f'Получатель: ```{user_recipient_address}```\n' \
+                f'Сумма транзакции: {to_bip(trade.amount)} BIP\n' \
+                f'Комиссия: 0.02 BIP\n\n' \
+                f'Время события:  ```{dt.utcnow()} UTC-0```'
+            tx_hash = 'Mt' + send_tx2['result']['hash'].lower()
+            kb = InlineKeyboardButton(f'Транзакция', url=f'https://minterscan.net/tx/{tx_hash}')
+            broadcast_action(cli, log, kb)
+
+            close_trade(cli, user, owner, trade, send_tx.transactionHash.hex(), to_pip(0.02), fee,
+                        price_deal_in_user_currency)
+            return price_deal_in_user_currency
+
+        if trade.user_currency == 'USDT':
+            # Первая часть сделки юзер отправляет овнеру
+            signed_tx = ethAPI.create_usdt_tx(user_currency_wallet.address, owner_recipient_address, price_deal_in_user_currency, user_currency_wallet.private_key)
+
+            try:
+                send_tx = ethAPI.send_tx(signed_tx)
+
+                gasPrice = ethAPI.w3.eth.gasPrice
+                fee = gasPrice * send_tx.gasUsed
+
+                log = f'✅ Удачная первая транзакция!\n\n' \
+                    f'Сделка №{trade.id}\n' \
+                    f'Отправитель: ```{user_currency_wallet.address}```\n' \
+                    f'Получатель: ```{owner_recipient_address}```\n' \
+                    f'Сумма транзакции: {price_deal_in_user_currency} USDT\n' \
+                    f'Комиссия: {to_bip(fee)} ETH\n\n' \
+                    f'Время события:  ```{dt.utcnow()} UTC-0```'
+                tx_hash = send_tx.transactionHash.hex()
+                kb = InlineKeyboardButton(f'Транзакция', url=f'https://etherscan.io/tx/{tx_hash}')
+                broadcast_action(cli, log, kb)
+
+            except ValueError as e:
+                error_log = f'❌ Ошибка: {e}\n\n' \
+                    f'Сделка №{trade.id}\n' \
+                    f'Адрес пользователя: ```{user_currency_wallet.address}```\n' \
+                    f'Адрес владельца (получателя): ```{owner_recipient_address}```\n\n' \
+                    f'Сумма транзакции: {price_deal_in_user_currency} USDT\n' \
+                    f'Реальный баланс пользователя: {to_bip(ethAPI.get_balance(user_currency_wallet.address, "USDT"))} USDT\n\n' \
+                    f'Виртуальный баланс пользователя: {to_bip(user_wallet.balance)} USDT\n\n' \
+                    f'Время события:  ```{dt.utcnow()} UTC-0```'
+                broadcast_action(cli, error_log)
+
+                raise ValueError('У юзера не хватило средств')
+
+            if send_tx.status == 0:
+                error_log = f'❌ Ошибка: status: 0\n\n' \
+                    f'Сделка №{trade.id}\n' \
+                    f'Отправитель: ```{user_currency_wallet.address}```\n' \
+                    f'Получатель: ```{owner_recipient_address}```\n' \
+                    f'Сума транзакции: {to_bip(trade.amount)} USDT\n\n' \
+                    f'Время :  ```{dt.utcnow()} UTC-0```'
+                tx_hash = send_tx.transactionHash.hex()
+                kb = InlineKeyboardButton(f'Транзакция', url=f'https://etherscan.io/tx/{tx_hash}')
+                broadcast_action(cli, error_log, kb)
+                raise EthErrorTransaction('Статус сделки 0')
+
+            # Вторая часть сделки овнер платит юзеру
+            signed_tx2 = minterAPI.create_transaction(owner_bip_wallet, user_recipient_address,
+                                                      trade.amount)
+            send_tx2 = minterAPI.send_transaction(signed_tx2)
+            if 'error' in send_tx2 and send_tx2['error']['tx_result']['code'] == 107:
+                error = f"{send_tx2['error']['tx_result']['code']['log']}"
+
+                error_log = f'❌ Ошибка: {error}\n\n' \
+                    f'Сделка №{trade.id}\n' \
+                    f'Отправитель: ```{owner_bip_wallet.address}```\n' \
+                    f'Получатель: ```{user_recipient_address}```\n\n' \
+                    f'Сумма транзакции: {to_bip(trade.amount)} BIP\n' \
+                    f'Реальный баланс отправителя: {to_bip(minterAPI.get_wallet_balance(user_currency_wallet.address))} BIP\n\n' \
+                    f'Реальный баланс отправителя: {to_bip(owner_virtual_wallet_bip.balance)} BIP' \
+                    f'Время события:  ```{dt.utcnow()} UTC-0```'
+
+                broadcast_action(cli, error_log)
+                raise MinterErrorTransaction(f"{error}\n")
+
+            log = f'✅ Удачная вторая транзакция!\n\n' \
+                f'Сделка №{trade.id}\n' \
+                f'Отправитель: ```{owner_bip_wallet.address}```\n' \
+                f'Получатель: ```{user_recipient_address}```\n' \
+                f'Сумма транзакции: {to_bip(trade.amount)} BIP\n' \
+                f'Комиссия: 0.02 BIP\n\n' \
+                f'Время события:  ```{dt.utcnow()} UTC-0```'
+            tx_hash = 'Mt' + send_tx2['result']['hash'].lower()
+            kb = InlineKeyboardButton(f'Транзакция', url=f'https://minterscan.net/tx/{tx_hash}')
+            broadcast_action(cli, log, kb)
+
+            close_trade(cli, user, owner, trade, send_tx.transactionHash.hex(), to_pip(0.02), fee,
+                        price_deal_in_user_currency)
+            return price_deal_in_user_currency
+
+    if trade.announcement.trade_currency == 'USDT':
+        owner_usdt_wallet = Wallet.get(user_id=owner.id, currency='ETH')
+        user_recipient_address = UserPurse.get(user_id=user.id, currency='USDT').address
+        owner_recipient_address = UserPurse.get(user_id=owner.id, currency=trade.user_currency).address
+        owner_virtual_wallet_usdt = VirtualWallet.get(user_id=owner.id, currency='USDT')
+
+        # Отправляет пользователь
+        if trade.user_currency == 'BIP':
+            # Первая часть сделки юзер отправляет овнеру
+            signed_tx = minterAPI.create_transaction(user_currency_wallet, owner_recipient_address,
+                                                     to_pip(price_deal_in_user_currency))
+            send_tx = minterAPI.send_transaction(signed_tx)
+            if 'error' in send_tx and send_tx['error']['tx_result']['code'] == 107:
+                err = send_tx['error']['tx_result']['code']['log']
+
+                error_log = f'❌ Первая транзакция Ошибка: {err}\n\n' \
+                    f'Сделка №{trade.id}\n' \
+                    f'Отправитель: ```{user_currency_wallet.address}```\n' \
+                    f'Получатель: ```{owner_recipient_address}```\n\n' \
+                    f'Сумма транзакции: {price_deal_in_user_currency} {trade.user_currency}\n' \
+                    f'Реальный баланс пользователя: {to_bip(minterAPI.get_wallet_balance(user_currency_wallet.address))} BIP\n\n' \
+                    f'Виртуальный баланс пользователя: {to_bip(user_wallet.balance)} BIP' \
+                    f'Время события:  ```{dt.utcnow()} UTC-0```'
+                broadcast_action(cli, error_log)
+                raise MinterErrorTransaction(f"{err}\n")
+
+            log = f'✅ Удачная первая транзакция!\n\n' \
+                f'Сделка №{trade.id}\n' \
+                f'Отправитель: ```{user_currency_wallet.address}```\n' \
+                f'Получатель: ```{owner_recipient_address}```\n' \
+                f'Сумма транзакции: {price_deal_in_user_currency} {trade.user_currency}\n' \
+                f'Комиссия: 0.02 BIP\n\n' \
+                f'Время события:  ```{dt.utcnow()} UTC-0```'
+            tx_hash = 'Mt' + send_tx['result']['hash'].lower()
+            kb = InlineKeyboardButton(f'Транзакция', url=f'https://minterscan.net/tx/{tx_hash}')
+            broadcast_action(cli, log, kb)
+
+            # Вторая часть сделки овнер платит юзеру
+            signed_tx2 = ethAPI.create_usdt_tx(owner_usdt_wallet.address, user_recipient_address,
+                                                   to_bip(trade.amount), owner_usdt_wallet.private_key)
+            try:
+                send_tx2 = ethAPI.send_tx(signed_tx2)
+
+                gasPrice = ethAPI.w3.eth.gasPrice
+                fee = gasPrice * send_tx.gasUsed
+
+                log = f'✅ Удачная вторая транзакция!\n\n' \
+                    f'Сделка №{trade.id}\n' \
+                    f'Отправитель: ```{owner_usdt_wallet.address}```\n' \
+                    f'Получатель: ```{user_recipient_address}```\n' \
+                    f'Сумма транзакции: {to_bip(trade.amount)} {trade.announcement.trade_currency}\n' \
+                    f'Комиссия: {to_bip(fee)} ETH\n\n' \
+                    f'Время события:  ```{dt.utcnow()} UTC-0```'
+                tx_hash = send_tx2.transactionHash.hex()
+                kb = InlineKeyboardButton(f'Транзакция', url=f'https://etherscan.io/tx/{tx_hash}')
+                broadcast_action(cli, log, kb)
+
+            except ValueError as e:
+
+                error_log = f'❌ Вторая транзакция Ошибка: {e}\n\n' \
+                    f'у владельца объявления недостаточно средств для проведения операции\n' \
+                    f'Отправитель: ```{owner_usdt_wallet.address}```\n' \
+                    f'Получатель: ```{user_recipient_address}```\n' \
+                    f'Сумма транзакции: {to_bip(trade.amount)} ETH\n' \
+                    f'Реальный баланс владельца: {to_bip(ethAPI.get_balance(owner_usdt_wallet.address, "USDT"))} USDT\n' \
+                    f'Виртуальный баланс владельца: {to_bip(owner_virtual_wallet_usdt.balance)} ETH\n\n' \
+                    f'Время :  ```{dt.utcnow()} UTC-0```'
+
+                broadcast_action(cli, error_log)
+                raise ValueError('У владельца сделки не хватает средств')
+
+            if send_tx2.status == 0:
+                error_log = f'❌ Ошибка: status: 0\n\n' \
+                    f'Сделка №{trade.id}\n' \
+                    f'Отправитель: ```{owner_usdt_wallet.address}```\n' \
+                    f'Получатель: ```{user_recipient_address}```\n' \
+                    f'Сума транзакции: {to_bip(trade.amount)} ETH\n\n' \
+                    f'Время :  ```{dt.utcnow()} UTC-0```'
+                kb = InlineKeyboardButton(f'Транзакция', url=f'https://etherscan.io/tx/{tx_hash}')
+                broadcast_action(cli, error_log, kb)
+                raise EthErrorTransaction('Статус сделки 0')
+
+            close_trade(cli, user, owner, trade, send_tx2.transactionHash.hex(), fee, to_pip(0.02),
+                        price_deal_in_user_currency)
+            return price_deal_in_user_currency
+
+        if trade.user_currency == 'ETH':
+            # Первая часть сделки юзер отправляет овнеру
+            signed_tx = ethAPI.create_transaction(user_currency_wallet.address, owner_recipient_address, price_deal_in_user_currency, user_currency_wallet.private_key)
+
+            gasPrice = ethAPI.w3.eth.gasPrice
+            fee = gasPrice * 21000
+            try:
+                send_tx = ethAPI.send_tx(signed_tx)
+
+                log = f'✅ Удачная первая транзакция!\n\n' \
+                    f'Сделка №{trade.id}\n' \
+                    f'Отправитель: ```{user_currency_wallet.address}```\n' \
+                    f'Получатель: ```{owner_recipient_address}```\n' \
                     f'Сумма транзакции: {price_deal_in_user_currency} ETH\n' \
                     f'Комиссия: {to_bip(fee)} ETH\n\n' \
                     f'Время события:  ```{dt.utcnow()} UTC-0```'
@@ -347,21 +718,21 @@ def auto_trade(cli, trade):
             except ValueError as e:
                 error_log = f'❌ Ошибка: {e}\n\n' \
                     f'Сделка №{trade.id}\n' \
-                    f'Адрес пользователя: {user_currency_wallet.address}\n' \
-                    f'Адрес владельца (получателя): {owner_recipient_address}\n\n' \
+                    f'Адрес пользователя: ```{user_currency_wallet.address}```\n' \
+                    f'Адрес владельца (получателя): ```{owner_recipient_address}```\n\n' \
                     f'Сумма транзакции: {price_deal_in_user_currency} ETH\n' \
                     f'Реальный баланс пользователя: {to_bip(ethAPI.get_balance(user_currency_wallet.address, "ETH"))} ETH\n\n' \
+                    f'Виртуальный баланс пользователя: {to_bip(user_wallet.balance)} {trade.user_currency}' \
                     f'Время события:  ```{dt.utcnow()} UTC-0```'
                 broadcast_action(cli, error_log)
 
                 raise ValueError('У юзера не хватило средств')
 
             if send_tx.status == 0:
-
                 error_log = f'❌ Ошибка: status: 0\n\n' \
                     f'Сделка №{trade.id}\n' \
-                    f'Отправитель: {user_currency_wallet.address}\n' \
-                    f'Получатель: {owner_recipient_address}\n' \
+                    f'Отправитель: ```{user_currency_wallet.address}```\n' \
+                    f'Получатель: ```{owner_recipient_address}```\n' \
                     f'Сума транзакции: {to_bip(trade.amount)} ETH\n\n' \
                     f'Время :  ```{dt.utcnow()} UTC-0```'
                 tx_hash = send_tx.transactionHash.hex()
@@ -369,40 +740,57 @@ def auto_trade(cli, trade):
                 broadcast_action(cli, error_log, kb)
                 raise EthErrorTransaction('Статус сделки 0')
 
-            signed_tx2 = minterAPI.create_transaction(owner_bip_wallet, user_recipient_address,
-                                                      trade.amount)
-            send_tx2 = minterAPI.send_transaction(signed_tx2)
-            if 'error' in send_tx2 and send_tx2['error']['tx_result']['code'] == 107:
-                error = f"{send_tx2['error']['tx_result']['code']['log']}"
+            # Вторая часть сделки овнер платит юзеру
+            signed_tx2 = ethAPI.create_usdt_tx(owner_usdt_wallet.address, user_recipient_address,
+                                                   to_bip(trade.amount), owner_usdt_wallet.private_key)
+            try:
+                send_tx2 = ethAPI.send_tx(signed_tx2)
 
-                error_log = f'❌ Ошибка: {error}\n\n' \
+                gasPrice = ethAPI.w3.eth.gasPrice
+                fee = gasPrice * send_tx.gasUsed
+
+                log = f'✅ Удачная вторая транзакция!\n\n' \
                     f'Сделка №{trade.id}\n' \
-                    f'Отправитель: {owner_bip_wallet.address}\n' \
-                    f'Получатель: {user_recipient_address}\n\n' \
-                    f'Сумма транзакции: {to_bip(trade.amount)} BIP\n' \
-                    f'Реальный баланс отправителя: {to_bip(minterAPI.get_wallet_balance(user_currency_wallet.address))} BIP\n\n' \
+                    f'Отправитель: ```{owner_usdt_wallet.address}```\n' \
+                    f'Получатель: ```{user_recipient_address}```\n' \
+                    f'Сумма транзакции: {to_bip(trade.amount)} {trade.announcement.trade_currency}\n' \
+                    f'Комиссия: {to_bip(fee)} ETH\n\n' \
                     f'Время события:  ```{dt.utcnow()} UTC-0```'
+                tx_hash = send_tx2.transactionHash.hex()
+                kb = InlineKeyboardButton(f'Транзакция', url=f'https://etherscan.io/tx/{tx_hash}')
+                broadcast_action(cli, log, kb)
+
+            except ValueError as e:
+
+                error_log = f'❌ Вторая транзакция Ошибка: {e}\n\n' \
+                    f'у владельца объявления недостаточно средств для проведения операции\n' \
+                    f'Отправитель: ```{owner_usdt_wallet.address}```\n' \
+                    f'Получатель: ```{user_recipient_address}```\n' \
+                    f'Сумма транзакции: {to_bip(trade.amount)} ETH\n' \
+                    f'Реальный баланс владельца: {to_bip(ethAPI.get_balance(owner_usdt_wallet.address, "USDT"))} USDT\n' \
+                    f'Виртуальный баланс владельца: {to_bip(owner_virtual_wallet_usdt.balance)} ETH\n\n' \
+                    f'Время :  ```{dt.utcnow()} UTC-0```'
 
                 broadcast_action(cli, error_log)
-                raise MinterErrorTransaction(f"{error}\n")
+                raise ValueError('У владельца сделки не хватает средств')
 
-            log = f'✅ Удачная вторая транзакция!\n\n' \
-                f'Сделка №{trade.id}\n' \
-                f'Отправитель: {owner_bip_wallet.address}\n' \
-                f'Получатель: {user_recipient_address}\n' \
-                f'Сумма транзакции: {to_bip(trade.amount)} BIP\n' \
-                f'Комиссия: 0.02 BIP\n\n' \
-                f'Время события:  ```{dt.utcnow()} UTC-0```'
-            tx_hash = 'Mt' + send_tx2['result']['hash'].lower()
-            kb = InlineKeyboardButton(f'Транзакция', url=f'https://minterscan.net/tx/{tx_hash}')
-            broadcast_action(cli, log, kb)
+            if send_tx2.status == 0:
+                error_log = f'❌ Ошибка: status: 0\n\n' \
+                    f'Сделка №{trade.id}\n' \
+                    f'Отправитель: ```{owner_usdt_wallet.address}```\n' \
+                    f'Получатель: ```{user_recipient_address}```\n' \
+                    f'Сума транзакции: {to_bip(trade.amount)} ETH\n\n' \
+                    f'Время :  ```{dt.utcnow()} UTC-0```'
+                kb = InlineKeyboardButton(f'Транзакция', url=f'https://etherscan.io/tx/{tx_hash}')
+                broadcast_action(cli, error_log, kb)
+                raise EthErrorTransaction('Статус сделки 0')
 
-            close_trade(cli, user, owner, trade, send_tx.transactionHash.hex(), to_pip(0.02), fee, price_deal_in_user_currency)
+            close_trade(cli, user, owner, trade, send_tx2.transactionHash.hex(), fee, to_pip(0.02),
+                        price_deal_in_user_currency)
             return price_deal_in_user_currency
 
 
 def close_trade(cli, user, owner, trade, eth_hash,  owner_fee, user_fee, price_deal_in_user_currency):
-
     HoldMoney.delete().where(HoldMoney.trade_id == trade.id).execute()
 
     announcement = trade.announcement
@@ -420,9 +808,9 @@ def close_trade(cli, user, owner, trade, eth_hash,  owner_fee, user_fee, price_d
     user_wallet.save()
 
     log = f'✅ Успех! Сделка №{trade.id}\n\n' \
-        f'Сумма лота объявления после сделки: {announcement.amount} {announcement.trade_currency}\n' \
-        f'Сумма обмена: {trade.amount} {announcement.trade_currency}\n' \
-        f'Цена обмена: {price_deal_in_user_currency} {trade.user_currency} + {to_bip(user_fee)}\n\n' \
+        f'Сумма лота объявления после сделки: {to_bip(announcement.amount)} {announcement.trade_currency}\n' \
+        f'Сумма обмена: {to_bip(trade.amount)} {announcement.trade_currency}\n' \
+        f'Цена обмена: {price_deal_in_user_currency} {trade.user_currency} + fee {to_bip(user_fee)} ETH\n\n' \
         f'Время заверешния сделки: ```{dt.utcnow()} UTC-0```'
 
     broadcast_action(cli, log)
