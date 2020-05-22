@@ -536,8 +536,7 @@ def finally_deal(cli, cb):
             return cb.message.reply(e)
         except ValueError as e:
             tb = sys.exc_info()[2]
-            print(traceback.format_tb(tb))
-            print(e, traceback.format_tb(tb)[0])
+
             deposite = HoldMoney.get_or_none(trade_id=trade.id)
             if deposite:
                 owner = trade.announcement.user

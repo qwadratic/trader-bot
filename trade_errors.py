@@ -1,8 +1,8 @@
-class InsufficientFundsUser(Exception):
+class InsufficientFundsOwner(Exception):
     pass
 
 
-class InsufficientFundsOwner(Exception):
+class InsufficientFundsAnnouncement(Exception):
     pass
 
 
@@ -10,5 +10,9 @@ class MinterErrorTransaction(Exception):
     pass
 
 
-class EthErrorTransaction(Exception):
+class ErrorTransaction(Exception):
+    pass
+
+
+class TransactionError(Exception):
     pass
