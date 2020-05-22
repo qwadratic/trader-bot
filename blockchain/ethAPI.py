@@ -19,9 +19,8 @@ def create_wallet():
     return w3.eth.account.create(password)
 
 
-def create_transaction(address, recipient_address, value, private_key):
+def create_transaction(address, recipient_address, value, private_key, gasPrice):
     nonce = w3.eth.getTransactionCount(Web3.toChecksumAddress(address))
-    gasPrice = w3.eth.gasPrice
 
     tx = (dict(nonce=nonce, gasPrice=gasPrice, gas=21000, to=Web3.toChecksumAddress(recipient_address), value=w3.toWei(value, 'ether')))
 
@@ -35,11 +34,10 @@ def send_tx(signed_tx):
     return w3.eth.waitForTransactionReceipt(tx_hash, timeout=20000)
 
 
-def create_usdt_tx(from_address, to_address, value, private_key):
+def create_usdt_tx(from_address, to_address, value, private_key, gasPrice):
     contract_address = '0xdac17f958d2ee523a2206206994597c13d831ec7'
 
     nonce = w3.eth.getTransactionCount(Web3.toChecksumAddress(from_address))
-    gasPrice = w3.eth.gasPrice
     token = w3.eth.contract(Web3.toChecksumAddress(contract_address), abi=usdtABI)
 
     v = value * 1000000
