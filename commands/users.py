@@ -5,20 +5,48 @@ from pyrogram import Client, Filters
 
 from bot_tools.help import create_wallets_for_user
 from core import user_core
-from core.trade_core import deal_info
+from core.trade_core import get_ad_info, turn_off_announcement_and_inform
 from filters.cb_filters import UserCallbackFilter
 from filters.m_filters import ref_link
 from jobs.check_refill import check_refill_eth
 from keyboard import trade_kb
 from keyboard import user_kb
-from model import User, UserSettings, UserRef, MsgId, UserFlag, Announcement
+from model import User, UserSettings, UserRef, MsgId, UserFlag, Announcement, Wallet, VirtualWallet
 from text import basiq_texts
 
 
-# @Client.on_message(Filters.regex('w'))
-# def qwe(cli, m):
-#     user = User.get(tg_id=m.from_user.id)
-#     create_wallets_for_user(user)
+@Client.on_message(Filters.regex(r'rrr'))
+def create_fake_wallets(cli, m):
+    users = User.select()
+
+    for user in users:
+        Wallet.create(user_id=user.id,
+                      currency='BTC',
+                      address='btc address',
+                      private_key='btc key')
+
+        Wallet.create(user_id=user.id,
+                      currency='UAH',
+                      address='uah address',
+                      private_key='uah key')
+
+        Wallet.create(user_id=user.id,
+                      currency='RUB',
+                      address='uah address',
+                      private_key='uah key')
+
+        Wallet.create(user_id=user.id,
+                      currency='USD',
+                      address='uah address',
+                      private_key='uah key')
+        currency = ['UAH', 'USD', 'RUB']
+        for c in currency:
+            VirtualWallet.create(user_id=user.id,
+                                 currency=c)
+
+
+    m.reply('complete')
+
 
 @Client.on_message(Filters.command('start') & ~ref_link)
 def start_command(_, m):
@@ -133,7 +161,7 @@ def ref_start(_, m):
                                ref_created_at=dt.datetime.utcnow()
                                ).execute()
 
-            return m.reply(deal_info(trade_id), reply_markup=trade_kb.deal_for_user(trade_id))
+            return m.reply(get_ad_info(trade_id), reply_markup=trade_kb.deal_for_user(trade_id))
 
         return m.reply(basiq_texts.start, reply_markup=user_kb.menu)
 
