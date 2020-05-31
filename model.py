@@ -152,6 +152,7 @@ class Trade(BaseModel):
     status = CharField()
     user_currency = CharField()
     amount = DecimalField(40, 0, default=0)
+    deposite = BooleanField(default=False)
     created_at = DateTimeField(null=True)
 
 

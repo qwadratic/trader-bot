@@ -210,7 +210,7 @@ def start_deal(trade_id):
     return kb
 
 
-def confirm_paymend_from_buyer(trade_id):
+def confirm_payment_from_buyer(trade_id):
     kb = InlineKeyboardMarkup(
         [
             [InlineKeyboardButton('❌ Отклонить', callback_data='sss'),

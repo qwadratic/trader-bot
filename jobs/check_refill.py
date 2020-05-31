@@ -162,7 +162,6 @@ def check_refill_eth(cli):
             if not topics_flag:
                 continue
 
-
     service.last_block = current_block
     service.save()
     update_eth_balance(cli, refill_txs)
