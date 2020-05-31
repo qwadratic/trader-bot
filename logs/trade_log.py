@@ -54,7 +54,7 @@ def successful_tx(cli, tx_query, trade, from_address, recipient_address, trade_c
         f'Сделка №{trade.id}\n' \
         f'Адрес отправителя: ```{from_address}```\n' \
         f'Адрес получателя: ```{recipient_address}```\n' \
-        f'Сумма транзакции: {amount} {trade.user_currency}\n' \
+        f'Сумма транзакции: {amount} {trade_currency}\n' \
         f'Комиссия: {fee} {fee_currency}\n\n' \
         f'Время события:  ```{dt.utcnow()} UTC-0```'
 
@@ -88,15 +88,15 @@ def successful_trade(cli, trade, amount):
 
 
 def broadcast_log(cli, log, kb=None):
-    channel_id = '-1001376981650'
+    channel_id = '-1001376981650' #-1001276839371
 
     if kb:
         try:
-            cli.send_message(-1001376981650, log, reply_markup=InlineKeyboardMarkup([[kb]]))
+            cli.send_message(channel_id, log, reply_markup=InlineKeyboardMarkup([[kb]]))
         except Exception as e:
             print(e)
         return
     try:
-        cli.send_message(-1001376981650, log)
+        cli.send_message(channel_id, log)
     except Exception as e:
         print(e)
