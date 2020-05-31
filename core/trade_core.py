@@ -8,7 +8,7 @@ from pyrogram import InlineKeyboardMarkup, InlineKeyboardButton
 from blockchain import ethAPI, minterAPI
 from bot_tools import converter
 from bot_tools.converter import currency_in_usd
-from bot_tools.help import broadcast_action, correct_name, get_balance_from_currency
+from bot_tools.help import correct_name, get_balance_from_currency
 from logs import trade_log
 from trade_errors import InsufficientFundsOwner, MinterErrorTransaction, InsufficientFundsAnnouncement, TransactionError
 from keyboard import trade_kb
@@ -17,15 +17,6 @@ from model import Announcement, PaymentCurrency, Trade, User, VirtualWallet, Tem
 from text import trade_text
 
 from datetime import datetime as dt
-
-
-def check_wallet_on_payment(cli, wallet, user_tg_id, trade_id):
-    # tg_id = User.get_by_id(user_id).tg_id
-    transaction = True
-
-    if transaction:
-        cli.send_message(user_tg_id, 'Оплата пришла, проверьте кошелек!',
-                         reply_markup=trade_kb.confirm_paymend_from_buyer(trade_id))
 
 
 def create_announcement(temp_announcement):
@@ -61,7 +52,7 @@ def get_max_limit(temp_announcement):
         virt_balance = VirtualWallet.get(user_id=user.id, currency=trade_currency)
 
 
-def deal_info(announc_id):
+def get_ad_info(announc_id):
     trade_direction = {'buy': {'type': 'Покупка',
                                'icon': '📈'},
                        'sale': {'type': 'Продажа',
@@ -218,6 +209,10 @@ def start_trade(cli, trade):
         user_currency_wallet = Wallet.get(user_id=user.id, currency=payment_currency)
         owner_currency_wallet = Wallet.get(user_id=owner.id, currency=trade_currency)
 
+    owner_recipient_address = UserPurse.get(user_id=owner.id, currency=payment_currency).address
+    user_recipient_address = UserPurse.get(user_id=user.id, currency=trade_currency).address
+
+
     # Депонирование средств
     try:
         hold_money(cli, trade)
@@ -227,11 +222,8 @@ def start_trade(cli, trade):
     except InsufficientFundsOwner:
         pass
 
-    owner_recipient_address = UserPurse.get(user_id=owner.id, currency=payment_currency).address
-    user_recipient_address = UserPurse.get(user_id=user.id, currency=trade_currency).address
-
     # Лог о начале сделки
-    trade_log.trade_start(trade, owner_name, user_name, type_operation, trade_currency_price, trade_currency, price_deal_in_usd, price_deal_in_payment_currency)
+    trade_log.trade_start(cli, trade, owner_name, user_name, type_operation, trade_currency_price, trade_currency, price_deal_in_usd, price_deal_in_payment_currency)
 
     # Первая транзакция, платит первый тот, кто начинает сделку
     try:
@@ -241,7 +233,7 @@ def start_trade(cli, trade):
             err_txt = tx_1[2]
             trade_log.tx_error(cli, 'first', trade, user_wallet.balance, user_currency_wallet.address, payment_currency, price_deal_in_payment_currency, err_txt, tx_hash)
     except MinterErrorTransaction as err:
-        return trade_log.tx_error(cli, 'first', trade, user_wallet.balance, user_currency_wallet.address, payment_currency, price_deal_in_payment_currency, e)
+        return trade_log.tx_error(cli, 'first', trade, user_wallet.balance, user_currency_wallet.address, payment_currency, price_deal_in_payment_currency, err)
 
     except Exception as e:
         return trade_log.tx_error(cli, 'first', trade, user_wallet.balance, user_currency_wallet.address, payment_currency, price_deal_in_payment_currency, e)
@@ -253,7 +245,7 @@ def start_trade(cli, trade):
 
     # Вторая транзакция, платит владелец объявления
     try:
-        tx_2 = auto_transaction(trade_currency, owner_wallet, user_recipient_address, trade.amount)
+        tx_2 = auto_transaction(trade_currency, owner_currency_wallet, user_recipient_address, trade.amount)
         if tx_2[1] == 'error':
             tx_hash = tx_2[0]
             err_txt = tx_2[2]
@@ -271,9 +263,19 @@ def start_trade(cli, trade):
     close_trade(cli, trade, fee_2, fee_1, price_deal_in_payment_currency)
 
 
+def start_semi_auto_trade(cli, trade, amount, recipient_address):
+    user = trade.user
+    txt = f'Отправьте {amount} {trade.user_currency} на счёт:\n' \
+        f'{recipient_address}'
+
+    kb = InlineKeyboardMarkup([[InlineKeyboardButton('Я оплатил', callback_data=f'i payed {trade.id}')],
+                               [InlineKeyboardButton('Отменить сделку', callback_data=f'trade cancel {trade.id}')]])
+    cli.send_message(user.tg_id, txt, reply_markup=kb)
+
+
 def auto_transaction(payment_currency, wallet, recipient_address, amount):
     if payment_currency == 'BIP':
-        signed_tx = minterAPI.create_transaction(wallet, recipient_address, to_pip(amount))
+        signed_tx = minterAPI.create_transaction(wallet, recipient_address, amount)
         send_tx = minterAPI.send_transaction(signed_tx)
 
         if 'error' in send_tx:
@@ -323,7 +325,34 @@ def close_trade(cli, trade, owner_fee, user_fee, price_deal_in_payment_currency)
 
     user_wallet = VirtualWallet.get(user_id=user.id, currency=trade.user_currency)
 
-    user_wallet.balance -= to_pip(price_deal_in_payment_currency) + user_fee
-    user_wallet.save()
+    if trade.deposite:
+        user_wallet.balance -= to_pip(price_deal_in_payment_currency) + user_fee
+        user_wallet.save()
 
-    trade_log.successful_trade(trade, price_deal_in_payment_currency)
+    if announcement.amount == 0:
+        turn_off_announcement_and_inform(cli, announcement.id)
+
+    trade_log.successful_trade(cli, trade, price_deal_in_payment_currency)
+
+
+def turn_off_announcement_and_inform(cli, announcement_id):
+    # TODO комиссию боту
+    announcement = Announcement.get(id=announcement_id)
+
+    user = announcement.user
+
+    trade_currency = 'ETH' if announcement.trade_currency == 'USDT' else announcement.trade_currency
+    user_balance = VirtualWallet.get(user_id=user.id, currency=trade_currency).balance
+    txt = '❗️ Ваши следующие объявления были деактивированы:\n\n'
+    announcements = Announcement.select().where((Announcement.user_id == user.id) & (Announcement.trade_currency == trade_currency) & (Announcement.type_operation == announcement.type_operation))
+    for ad in announcements:
+        if ad.amount > user_balance or ad.amount == 0:
+            ad.status = 'close'
+            txt += f'№{announcement.id}\n'
+
+        ad.save()
+
+    try:
+        cli.send_message(user.tg_id, txt)
+    except Exception as e:
+        print(f'error 332 trade core {e}')
