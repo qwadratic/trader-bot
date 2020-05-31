@@ -12,7 +12,7 @@ def delete_msg(cli, user_id, msg):
 
 
 def create_wallets_for_user(user):
-
+    currency = ['BIP', 'ETH', 'BTC', 'USDT', 'UAH', 'USD', 'RUB']
     minter_wallet = minterAPI.create_wallet(user.id)
     eth_wallet = ethAPI.create_wallet()
 
@@ -27,25 +27,29 @@ def create_wallets_for_user(user):
                   address=eth_wallet.address.lower(),
                   private_key=ethAPI.Web3.toHex(eth_wallet.privateKey))
 
-    VirtualWallet.create(user_id=user.id,
-                         currency='BIP')
-    VirtualWallet.create(user_id=user.id,
-                         currency='ETH')
+    Wallet.create(user_id=user.id,
+                  currency='BTC',
+                  address='btc address',
+                  private_key='btc key')
 
+    Wallet.create(user_id=user.id,
+                  currency='UAH',
+                  address='uah address',
+                  private_key='uah key')
 
-def broadcast_action(cli, log, kb=None):
-    channel_id = '-1001376981650'
+    Wallet.create(user_id=user.id,
+                  currency='RUB',
+                  address='uah address',
+                  private_key='uah key')
 
-    if kb:
-        try:
-            cli.send_message(-1001376981650, log, reply_markup=InlineKeyboardMarkup([[kb]]))
-        except Exception as e:
-            print(e)
-        return
-    try:
-        cli.send_message(-1001376981650, log)
-    except Exception as e:
-        print(e)
+    Wallet.create(user_id=user.id,
+                  currency='USD',
+                  address='uah address',
+                  private_key='uah key')
+
+    for c in currency:
+        VirtualWallet.create(user_id=user.id,
+                             currency=c)
 
 
 def correct_name(user):
