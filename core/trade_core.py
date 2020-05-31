@@ -231,12 +231,12 @@ def start_trade(cli, trade):
         if tx_1[1] == 'error':
             tx_hash = tx_1[0]
             err_txt = tx_1[2]
-            trade_log.tx_error(cli, 'first', trade, user_wallet.balance, user_currency_wallet.address, payment_currency, price_deal_in_payment_currency, err_txt, tx_hash)
+            trade_log.tx_error(cli, 'first', trade, user_wallet.balance, user_currency_wallet.address, owner_recipient_address, payment_currency, price_deal_in_payment_currency, err_txt, tx_hash)
     except MinterErrorTransaction as err:
-        return trade_log.tx_error(cli, 'first', trade, user_wallet.balance, user_currency_wallet.address, payment_currency, price_deal_in_payment_currency, err)
+        return trade_log.tx_error(cli, 'first', trade, user_wallet.balance, user_currency_wallet.address, owner_recipient_address, payment_currency, price_deal_in_payment_currency, err)
 
     except Exception as e:
-        return trade_log.tx_error(cli, 'first', trade, user_wallet.balance, user_currency_wallet.address, payment_currency, price_deal_in_payment_currency, e)
+        return trade_log.tx_error(cli, 'first', trade, user_wallet.balance, user_currency_wallet.address, owner_recipient_address, payment_currency, price_deal_in_payment_currency, e)
 
     tx_hash_1 = tx_1[0]
     fee_1 = tx_1[1]
@@ -249,10 +249,10 @@ def start_trade(cli, trade):
         if tx_2[1] == 'error':
             tx_hash = tx_2[0]
             err_txt = tx_2[2]
-            trade_log.tx_error('second', trade, owner_wallet.balance, owner_currency_wallet.address, trade_currency, trade.amount, err_txt, tx_hash)
+            trade_log.tx_error(cli, 'second', trade, owner_wallet.balance, owner_currency_wallet.address, user_recipient_address, trade_currency, trade.amount, err_txt, tx_hash)
 
     except Exception as e:
-        return trade_log.tx_error(cli, 'second', trade, owner_wallet.balance, user_currency_wallet.address, trade_currency, trade.amount, e)
+        return trade_log.tx_error(cli, 'second', trade, owner_wallet.balance, owner_currency_wallet.address, user_recipient_address, trade_currency, trade.amount, e)
 
     tx_hash_2 = tx_2[0]
     fee_2 = tx_2[1]
