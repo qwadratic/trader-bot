@@ -1,4 +1,6 @@
+
 from requests import Request, Session
+import requests as re
 from cachetools.func import ttl_cache
 import json
 
@@ -53,7 +55,36 @@ def usdt_in_usd(amount):
     return data['data']['quote']['USD']['price']
 
 
+@ttl_cache(ttl=3600)
+def uah_in_usd(amount):
+    global session
+    parameters = {
+        'symbol': 'UAH',
+        'amount': amount,
+        'convert': 'USD'
+    }
+    response = session.get(url, params=parameters)
+    data = json.loads(response.text)
+
+    return data['data']['quote']['USD']['price']
+
+
+@ttl_cache(ttl=3600)
+def rub_in_usd(amount):
+    global session
+    parameters = {
+        'symbol': 'RUB',
+        'amount': amount,
+        'convert': 'USD'
+    }
+    response = session.get(url, params=parameters)
+    data = json.loads(response.text)
+
+    return data['data']['quote']['USD']['price']
+
+
 def currency_in_usd(currency, amount):
+    price = amount
 
     if currency == 'BIP':
         price = bip_in_usd(amount)
@@ -63,5 +94,11 @@ def currency_in_usd(currency, amount):
 
     elif currency == 'USDT':
         price = usdt_in_usd(amount)
+
+    elif currency == 'UAH':
+        price = uah_in_usd(amount)
+
+    elif currency == 'RUB':
+        price = rub_in_usd(amount)
 
     return price
