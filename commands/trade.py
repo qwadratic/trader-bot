@@ -751,7 +751,7 @@ def owner_confirm_trade(cli, cb):
     fee_2 = tx[1]
 
     trade_log.successful_tx(cli, 'second', trade, owner_currency_wallet.address, user_recipient_address, trade_currency,
-                            trade.amount, fee_2, tx_hash_2)
+                            to_bip(trade.amount), fee_2, tx_hash_2)
 
     close_trade(cli, trade, fee_2, 0, price_deal_in_payment_currency)
 
