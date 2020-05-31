@@ -741,11 +741,11 @@ def owner_confirm_trade(cli, cb):
         if tx[1] == 'error':
             tx_hash = tx[0]
             err_txt = tx[2]
-            trade_log.tx_error('second', trade, owner_currency_wallet.balance, owner_currency_wallet.address, trade_currency, trade.amount, err_txt, tx_hash)
+            trade_log.tx_error(cli, 'second', trade, owner_wallet.balance, owner_currency_wallet.address, user_recipient_address, trade_currency, trade.amount, err_txt, tx_hash)
 
     except Exception as e:
         print(e)
-        return trade_log.tx_error(cli, 'second', trade, owner_wallet.balance, user_currency_wallet.address, trade_currency, trade.amount, e)
+        return trade_log.tx_error(cli, 'second', trade, owner_wallet.balance, owner_currency_wallet.address, user_recipient_address, trade_currency, trade.amount, e)
 
     tx_hash_2 = tx[0]
     fee_2 = tx[1]
