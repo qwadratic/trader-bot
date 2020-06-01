@@ -20,13 +20,23 @@ choice_currency = InlineKeyboardMarkup(
 
 menu = ReplyKeyboardMarkup(
             [
-                ['💸 Обмен'],
-                ['📁 Профиль', '💼 Кошелёк'],
-                ['🤝 Партнёрская программа'],
+                ['💼 Кошелёк', '💸 Обмен'],
                 ['⚙️ Настройки']
             ],
             resize_keyboard=True,
         )
+
+
+wallet_menu = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton('Пополнить', callback_data=f'q'),
+                 InlineKeyboardButton('Вывести', callback_data=f'q')],
+                [InlineKeyboardButton('Портмоне', callback_data=f'portmone')],
+                [InlineKeyboardButton('Партнёрская программа', callback_data=f'q')],
+                [InlineKeyboardButton('Премиум подписка', callback_data=f'q')]
+            ]
+        )
+
 
 hide_notification = InlineKeyboardMarkup(
         [

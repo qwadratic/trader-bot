@@ -29,6 +29,6 @@ def wallet_info(user):
             if w.currency == 'USDT':
                 balance_in_usd = usdt_in_usd(to_bip(w.balance))
 
-        txt += f'{to_bip(w.balance)} {w.currency} ~{balance_in_usd} USD\n'
+        txt += f'{round(to_bip(w.balance), 5)} {w.currency} ~{round(balance_in_usd, 2)} USD\n'
 
     return txt
