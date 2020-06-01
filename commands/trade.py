@@ -9,7 +9,7 @@ from peewee import IntegrityError
 from pyrogram import Client, Filters, InlineKeyboardMarkup, InlineKeyboardButton
 
 from bot_tools import converter
-from bot_tools.help import delete_msg, correct_name
+from bot_tools.help import delete_msg, correct_name, create_cash_flow_record
 from core import trade_core
 from core.trade_core import announcement_list_kb, get_ad_info, hold_money, auto_transaction, close_trade, \
     start_semi_auto_trade
@@ -732,9 +732,11 @@ def owner_confirm_trade(cli, cb):
     if payment_currency == 'USDT':
         user_currency_wallet = Wallet.get(user_id=user.id, currency='ETH')
         owner_currency_wallet = Wallet.get(user_id=owner.id, currency='ETH')
+        fee_currency = 'ETH'
     else:
         user_currency_wallet = Wallet.get_or_none(user_id=user.id, currency=payment_currency)
         owner_currency_wallet = Wallet.get(user_id=owner.id, currency=trade_currency)
+        fee_currency = trade_currency
 
     try:
         tx = auto_transaction(trade_currency, owner_currency_wallet, user_recipient_address, trade.amount)
@@ -747,13 +749,28 @@ def owner_confirm_trade(cli, cb):
         print(e)
         return trade_log.tx_error(cli, 'second', trade, owner_wallet.balance, owner_currency_wallet.address, user_recipient_address, trade_currency, trade.amount, e)
 
-    tx_hash_2 = tx[0]
-    fee_2 = tx[1]
+    tx_hash = tx[0]
+    fee = tx[1]
+
+    create_cash_flow_record(user=user.id,
+                            trade=trade.id,
+                            type_operation='direct exchange',
+                            amount=price_deal_in_payment_currency,
+                            currency=payment_currency)
+
+    create_cash_flow_record(user=owner.id,
+                            trade=trade.id,
+                            type_operation='exchange',
+                            amount=trade.amount,
+                            tx_fee=fee,
+                            currency=trade_currency,
+                            fee_currency=fee_currency,
+                            tx_hash=tx_hash)
 
     trade_log.successful_tx(cli, 'second', trade, owner_currency_wallet.address, user_recipient_address, trade_currency,
-                            to_bip(trade.amount), fee_2, tx_hash_2)
+                            to_bip(trade.amount), fee, tx_hash)
 
-    close_trade(cli, trade, fee_2, 0, price_deal_in_payment_currency)
+    close_trade(cli, trade, fee, 0, price_deal_in_payment_currency)
 
     operation = 'Продали' if trade.announcement.type_operation == 'sale' else 'Купили'
     txt = f'Вы {operation} {to_bip(trade.amount)} {trade.announcement.trade_currency} за {price_deal_in_payment_currency} {trade.user_currency}'

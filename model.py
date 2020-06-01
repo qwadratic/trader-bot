@@ -1,6 +1,6 @@
 from peewee import *
 from bot_tools.dbconnect import db_conn
-
+import datetime as dt
 
 db = PostgresqlDatabase(**db_conn)
 
@@ -154,6 +154,18 @@ class Trade(BaseModel):
     amount = DecimalField(40, 0, default=0)
     deposite = BooleanField(default=False)
     created_at = DateTimeField(null=True)
+
+
+class CashFlowStatement(BaseModel):
+    user = ForeignKeyField(User)
+    trade = ForeignKeyField(Trade, null=True)
+    type_operation = CharField()
+    amount = DecimalField(40, 0, default=0)
+    tx_fee = DecimalField(40, 0, default=0, null=True)
+    currency = CharField()
+    fee_currency = CharField(null=True)
+    tx_hash = CharField()
+    created_at = DateTimeField(default=dt.datetime.utcnow)
 
 
 class HoldMoney(BaseModel):

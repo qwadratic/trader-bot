@@ -8,7 +8,7 @@ from pyrogram import InlineKeyboardMarkup, InlineKeyboardButton
 from blockchain import ethAPI, minterAPI
 from bot_tools import converter
 from bot_tools.converter import currency_in_usd
-from bot_tools.help import correct_name, get_balance_from_currency
+from bot_tools.help import correct_name, get_balance_from_currency, create_cash_flow_record
 from logs import trade_log
 from trade_errors import InsufficientFundsOwner, MinterErrorTransaction, InsufficientFundsAnnouncement, TransactionError
 from keyboard import trade_kb
@@ -205,9 +205,13 @@ def start_trade(cli, trade):
     if payment_currency == 'USDT':
         user_currency_wallet = Wallet.get(user_id=user.id, currency='ETH')
         owner_currency_wallet = Wallet.get(user_id=owner.id, currency='ETH')
+        user_fee_currency = 'ETH'
+        owner_fee_currency = 'ETH'
     else:
         user_currency_wallet = Wallet.get(user_id=user.id, currency=payment_currency)
         owner_currency_wallet = Wallet.get(user_id=owner.id, currency=trade_currency)
+        user_fee_currency = payment_currency
+        owner_fee_currency = trade_currency
 
     owner_recipient_address = UserPurse.get(user_id=owner.id, currency=payment_currency).address
     user_recipient_address = UserPurse.get(user_id=user.id, currency=trade_currency).address
@@ -240,6 +244,16 @@ def start_trade(cli, trade):
 
     tx_hash_1 = tx_1[0]
     fee_1 = tx_1[1]
+
+    create_cash_flow_record(user=user.id,
+                            trade=trade.id,
+                            type_operation='exchange',
+                            amount=price_deal_in_payment_currency,
+                            tx_fee=fee_1,
+                            currency=payment_currency,
+                            fee_currency=user_fee_currency,
+                            tx_hash=tx_hash_1)
+
     trade_log.successful_tx(cli, 'first', trade, user_currency_wallet.address, owner_recipient_address, payment_currency, price_deal_in_payment_currency, fee_1, tx_hash_1)
 
 
@@ -257,6 +271,15 @@ def start_trade(cli, trade):
     tx_hash_2 = tx_2[0]
     fee_2 = tx_2[1]
 
+    create_cash_flow_record(user=owner.id,
+                            trade=trade.id,
+                            type_operation='exchange',
+                            amount=trade.amount,
+                            tx_fee=fee_2,
+                            currency=trade_currency,
+                            fee_currency=owner_fee_currency,
+                            tx_hash=tx_hash_2)
+
     trade_log.successful_tx(cli, 'second', trade, owner_currency_wallet.address, user_recipient_address, trade_currency,
                             to_bip(trade.amount), fee_2, tx_hash_2)
 
@@ -270,6 +293,7 @@ def start_semi_auto_trade(cli, trade, amount, recipient_address):
 
     kb = InlineKeyboardMarkup([[InlineKeyboardButton('Я оплатил', callback_data=f'i payed {trade.id}')],
                                [InlineKeyboardButton('Отменить сделку', callback_data=f'trade cancel {trade.id}')]])
+
     cli.send_message(user.tg_id, txt, reply_markup=kb)
 
 
@@ -312,6 +336,9 @@ def auto_transaction(payment_currency, wallet, recipient_address, amount):
 
 
 def close_trade(cli, trade, owner_fee, user_fee, price_deal_in_payment_currency):
+    trade.status = 'closed'
+    trade.save()
+
     HoldMoney.delete().where(HoldMoney.trade_id == trade.id).execute()
 
     user = trade.user
