@@ -1,7 +1,7 @@
 from pyrogram import InlineKeyboardMarkup
 
 from blockchain import minterAPI, ethAPI
-from model import Wallet, VirtualWallet
+from model import Wallet, VirtualWallet, CashFlowStatement
 
 
 def delete_msg(cli, user_id, msg):
@@ -71,3 +71,7 @@ def get_balance_from_currency(address, currency):
 
     if currency == 'ETH' or currency == 'USDT':
         return ethAPI.get_balance(address, currency)
+
+
+def create_cash_flow_record(**data):
+    CashFlowStatement.insert(data).execute()
