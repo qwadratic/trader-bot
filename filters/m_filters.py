@@ -9,7 +9,7 @@ class UserMessageFilter:
 
     create = Filters.create
 
-    await_exchange_rate = create(lambda _, m: User.get_or_none(tg_id=m.from_user.id) and User.get_or_none(tg_id=m.from_user.id).flags.await_exchange_rate)
+    await_currency_value = create(lambda _, m: User.get_or_none(tg_id=m.from_user.id) and User.get_or_none(tg_id=m.from_user.id).flags.await_currency_value)
 
     await_amount = create(lambda _, m: User.get_or_none(tg_id=m.from_user.id) and User.get_or_none(tg_id=m.from_user.id).flags.await_amount_for_trade)
 

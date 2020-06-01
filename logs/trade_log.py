@@ -14,7 +14,7 @@ def trade_start(cli, trade, owner_name, user_name, type_operation, trade_currenc
         f'Пользователь сделки: {user_name}\n' \
         f'Тип операции: {type_operation}\n' \
         f'Валюта операции: {trade.announcement.trade_currency}\n' \
-        f'Платежный инструмент: {trade.user_currency}\n' \
+        f'Платежный инструмент: {trade.payment_currency}\n' \
         f'Сумма сделки: {to_bip(trade.amount)}\n' \
         f'Цена сделки в USD: {price_deal_in_usd}\n' \
         f'Цена сделки в платежном инструменте: {price_deal_in_payment_currency}\n\n' \
@@ -31,7 +31,7 @@ def tx_error(cli, tx_query, trade, balance, from_address, recipient_address, tra
         f'Адрес получателя: ```{recipient_address}```\n\n' \
         f'Сумма транзакции: {amount} {trade_currency}\n' \
         f'Реальный баланс пользователя:  {to_bip(get_balance_from_currency(from_address, trade_currency))} {trade_currency}\n\n' \
-        f'Виртуальный баланс пользователя: {to_bip(balance)} {trade.user_currency}' \
+        f'Виртуальный баланс пользователя: {to_bip(balance)} {trade.payment_currency}' \
         f'Время события:  ```{dt.utcnow()} UTC-0```\n\n' \
         f'{error}'
 
@@ -81,7 +81,7 @@ def successful_trade(cli, trade, amount):
     log = f'✅ Успех! Сделка №{trade.id}\n\n' \
         f'Сумма лота объявления после сделки: {to_bip(trade.announcement.amount)} {trade.announcement.trade_currency}\n' \
         f'Сумма обмена: {to_bip(trade.amount)} {trade.announcement.trade_currency}\n' \
-        f'Цена обмена: {amount} {trade.user_currency}\n\n' \
+        f'Цена обмена: {amount} {trade.payment_currency}\n\n' \
         f'Время заверешния сделки: ```{dt.utcnow()} UTC-0```'
 
     broadcast_log(cli, log)

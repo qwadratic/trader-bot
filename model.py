@@ -57,7 +57,7 @@ class UserFlag(BaseModel):
     requisites_for_trade = BooleanField(default=False)
     requisites_for_start_deal = BooleanField(default=False)
     await_amount_for_trade = BooleanField(default=False)
-    await_exchange_rate = BooleanField(default=False)
+    await_currency_value = BooleanField(default=False)
     await_amount_for_deal = BooleanField(default=False)
 
 
@@ -98,7 +98,7 @@ class UserPurse(BaseModel):
 class MsgId(BaseModel):
     user_id = ForeignKeyField(User, unique=True, backref='msgid_', on_delete='CASCADE')
     trade_menu = IntegerField(null=True)
-    await_exchange_rate = IntegerField(null=True)
+    await_currency_value = IntegerField(null=True)
     await_amount_for_trade = IntegerField(null=True)
     await_requisites = IntegerField(null=True)
     await_payment_pending = IntegerField(null=True)
@@ -116,7 +116,7 @@ class TempAnnouncement(BaseModel):
     trade_currency = CharField(null=True)
     amount = FloatField(null=True)
     max_limit = IntegerField(null=True)
-    exchange_rate = DecimalField(40, 0, null=True)
+    currency_value = DecimalField(40, 0, null=True)
 
 
 class TempPaymentCurrency(BaseModel):
@@ -129,7 +129,7 @@ class Announcement(BaseModel):
     type_operation = CharField()
     trade_currency = CharField()
     amount = DecimalField(40, 0)
-    exchange_rate = DecimalField(40, 0, null=True)
+    currency_value = DecimalField(40, 0, null=True)
     status = CharField()
 
     @property
@@ -150,7 +150,7 @@ class Trade(BaseModel):
     announcement = ForeignKeyField(Announcement, backref='trade_', on_delete='CASCADE')
     user = ForeignKeyField(User, backref='trade_', on_delete='CASCADE')
     status = CharField()
-    user_currency = CharField()
+    payment_currency = CharField()
     amount = DecimalField(40, 0, default=0)
     deposite = BooleanField(default=False)
     created_at = DateTimeField(null=True)
@@ -164,7 +164,7 @@ class CashFlowStatement(BaseModel):
     tx_fee = DecimalField(40, 0, default=0, null=True)
     currency = CharField()
     fee_currency = CharField(null=True)
-    tx_hash = CharField()
+    tx_hash = CharField(null=True)
     created_at = DateTimeField(default=dt.datetime.utcnow)
 
 
