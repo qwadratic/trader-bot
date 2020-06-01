@@ -195,7 +195,7 @@ def choice_curr_cb(_, cb):
 @Client.on_message(Filters.regex(r'💼 Кошелёк'))
 def my_wallet(cli, m):
     user = User.get(tg_id=m.from_user.id)
-    m.reply(user_core.wallet_info(user))
+    m.reply(user_core.wallet_info(user), reply_markup=user_kb.wallet_menu)
 
 
 @Client.on_message(Filters.command(r'refill'))
