@@ -1,5 +1,4 @@
 from decimal import Decimal
-from time import sleep
 import math
 
 from mintersdk.shortcuts import to_bip, to_pip
@@ -26,7 +25,7 @@ def create_announcement(temp_announcement):
                                        type_operation=temp_announcement.type_operation,
                                        trade_currency=trade_currency,
                                        amount=temp_announcement.amount,
-                                       exchange_rate=temp_announcement.exchange_rate,
+                                       currency_value=temp_announcement.currency_value,
                                        status='close')
 
     temp_payment_currency = TempPaymentCurrency.select().where(TempPaymentCurrency.user_id == user.id)
@@ -39,17 +38,6 @@ def create_announcement(temp_announcement):
     TempPaymentCurrency.delete().where(TempPaymentCurrency.user_id == user.id).execute()
 
     return announcement
-
-
-def get_max_limit(temp_announcement):
-    user = temp_announcement.user
-
-    if temp_announcement.type_operation_id == 'sale':
-        trade_currency = temp_announcement.trade_currency
-        trade_amount = temp_announcement.amount
-        rate = temp_announcement.exchange_rate
-
-        virt_balance = VirtualWallet.get(user_id=user.id, currency=trade_currency)
 
 
 def get_ad_info(announc_id):
@@ -70,9 +58,9 @@ def get_ad_info(announc_id):
 
     txt = f'📰️  Объявление {announcement.id}\n\n' \
         f'**{trade_direction[type_operation]["type"]} {trade_currency} {trade_direction[type_operation]["icon"]}**\n\n' \
-        f'**Стоимость:** {to_bip(announcement.exchange_rate) * amount} USD\n' \
+        f'**Стоимость:** {to_bip(announcement.currency_value) * amount} USD\n' \
         f'**Сумма**: {amount} {trade_currency}\n\n' \
-        f'Цена за 1 {trade_currency}  {to_bip(announcement.exchange_rate)} USD\n\n' \
+        f'Цена за 1 {trade_currency}  {to_bip(announcement.currency_value)} USD\n\n' \
         f'**Платёжные инструменты:**\n'
 
     for curr in payment_currency:
@@ -84,9 +72,9 @@ def get_ad_info(announc_id):
 
 def announcement_list_kb(type_operation, offset):
     if type_operation == 'buy':
-        order_by = Announcement.exchange_rate.desc()
+        order_by = Announcement.currency_value.desc()
     else:
-        order_by = Announcement.exchange_rate
+        order_by = Announcement.currency_value
 
     anc = Announcement
     announcs = (Announcement
@@ -175,7 +163,7 @@ def hold_money(cli, trade):
 
 def start_trade(cli, trade):
     user = trade.user
-    user_wallet = VirtualWallet.get(user_id=user.id, currency=trade.user_currency)
+    user_wallet = VirtualWallet.get(user_id=user.id, currency=trade.payment_currency)
     user_name = correct_name(user)
 
     owner = trade.announcement.user
@@ -188,10 +176,10 @@ def start_trade(cli, trade):
     trade_currency = trade.announcement.trade_currency
 
     #  Выбранный платёжный инструмент пользователя
-    payment_currency = trade.user_currency
+    payment_currency = trade.payment_currency
 
     #  Цена лота от владельца объявления
-    trade_currency_price = trade.announcement.exchange_rate
+    trade_currency_price = trade.announcement.currency_value
 
     #  Цена выбранной валюты
     cost_payment_currency_in_usd = Decimal(converter.currency_in_usd(payment_currency, 1))
@@ -288,7 +276,7 @@ def start_trade(cli, trade):
 
 def start_semi_auto_trade(cli, trade, amount, recipient_address):
     user = trade.user
-    txt = f'Отправьте {amount} {trade.user_currency} на счёт:\n' \
+    txt = f'Отправьте {amount} {trade.payment_currency} на счёт:\n' \
         f'{recipient_address}'
 
     kb = InlineKeyboardMarkup([[InlineKeyboardButton('Я оплатил', callback_data=f'i payed {trade.id}')],
@@ -350,7 +338,7 @@ def close_trade(cli, trade, owner_fee, user_fee, price_deal_in_payment_currency)
     owner_wallet.balance -= owner_fee
     owner_wallet.save()
 
-    user_wallet = VirtualWallet.get(user_id=user.id, currency=trade.user_currency)
+    user_wallet = VirtualWallet.get(user_id=user.id, currency=trade.payment_currency)
 
     if trade.deposite:
         user_wallet.balance -= to_pip(price_deal_in_payment_currency) + user_fee

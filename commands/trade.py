@@ -89,9 +89,9 @@ def navi_announcement_menu(cli, cb):
         return
 
     if type_operation == 'buy':
-        order_by = Announcement.exchange_rate.desc()
+        order_by = Announcement.currency_value.desc()
     else:
-        order_by = Announcement.exchange_rate
+        order_by = Announcement.currency_value
 
     anc = Announcement
     all_announc = (Announcement
@@ -165,12 +165,12 @@ def choice_payment_instrument(cli, cb):
                 user_flag = user.flags
                 user_flag.temp_currency = None
                 user_flag.requisites_for_trade = False
-                user_flag.await_exchange_rate = True
+                user_flag.await_currency_value = True
                 user_flag.save()
 
                 msg = cb.message.reply(trade_text.enter_exchange_rate(trade_currency))
                 user_msg = user.msg
-                user_msg.await_exchange_rate = msg.message_id
+                user_msg.await_currency_value = msg.message_id
                 user_msg.save()
                 return
 
@@ -255,7 +255,7 @@ def requisite_for_trade(cli, m):
                 user_flag.save()
 
                 msg_ids = user.msg
-                cli.delete_messages(m.chat.id, msg_ids.await_requisites)
+                delete_msg(cli, user.id, msg_ids.await_requisites)
 
                 msg = m.reply(trade_text.indicate_requisites(curr.payment_currency))
                 msg_ids.await_requisites = msg.message_id
@@ -265,36 +265,36 @@ def requisite_for_trade(cli, m):
 
         user_flag.temp_currency = None
         user_flag.requisites_for_trade = False
-        user_flag.await_exchange_rate = True
+        user_flag.await_currency_value = True
         user_flag.save()
 
         delete_msg(cli, tg_id, msg_ids.await_requisites)
 
         msg = m.reply(trade_text.enter_exchange_rate(trade_currency))
         user_msg = user.msg
-        user_msg.await_exchange_rate = msg.message_id
+        user_msg.await_currency_value = msg.message_id
         user_msg.save()
     else:
         user_flag.temp_currency = None
         user_flag.requisites_for_trade = False
-        user_flag.await_exchange_rate = True
+        user_flag.await_currency_value = True
         user_flag.save()
 
         delete_msg(cli, tg_id, msg_ids.await_requisites)
 
         msg = m.reply(trade_text.enter_exchange_rate(trade_currency))
         user_msg = user.msg
-        user_msg.await_exchange_rate = msg.message_id
+        user_msg.await_currency_value = msg.message_id
         user_msg.save()
 
 
-@Client.on_message(UserMessageFilter.await_exchange_rate)
-def enter_exch_rate(cli, m):
+@Client.on_message(UserMessageFilter.await_currency_value)
+def enter_currency_value(cli, m):
     tg_id = m.from_user.id
     user = User.get(tg_id=tg_id)
 
     try:
-        rate = to_pip(Decimal(m.text))
+        value = to_pip(Decimal(m.text))
     except (TypeError, InvalidOperation):
         msg = m.reply(trade_text.error_enter)
         sleep(5)
@@ -302,7 +302,7 @@ def enter_exch_rate(cli, m):
         return
 
     temp_announcement = user.temp_announcement
-    temp_announcement.exchange_rate = rate
+    temp_announcement.currency_value = value
     temp_announcement.save()
 
     msg = m.reply(trade_text.enter_count, reply_markup=trade_kb.cancel_ench_rate)
@@ -311,11 +311,11 @@ def enter_exch_rate(cli, m):
     msg_ids.save()
 
     user_flag = user.flags
-    user_flag.await_exchange_rate = False
+    user_flag.await_currency_value = False
     user_flag.await_amount_for_trade = True
     user_flag.save()
 
-    delete_msg(cli, user.tg_id, user.msg.await_exchange_rate)
+    delete_msg(cli, user.tg_id, user.msg.await_currency_value)
 
 
 #  Финальная часть создания объявления
@@ -332,7 +332,7 @@ def await_amount_for_trade(cli, m):
         m.delete()
         msg = m.reply(trade_text.error_enter)
         sleep(5)
-        cli.delete_messages(m.chat.id, msg.message_id)
+        msg.delete()
         return
 
     temp_announcement.amount = to_pip(amount)
@@ -353,11 +353,11 @@ def await_amount_for_trade(cli, m):
 
 #  Открыть объявление из списка
 @Client.on_callback_query(TradeFilter.open_announcement)
-def open_announc(cli, cb):
+def open_announcement(cli, cb):
     tg_id = cb.from_user.id
     user = User.get(tg_id=tg_id)
-    announc_id = int(cb.data[13:])
-    announcement = Announcement.get(id=announc_id)
+    announcement_id = int(cb.data[13:])
+    announcement = Announcement.get(id=announcement_id)
     ad_info = get_ad_info(announcement.id)
 
     if announcement.user_id == user.id:
@@ -464,7 +464,7 @@ def deal_start(cli, cb):
             user_currency = curr.payment_currency
             break
 
-        trade = Trade.create(user_id=user.id, announcement_id=announcement_id, user_currency=user_currency,
+        trade = Trade.create(user_id=user.id, announcement_id=announcement_id, payment_currency=user_currency,
                              status='open')
         txt = f'Введите желаемую сумму для обмена\n'
         msg = cb.message.reply(txt, reply_markup=trade_kb.cancel_deal_before_start())
@@ -498,7 +498,7 @@ def requisites_for_start_deal(cli, m):
 
     if announcement.type_operation == 'buy':  # Покупка
 
-        trade = Trade.create(user_id=user.id, announcement_id=announcement_id, user_currency=currency, status='open')
+        trade = Trade.create(user_id=user.id, announcement_id=announcement_id, payment_currency=currency, status='open')
 
         msg = m.reply(trade_text.await_respond_from_buyer)
         msg_ids.await_respond_from_buyer = msg.message_id
@@ -515,7 +515,7 @@ def requisites_for_start_deal(cli, m):
             user_currency = curr.payment_currency
             break
 
-        trade = Trade.create(user_id=user.id, announcement_id=announcement_id, user_currency=user_currency,
+        trade = Trade.create(user_id=user.id, announcement_id=announcement_id, payment_currency=user_currency,
                              status='open')
 
         msg = m.reply(trade_text.enter_amount_for_buy(user_currency))
@@ -561,16 +561,16 @@ def amount_for_deal(cli, m):
     trade.amount = to_pip(amount)
     trade.save()
 
-    owner_trade_currency_price = trade.announcement.exchange_rate
-    cost_user_currency_in_usd = Decimal(converter.currency_in_usd(trade.user_currency, 1))
+    owner_trade_currency_price = trade.announcement.currency_value
+    cost_payment_currency_in_usd = Decimal(converter.currency_in_usd(trade.payment_currency, 1))
     price_deal_in_usd = to_bip(trade.amount) * to_bip(owner_trade_currency_price)
 
     #  Сколько нужно юзеру заплатить
-    price_deal_in_user_currency = price_deal_in_usd / cost_user_currency_in_usd
+    price_deal_in_payment_currency = price_deal_in_usd / cost_payment_currency_in_usd
 
     type_operation = 'купить' if trade.announcement.type_operation == 'sale' else 'продать'
     trade_txt = f'Вы желаете {type_operation} {amount} {trade_currency}\n' \
-        f'за {price_deal_in_user_currency} {trade.user_currency}?'
+        f'за {price_deal_in_payment_currency} {trade.payment_currency}?'
     m.reply(trade_txt, reply_markup=trade_kb.confirm_deal(trade.id))
 
     user_flag = user.flags
@@ -588,18 +588,17 @@ def finally_deal(cli, cb):
 
     if data[:13] == 'trade confirm':
         trade = Trade.get_by_id(int(data[14:]))
-        trade_currency_price = trade.announcement.exchange_rate
+        trade_currency_price = trade.announcement.currency_value
         trade_currency = trade.announcement.trade_currency
         owner = trade.announcement.user
         owner_name = correct_name(owner)
 
-        owner_trade_currency_price = trade.announcement.exchange_rate
-        cost_payment_currency_in_usd = Decimal(converter.currency_in_usd(trade.user_currency, 1))
-        price_deal_in_usd = to_bip(trade.amount) * to_bip(owner_trade_currency_price)
+        cost_payment_currency_in_usd = Decimal(converter.currency_in_usd(trade.payment_currency, 1))
+        price_deal_in_usd = to_bip(trade.amount) * to_bip(trade_currency_price)
 
         price_deal_in_payment_currency = price_deal_in_usd / cost_payment_currency_in_usd
         comission = to_pip(0)
-        payment_currency = 'ETH' if trade.user_currency == 'USDT' else trade.user_currency
+        payment_currency = 'ETH' if trade.payment_currency == 'USDT' else trade.payment_currency
 
         user_wallet = VirtualWallet.get(user_id=user.id, currency=payment_currency)
         # Разветвление на полуавтоматический обмен
@@ -620,9 +619,8 @@ def finally_deal(cli, cb):
             trade_final = trade_core.start_trade(cli, trade)
 
         except ValueError as e:
-            tb = sys.exc_info()[2]
-
             deposite = HoldMoney.get_or_none(trade_id=trade.id)
+
             if deposite:
                 owner = trade.announcement.user
                 hold_amount = deposite.amount
@@ -636,10 +634,10 @@ def finally_deal(cli, cb):
             return cb.message.reply(f'Ошибка\n\n{err}')
 
         operation = 'Купили' if trade.announcement.type_operation == 'sale' else 'продали'
-        txt = f'Вы {operation} {to_bip(trade.amount)} {trade.announcement.trade_currency} за {price_deal_in_payment_currency} {trade.user_currency}'
+        txt = f'Вы {operation} {to_bip(trade.amount)} {trade.announcement.trade_currency} за {price_deal_in_payment_currency} {trade.payment_currency}'
         cb.message.edit(txt)
 
-        txt2 = f'Вы {trade.announcement.type_operation} {to_bip(trade.amount)} {trade.announcement.trade_currency} за {price_deal_in_payment_currency} {trade.user_currency}'
+        txt2 = f'Вы {trade.announcement.type_operation} {to_bip(trade.amount)} {trade.announcement.trade_currency} за {price_deal_in_payment_currency} {trade.payment_currency}'
         return cli.send_message(trade.announcement.user.tg_id, txt2)
 
     if data[:12] == 'trade cancel':
@@ -670,10 +668,10 @@ def user_confirm_payment(cli, cb):
     trade_currency = trade.announcement.trade_currency
 
     #  Выбранный платёжный инструмент пользователя
-    payment_currency = trade.user_currency
+    payment_currency = trade.payment_currency
 
     #  Цена лота от владельца объявления
-    trade_currency_price = trade.announcement.exchange_rate
+    trade_currency_price = trade.announcement.currency_value
 
     #  Цена выбранной валюты
     cost_payment_currency_in_usd = Decimal(converter.currency_in_usd(payment_currency, 1))
@@ -708,7 +706,7 @@ def user_confirm_payment(cli, cb):
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:11] == 'i got money'))
 def owner_confirm_trade(cli, cb):
     trade = Trade.get_by_id(int(cb.data[12:]))
-    payment_currency = trade.user_currency
+    payment_currency = trade.payment_currency
     trade_currency = trade.announcement.trade_currency
 
     user = trade.user
@@ -721,7 +719,7 @@ def owner_confirm_trade(cli, cb):
     cost_payment_currency_in_usd = Decimal(converter.currency_in_usd(payment_currency, 1))
 
     #  Цена лота от владельца объявления
-    trade_currency_price = trade.announcement.exchange_rate
+    trade_currency_price = trade.announcement.currency_value
 
     #  Цена сделки в долларах
     price_deal_in_usd = to_bip(trade.amount) * to_bip(trade_currency_price)
@@ -773,11 +771,11 @@ def owner_confirm_trade(cli, cb):
     close_trade(cli, trade, fee, 0, price_deal_in_payment_currency)
 
     operation = 'Продали' if trade.announcement.type_operation == 'sale' else 'Купили'
-    txt = f'Вы {operation} {to_bip(trade.amount)} {trade.announcement.trade_currency} за {price_deal_in_payment_currency} {trade.user_currency}'
+    txt = f'Вы {operation} {to_bip(trade.amount)} {trade.announcement.trade_currency} за {price_deal_in_payment_currency} {payment_currency}'
     cb.message.edit(txt)
 
     operation = 'Продали' if operation == 'Купили' else 'Купили'
-    txt2 = f'Вы {operation} {to_bip(trade.amount)} {trade.announcement.trade_currency} за {price_deal_in_payment_currency} {trade.user_currency}'
+    txt2 = f'Вы {operation} {to_bip(trade.amount)} {trade.announcement.trade_currency} за {price_deal_in_payment_currency} {payment_currency}'
     cli.send_message(trade.user.tg_id, txt2)
 
 
