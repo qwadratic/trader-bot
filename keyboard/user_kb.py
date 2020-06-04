@@ -40,14 +40,14 @@ wallet_menu = InlineKeyboardMarkup(
 
 hide_notification = InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton(f'« cкрыть »', callback_data='hide notify')]
+            [InlineKeyboardButton(f'« cкрыть »', callback_data='hide')]
         ])
 
 
 def purse(user):
     requisites = user.purse
 
-    kb = [[InlineKeyboardButton('Назад', callback_data='purse-back')], [InlineKeyboardButton('Добавить реквизиты', callback_data='purse-add')]]
+    kb = [[InlineKeyboardButton('🔙 Назад', callback_data='purse-back')], [InlineKeyboardButton('Добавить реквизиты', callback_data='purse-add')]]
 
     for r in requisites:
         name = f'[{r.name}]' if r.name else ''
@@ -59,7 +59,7 @@ def purse(user):
 def requisite(requisite_id):
     kb = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton('Назад', callback_data=f'wm-portmone')],
+                [InlineKeyboardButton('🔙 Назад', callback_data=f'wm-portmone')],
                 [InlineKeyboardButton('Редактировать адрес', callback_data=f'editrequisite-address-{requisite_id}')],
                 [InlineKeyboardButton('Изменить/добавить название', callback_data=f'editrequisite-name-{requisite_id}')],
                 [InlineKeyboardButton('Удалить', callback_data=f'editrequisite-delete-{requisite_id}')]
@@ -116,3 +116,32 @@ def edit_requisite_name(requisite_id):
         )
 
     return kb
+
+
+settings_menu = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton('🌎 Язык', callback_data=f'setuser-language'),
+                 InlineKeyboardButton('💶 Валюта', callback_data=f'setuser-currency')],
+                [InlineKeyboardButton('О сервисе', callback_data=f'setuser-about')],
+                [InlineKeyboardButton('« Закрыть »', callback_data=f'hide')]
+            ]
+        )
+
+
+set_language = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton('🇬🇧 English', callback_data=f'userset-language-en')],
+                [InlineKeyboardButton('🇷🇺 Русский', callback_data=f'userset-language-ru')],
+                [InlineKeyboardButton('🔙 Назад', callback_data=f'userset-back-1')]
+            ]
+        )
+
+
+set_currency = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton('🇺🇸 Американский доллар (USD)', callback_data=f'userset-currency-USD')],
+                [InlineKeyboardButton('🇺🇦 Украинская гривна (UAH)', callback_data=f'userset-currency-UAH')],
+                [InlineKeyboardButton('🇷🇺 Российский рубль (RUB)', callback_data=f'userset-currency-RUB')],
+                [InlineKeyboardButton('🔙 Назад', callback_data=f'userset-back-1')]
+            ]
+        )
