@@ -12,7 +12,7 @@ from bot_tools import converter
 from bot_tools.help import delete_msg, correct_name, create_cash_flow_record
 from core import trade_core
 from core.trade_core import announcement_list_kb, get_ad_info, hold_money, auto_transaction, close_trade, \
-    start_semi_auto_trade
+    start_semi_auto_trade, start_buy_trade
 from filters.cb_filters import TradeFilter
 from filters.m_filters import UserMessageFilter
 from keyboard import trade_kb
@@ -195,12 +195,12 @@ def choice_payment_instrument(cli, cb):
                 user_flag = user.flags
                 user_flag.temp_currency = None
                 user_flag.requisites_for_trade = False
-                user_flag.await_exchange_rate = True
+                user_flag.await_currency_value = True
                 user_flag.save()
 
                 msg = cb.message.edit(trade_text.enter_exchange_rate(trade_currency))
                 user_msg = user.msg
-                user_msg.await_exchange_rate = msg.message_id
+                user_msg.await_currency_value = msg.message_id
                 user_msg.save()
 
     elif payment_currency == 'back':
@@ -375,11 +375,12 @@ def user_announc(cli, cb):
 
     if data[:15] == 'dealauth status':
         announcement = Announcement.get_by_id(int(data[16:]))
-        wallet = VirtualWallet.get(user_id=user.id, currency=announcement.trade_currency)
 
         if announcement.status == 'close':
-            if wallet.balance < announcement.amount or announcement.amount == 0:
-                return cli.answer_callback_query(cb.id, 'Недостаточно баланса для начала торговли', show_alert=True)
+            if announcement.type_operation == 'sale':
+                wallet = VirtualWallet.get(user_id=user.id, currency=announcement.trade_currency)
+                if wallet.balance < announcement.amount or announcement.amount == 0:
+                    return cli.answer_callback_query(cb.id, 'Недостаточно баланса для начала торговли', show_alert=True)
 
             announcement.status = 'open'
 
@@ -401,45 +402,49 @@ def deal_start(cli, cb):
     announcement_id = int(cb.data[11:])
     user_set.announcement_id = announcement_id
     user_set.save()
-    trade_currency = Announcement.get(id=announcement_id).trade_currency
+
 
     msg_ids = user.msg
     announcement = Announcement.get_by_id(announcement_id)
+    trade_currency = announcement.trade_currency
     payment_currency = PaymentCurrency.select().where(PaymentCurrency.announcement_id == announcement_id)
 
     if announcement.type_operation == 'buy':  # Покупка
         user_currency = None
-        # for curr in payment_currency:
-        #     requisite = UserPurse.select().where(
-        #         (UserPurse.user_id == user.id) & (UserPurse.currency == curr.payment_currency))
-        #
-        #     if not requisite:  # имитация выбора валюты
-        #         user_flag.purse_flag = curr.payment_currency
-        #         user_flag.requisites_for_start_deal = True
-        #         user_flag.save()
-        #
-        #         msg_ids = user.msgid
-        #         cli.delete_messages(cb.message.chat.id, msg_ids.await_requisites)
-        #
-        #         msg = cb.message.edit(trade_text.indicate_requisites(curr.payment_currency))
-        #         msg_ids.await_requisites = msg.message_id
-        #         msg_ids.save()
-        #
-        #         return
-        #
-        #     user_currency = curr.payment_currency
-        #
-        #     break
-        #
-        # trade = Trade.create(user_id=user.id, status='open', announcement_id=announcement_id, user_currency=user_currency)
-        #
-        # msg = cb.message.edit(trade_text.await_respond_from_buyer)
-        # msg_ids.await_respond_from_buyer = msg.message_id
-        # msg_ids.save()
-        #
-        # buyer_id = User.get_by_id(announcement.user_id).tg_id
-        #
-        # cli.send_message(buyer_id, trade_text.start_deal(announcement_id), reply_markup=trade_kb.start_deal(trade.id))
+        for curr in payment_currency:
+            requisite = UserPurse.select().where(
+                (UserPurse.user_id == user.id) & (UserPurse.currency == curr.payment_currency))
+
+            if not requisite:  # имитация выбора валюты
+                user_flag.purse_flag = curr.payment_currency
+                user_flag.requisites_for_start_deal = True
+                user_flag.save()
+
+                msg_ids = user.msgid
+                cli.delete_messages(cb.message.chat.id, msg_ids.await_requisites)
+
+                msg = cb.message.edit(trade_text.indicate_requisites(curr.payment_currency))
+                msg_ids.await_requisites = msg.message_id
+                msg_ids.save()
+
+                return
+
+            user_currency = curr.payment_currency
+
+            break
+
+        trade = Trade.create(user_id=user.id, status='open', announcement_id=announcement_id, payment_currency=user_currency)
+
+        txt = f'Введите сколько желаете продать **{trade_currency}**\n'
+        msg = cb.message.reply(txt, reply_markup=trade_kb.cancel_deal_before_start())
+        msg_ids.await_amount_for_trade = msg.message_id
+        msg_ids.save()
+
+        user_flag.await_amount_for_deal = True
+        user_flag.save()
+
+        user_set.active_deal = trade.id
+        user_set.save()
 
     elif announcement.type_operation == 'sale':  # Продажа
         buyer_requisite = UserPurse.select().where(
@@ -588,6 +593,11 @@ def finally_deal(cli, cb):
 
     if data[:13] == 'trade confirm':
         trade = Trade.get_by_id(int(data[14:]))
+
+        if trade.announcement.type_operation == 'buy':
+            start_buy_trade(cli, cb, trade)
+            return
+
         trade_currency_price = trade.announcement.currency_value
         trade_currency = trade.announcement.trade_currency
         owner = trade.announcement.user
@@ -601,6 +611,7 @@ def finally_deal(cli, cb):
         payment_currency = 'ETH' if trade.payment_currency == 'USDT' else trade.payment_currency
 
         user_wallet = VirtualWallet.get(user_id=user.id, currency=payment_currency)
+
         # Разветвление на полуавтоматический обмен
         if price_deal_in_payment_currency + comission > user_wallet.balance:
             cb.message.delete()

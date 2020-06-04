@@ -13,22 +13,12 @@ class UserMessageFilter:
 
     await_amount = create(lambda _, m: User.get_or_none(tg_id=m.from_user.id) and User.get_or_none(tg_id=m.from_user.id).flags.await_amount_for_trade)
 
-    await_requisite_bip = create(lambda _, m: User.get(tg_id=m.from_user.id).user_flag.purse_flag == 1)
-
-    await_requisite_btc = create(lambda _, m: User.get(tg_id=m.from_user.id).user_flag.purse_flag == 2)
-
-    await_requisite_usdt = create(lambda _, m: User.get(tg_id=m.from_user.id).user_flag.purse_flag == 3)
-
-    await_requisite_etg = create(lambda _, m: User.get(tg_id=m.from_user.id).user_flag.purse_flag == 4)
-
-    await_requisite_usd = create(lambda _, m: User.get(tg_id=m.from_user.id).user_flag.purse_flag == 5)
-
-    await_requisite_rub = create(lambda _, m: User.get(tg_id=m.from_user.id).user_flag.purse_flag == 6)
-
-    await_requisite_uag = create(lambda _, m: User.get(tg_id=m.from_user.id).user_flag.purse_flag == 7)
-
     requisites_for_trade = create(lambda _, m: User.get_or_none(tg_id=m.from_user.id) and User.get_or_none(tg_id=m.from_user.id).flags.requisites_for_trade)
 
     requisites_for_start_deal = create(lambda _, m: User.get_or_none(tg_id=m.from_user.id) and User.get_or_none(tg_id=m.from_user.id).flags.requisites_for_start_deal)
 
     await_amount_for_deal = create(lambda _, m: User.get_or_none(tg_id=m.from_user.id) and User.get_or_none(tg_id=m.from_user.id).flags.await_amount_for_deal)
+
+    await_requisites_address = create(lambda _, m: User.get_or_none(tg_id=m.from_user.id) and User.get_or_none(tg_id=m.from_user.id).flags.await_requisites_address)
+
+    await_requisites_name = create(lambda _, m: User.get_or_none(tg_id=m.from_user.id) and User.get_or_none(tg_id=m.from_user.id).flags.await_requisites_name)
