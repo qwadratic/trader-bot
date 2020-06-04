@@ -48,7 +48,7 @@ class User(BaseModel):
 
     @property
     def purse(self):
-        return self.purse_.get()
+        return self.purse_.select()
 
 
 class UserFlag(BaseModel):
@@ -59,6 +59,9 @@ class UserFlag(BaseModel):
     await_amount_for_trade = BooleanField(default=False)
     await_currency_value = BooleanField(default=False)
     await_amount_for_deal = BooleanField(default=False)
+    await_requisites_address = BooleanField(default=False)
+    await_requisites_name = BooleanField(default=False)
+    edit_requisite = BooleanField(default=False)
 
 
 class UserSettings(BaseModel):
@@ -90,9 +93,11 @@ class VirtualWallet(BaseModel):
 
 
 class UserPurse(BaseModel):
-    user_id = IntegerField()
+    user = ForeignKeyField(User, backref='purse_', on_delete='CASCADE')
+    name = CharField(null=True)
     currency = CharField()
-    address = CharField()
+    address = CharField(null=True)
+    status = CharField(default='invalid')
 
 
 class MsgId(BaseModel):
@@ -108,6 +113,7 @@ class MsgId(BaseModel):
     await_respond_from_seller = IntegerField(null=True)
     await_respond_from_buyer = IntegerField(null=True)
     await_payment_details = IntegerField(null=True)
+    wallet_menu = IntegerField(null=True)
 
 
 class TempAnnouncement(BaseModel):

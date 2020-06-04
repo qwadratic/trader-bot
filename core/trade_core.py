@@ -371,3 +371,32 @@ def turn_off_announcement_and_inform(cli, announcement_id):
         cli.send_message(user.tg_id, txt)
     except Exception as e:
         print(f'error 332 trade core {e}')
+
+
+def start_buy_trade(cli, cb, trade):
+    trade_currency_price = trade.announcement.currency_value
+    trade_currency = trade.announcement.trade_currency
+    owner = trade.announcement.user
+    owner_name = correct_name(owner)
+
+    user = trade.user
+    user_name = correct_name(user)
+
+    cost_payment_currency_in_usd = Decimal(converter.currency_in_usd(trade.payment_currency, 1))
+    price_deal_in_usd = to_bip(trade.amount) * to_bip(trade_currency_price)
+
+    price_deal_in_payment_currency = price_deal_in_usd / cost_payment_currency_in_usd
+    comission = to_pip(0)
+    payment_currency = 'ETH' if trade.payment_currency == 'USDT' else trade.payment_currency
+
+    user_wallet = VirtualWallet.get(user_id=user.id, currency=trade_currency)
+
+    if trade.amount + comission > user_wallet.balance:
+        cb.message.delete()
+
+        trade_log.trade_start(cli, trade, owner_name, user_name, trade.announcement.type_operation,
+                              trade_currency_price, trade_currency, price_deal_in_usd, price_deal_in_payment_currency)
+
+        owner_recipient_address = UserPurse.get(user_id=trade.announcement.user_id, currency=payment_currency).address
+        start_semi_auto_trade(cli, trade, price_deal_in_payment_currency, owner_recipient_address)
+        return
