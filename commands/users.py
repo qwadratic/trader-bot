@@ -418,6 +418,8 @@ def edit_requisite(cli, cb):
 
     if set == 'cancel':
         user_flag.edit_requisite = False
+        user_flag.await_requisites_name = False
+        user_flag.await_requisites_address = False
         requisite.status = 'valid'
 
         if requisite.name:
@@ -445,12 +447,53 @@ def edit_requisite(cli, cb):
     user_flag.save()
 
 
-@Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:] == ''))
-@Client.on_message(Filters.command(r'refill'))
-def sda(cli, m):
-    user = m.from_user
-    name = f'[{user.first_name}](tg://user?id={int(1100783143)})'
-    m.reply(name+' wadawdaw')
-    #check_refill_eth(cli)
+@Client.on_message(Filters.regex(r'⚙️ Настройки'))
+def setting_menu(cli, m):
+    m.delete()
+
+    txt = f'⚙️ Настройки'
+
+    m.reply(txt, reply_markup=user_kb.settings_menu)
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:7] == 'setuser'))
+def settings(cli, cb):
+    set = cb.data.split('-')[1]
+    if set == 'language':
+        txt = f'🌍 Язык\n\n' \
+            f'Пожалуйста, выберите язык:'
+
+        cb.message.edit(txt, reply_markup=user_kb.set_language)
+
+    if set == 'currency':
+        txt = '💶 Валюта\n\n' \
+              'Выберите Вашу базовую валюту'
+
+        cb.message.edit(txt, reply_markup=user_kb.set_currency)
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:7] == 'userset'))
+def set_setting(cli, cb):
+    user = User.get(tg_id=cb.from_user.id)
+    user_set = user.settings
+
+    set = cb.data.split('-')[1]
+    value = cb.data.split('-')[2]
+
+    if set == 'language':
+        user_set.language = value
+        lang_name = 'You have chosen 🇬🇧 English' if value == 'en' else 'Вы выбрали 🇷🇺 русский язык'
+        cli.answer_callback_query(cb.id, lang_name, show_alert=True)
+
+    if set == 'currency':
+        user_set.currency = value
+        currency_name = '🇺🇸 Американский доллар' if value == 'USD' else '🇺🇦 Украинскую гривну' if value == 'UAH' else '🇷🇺 Российский рубль'
+        txt = f'Вы выбрали {currency_name}'
+        cli.answer_callback_query(cb.id, txt, show_alert=True)
+
+    user_set.save()
+
+    txt = f'⚙️ Настройки'
+    cb.message.edit(txt, reply_markup=user_kb.settings_menu)
 
 

@@ -54,7 +54,6 @@ def get_wallet_balance(address):
 def create_transaction(wallet, address, amount):
     nonce = API.get_nonce(wallet.address)
     tx = MinterSendCoinTx('BIP', address, to_bip(amount), gas_coin='BIP', nonce=nonce)
-
     tx.sign(wallet.private_key)
     return tx.signed_tx
 
