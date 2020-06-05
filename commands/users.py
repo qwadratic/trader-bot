@@ -49,6 +49,11 @@ def create_fake_wallets(cli, m):
     m.reply('complete')
 
 
+@Client.on_callback_query(Filters.callback_data('hide'))
+def hide(_, cb):
+    cb.message.delete()
+
+
 @Client.on_message(Filters.command('start') & ~ref_link)
 def start_command(_, m):
     tg_user = m.from_user
@@ -195,8 +200,14 @@ def choice_curr_cb(_, cb):
 
 @Client.on_message(Filters.regex(r'💼 Кошелёк'))
 def my_wallet(cli, m):
+    m.delete()
     user = User.get(tg_id=m.from_user.id)
-    m.reply(user_core.wallet_info(user), reply_markup=user_kb.wallet_menu)
+    msgs = user.msg
+
+    msg = m.reply(user_core.wallet_info(user), reply_markup=user_kb.wallet_menu)
+    delete_msg(cli, user.tg_id, msgs.wallet_menu)
+    msgs.wallet_menu = msg.message_id
+    msgs.save()
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:2] == 'wm'))
