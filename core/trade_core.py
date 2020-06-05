@@ -52,6 +52,7 @@ def get_ad_info(announc_id):
     type_operation = announcement.type_operation
     trade_currency = announcement.trade_currency
     announc_status = announcement.status
+
     amount = to_bip(announcement.amount)
     price_for_currency = currency_in_usd(trade_currency, 1)
     payment_currency = PaymentCurrency.select().where(PaymentCurrency.announcement_id == announc_id)

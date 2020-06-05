@@ -1,5 +1,8 @@
+import math
+
 from pyrogram import ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 
+from model import Announcement
 
 choice_lang = InlineKeyboardMarkup(
             [
@@ -145,3 +148,46 @@ set_currency = InlineKeyboardMarkup(
                 [InlineKeyboardButton('🔙 Назад', callback_data=f'userset-back-1')]
             ]
         )
+
+
+def my_announcement(user, offset):
+    kb_list = []
+
+    kb_list.append([InlineKeyboardButton('🔙 Назад', callback_data=f'myannouncement-back-{offset}')])
+
+    all_announcement = Announcement.select().where(Announcement.user_id == user.id)
+
+    sort_announcement = Announcement.select().where(Announcement.user_id == user.id).offset(offset).limit(5)
+
+    status = {'open': '⚪️',
+              'close': '🔴'}
+    if len(all_announcement) == 0:
+        return InlineKeyboardMarkup(kb_list)
+    else:
+        for ad in sort_announcement:
+            announcement_info = f'{status[ad.status]} [{ad.type_operation}][{ad.trade_currency}]'
+            kb_list.append([InlineKeyboardButton(announcement_info, callback_data=f'open announc {ad.id}')])
+
+        if offset == 0 and len(all_announcement) <= 5:
+            return InlineKeyboardMarkup(kb_list)
+
+        elif offset == 0:
+            position = f'{int(offset + 2)}/{int(math.ceil(len(all_announcement) / 5))}'
+            position_2 = f'{int(offset / 5 + 1)}'
+            kb_list.append([InlineKeyboardButton(f'{position} ⇒', callback_data=f'myannouncement-right-{offset}')])
+
+        elif 0 < offset + 5 >= len(all_announcement):
+            position = f'{int(math.ceil(len(all_announcement) / 5)) - 1}/{int(math.ceil(len(all_announcement)/5))}'
+            position_2 = f'{int(offset / 5)}'
+            kb_list.append([InlineKeyboardButton(f'⇐ {position}', callback_data=f'myannouncement-left-{offset}')])
+
+        else:
+            position_1 = f'{int((offset + 5) / 5 - 1)}/{int(math.ceil(len(all_announcement) / 5))}'
+            position_2 = f'{int(offset / 5 + 2)}/{int(math.ceil(len(all_announcement) / 5))}'
+            position_3 = f'{int(offset / 5 + 1)}'
+            kb_list.append([InlineKeyboardButton(f'⇐ {position_1}', callback_data=f'myannouncement-left-{offset}'),
+                            InlineKeyboardButton(f'{position_2} ⇒', callback_data=f'myannouncement-right-{offset}')])
+
+        return InlineKeyboardMarkup(kb_list)
+
+

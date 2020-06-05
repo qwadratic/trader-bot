@@ -15,7 +15,7 @@ from core.trade_core import announcement_list_kb, get_ad_info, hold_money, auto_
     start_semi_auto_trade, start_buy_trade
 from filters.cb_filters import TradeFilter
 from filters.m_filters import UserMessageFilter
-from keyboard import trade_kb
+from keyboard import trade_kb, user_kb
 from logs import trade_log
 from model import User, TempAnnouncement, TempPaymentCurrency, UserPurse, Announcement, PaymentCurrency, \
     Trade, HoldMoney, VirtualWallet, Wallet
@@ -29,7 +29,7 @@ def trade_menu(cli, m):
     msg_ids = User.get(tg_id=tg_id).msg
     user = User.get(tg_id=tg_id)
 
-    delete_msg(cli, user.id, msg_ids.trade_menu)
+    delete_msg(cli, user.tg_id, msg_ids.trade_menu)
 
     msg = m.reply(trade_text.trade_menu, reply_markup=trade_kb.menu)
     msg_ids.trade_menu = msg.message_id
@@ -70,11 +70,34 @@ def trade_menu_navi(cli, cb):
         cb.message.edit('Меню объявлений', reply_markup=announcement_list_kb('sale', 0))
 
     elif button == 'my announc':
-        pass
+        txt = 'Ваши объявления'
+        cb.message.edit(txt, reply_markup=user_kb.my_announcement(user, 0))
+
     elif button == 'my trade':
         pass
     elif button == 'notice':
         pass
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:14] == 'myannouncement'))
+def my_announcements_navi(cli, cb):
+    user = User.get(tg_id=cb.from_user.id)
+
+    action = cb.data.split('-')[1]
+    offset = int(cb.data.split('-')[2])
+
+    if action == 'back':
+        cb.message.edit(trade_text.trade_menu, reply_markup=trade_kb.menu)
+        return
+
+    if action == 'right':
+        offset += 5
+
+    if action == 'left':
+        offset -= 5
+
+    txt = 'Ваши объявления'
+    cb.message.edit(txt, reply_markup=user_kb.my_announcement(user, offset))
 
 
 @Client.on_callback_query(TradeFilter.announcement_menu)
@@ -236,7 +259,7 @@ def requisite_for_trade(cli, m):
     user = User.get(tg_id=tg_id)
     currency = user.flags.temp_currency
     address = m.text
-    UserPurse.create(user_id=user.id, currency=currency, address=address)
+    UserPurse.create(user_id=user.id, currency=currency, address=address, status='valid')
 
     temp_payment_currency = TempPaymentCurrency.select().where(TempPaymentCurrency.user_id == user.id)
 
