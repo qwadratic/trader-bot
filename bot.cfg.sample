@@ -1,0 +1,14 @@
+[pyrogram]
+session_name = banker_test
+bot_token =
+api_id =
+api_hash =
+
+[plugins]
+root = commands
+
+[db]
+DB_HOST = 127.0.0.1
+DB_NAME =
+DB_USER =
+DB_PASS =

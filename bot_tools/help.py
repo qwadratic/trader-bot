@@ -1,13 +1,14 @@
 from pyrogram import InlineKeyboardMarkup
 
 from blockchain import minterAPI, ethAPI
-from model import Wallet, VirtualWallet
+from model import Wallet, VirtualWallet, CashFlowStatement
 
 
 def delete_msg(cli, user_id, msg):
     try:
         cli.delete_messages(user_id, msg)
-    except Exception:
+    except Exception as e:
+        print(e)
         pass
 
 
@@ -71,3 +72,30 @@ def get_balance_from_currency(address, currency):
 
     if currency == 'ETH' or currency == 'USDT':
         return ethAPI.get_balance(address, currency)
+
+
+def create_cash_flow_record(**data):
+    CashFlowStatement.insert(data).execute()
+
+
+def check_address(address, currency):
+
+    valid = False
+
+    if currency == 'BIP':
+        re = minterAPI.API.get_balance(address)
+        if 'result' in re:
+            valid = True
+
+    if currency in ['ETH', 'USDT']:
+        try:
+            re = ethAPI.get_balance(address, currency)
+            valid = True
+        except ValueError:
+            pass
+
+    # TODO костыль
+    if currency not in ['ETH', 'USDT', 'BIP']:
+        valid = True
+
+    return valid

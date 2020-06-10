@@ -3,9 +3,10 @@ from web3.exceptions import TransactionNotFound
 
 from blockchain import ethAPI, minterAPI
 from blockchain.ethAPI import w3, Web3
+from bot_tools.help import create_cash_flow_record
 from bot_tools.misc import retry
 from keyboard import user_kb
-from model import Service, Wallet, VirtualWallet
+from model import Service, Wallet, VirtualWallet, CashFlowStatement
 from hexbytes import HexBytes
 
 
@@ -173,12 +174,14 @@ def update_eth_balance(cli, refill_txs):
         address_refills.setdefault(address, {})
         address_refills[address][coin] = refill_pip
 
+    refills_list = []
     for address in address_refills:
         user = Wallet.get(address=address).user
-
         txt_refills = ''
+
         for currency in address_refills[address]:
             balance = ethAPI.get_balance(address, currency)
+            #  TODO убрать проверку кошелька
             virt_wallet = VirtualWallet.get_or_none(user_id=user.id, currency=currency)
 
             if not virt_wallet:
@@ -191,11 +194,18 @@ def update_eth_balance(cli, refill_txs):
 
                 txt_refills += f'**{to_bip(refill)} {currency}**\n'
 
+            refills_list.append(dict(user=user.id,
+                                     type_operation='refill',
+                                     amount=balance,
+                                     currency=currency))
+
         try:
             cli.send_message(user.tg_id, f'💸 Ваш баланс пополнен на\n' + txt_refills,
                              reply_markup=user_kb.hide_notification)
         except Exception as e:
             print('check_refill, line 197\n', e)
+
+    CashFlowStatement.insert_many(refills_list).execute()
 
 
 @retry(Exception, tries=3, delay=1)
@@ -249,6 +259,8 @@ def update_balance(cli, refills):
         address_refills.setdefault(address, {})
         address_refills[address][coin] = refill_pip
 
+    refills_list = []
+
     for address in address_refills:
 
         user = Wallet.get(address=address).user
@@ -265,9 +277,15 @@ def update_balance(cli, refills):
 
         txt_refills += f'**{to_bip(refill_in_pip)} BIP**\n'
 
+        refills_list.append(dict(user=user.id,
+                                 type_operation='refill',
+                                 amount=user_balance,
+                                 currency='BIP'))
 
         try:
             cli.send_message(user.tg_id, f'💸 Ваш баланс пополнен на\n' + txt_refills,
                              reply_markup=user_kb.hide_notification)
         except Exception as e:
-            print('check_refill, line 272\n',e)
+            print('check_refill, line 272\n', e)
+
+    CashFlowStatement.insert_many(refills_list).execute()

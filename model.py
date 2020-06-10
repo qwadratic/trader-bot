@@ -1,6 +1,6 @@
 from peewee import *
 from bot_tools.dbconnect import db_conn
-
+import datetime as dt
 
 db = PostgresqlDatabase(**db_conn)
 
@@ -48,7 +48,7 @@ class User(BaseModel):
 
     @property
     def purse(self):
-        return self.purse_.get()
+        return self.purse_.select()
 
 
 class UserFlag(BaseModel):
@@ -57,8 +57,11 @@ class UserFlag(BaseModel):
     requisites_for_trade = BooleanField(default=False)
     requisites_for_start_deal = BooleanField(default=False)
     await_amount_for_trade = BooleanField(default=False)
-    await_exchange_rate = BooleanField(default=False)
+    await_currency_value = BooleanField(default=False)
     await_amount_for_deal = BooleanField(default=False)
+    await_requisites_address = BooleanField(default=False)
+    await_requisites_name = BooleanField(default=False)
+    edit_requisite = BooleanField(default=False)
 
 
 class UserSettings(BaseModel):
@@ -90,15 +93,17 @@ class VirtualWallet(BaseModel):
 
 
 class UserPurse(BaseModel):
-    user_id = IntegerField()
+    user = ForeignKeyField(User, backref='purse_', on_delete='CASCADE')
+    name = CharField(null=True)
     currency = CharField()
-    address = CharField()
+    address = CharField(null=True)
+    status = CharField(default='invalid')
 
 
 class MsgId(BaseModel):
     user_id = ForeignKeyField(User, unique=True, backref='msgid_', on_delete='CASCADE')
     trade_menu = IntegerField(null=True)
-    await_exchange_rate = IntegerField(null=True)
+    await_currency_value = IntegerField(null=True)
     await_amount_for_trade = IntegerField(null=True)
     await_requisites = IntegerField(null=True)
     await_payment_pending = IntegerField(null=True)
@@ -108,6 +113,7 @@ class MsgId(BaseModel):
     await_respond_from_seller = IntegerField(null=True)
     await_respond_from_buyer = IntegerField(null=True)
     await_payment_details = IntegerField(null=True)
+    wallet_menu = IntegerField(null=True)
 
 
 class TempAnnouncement(BaseModel):
@@ -116,7 +122,7 @@ class TempAnnouncement(BaseModel):
     trade_currency = CharField(null=True)
     amount = FloatField(null=True)
     max_limit = IntegerField(null=True)
-    exchange_rate = DecimalField(40, 0, null=True)
+    currency_value = DecimalField(40, 0, null=True)
 
 
 class TempPaymentCurrency(BaseModel):
@@ -129,7 +135,7 @@ class Announcement(BaseModel):
     type_operation = CharField()
     trade_currency = CharField()
     amount = DecimalField(40, 0)
-    exchange_rate = DecimalField(40, 0, null=True)
+    currency_value = DecimalField(40, 0, null=True)
     status = CharField()
 
     @property
@@ -150,10 +156,22 @@ class Trade(BaseModel):
     announcement = ForeignKeyField(Announcement, backref='trade_', on_delete='CASCADE')
     user = ForeignKeyField(User, backref='trade_', on_delete='CASCADE')
     status = CharField()
-    user_currency = CharField()
+    payment_currency = CharField()
     amount = DecimalField(40, 0, default=0)
     deposite = BooleanField(default=False)
     created_at = DateTimeField(null=True)
+
+
+class CashFlowStatement(BaseModel):
+    user = ForeignKeyField(User)
+    trade = ForeignKeyField(Trade, null=True)
+    type_operation = CharField()
+    amount = DecimalField(40, 0, default=0)
+    tx_fee = DecimalField(40, 0, default=0, null=True)
+    currency = CharField()
+    fee_currency = CharField(null=True)
+    tx_hash = CharField(null=True)
+    created_at = DateTimeField(default=dt.datetime.utcnow)
 
 
 class HoldMoney(BaseModel):

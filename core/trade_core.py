@@ -1,5 +1,4 @@
 from decimal import Decimal
-from time import sleep
 import math
 
 from mintersdk.shortcuts import to_bip, to_pip
@@ -8,7 +7,7 @@ from pyrogram import InlineKeyboardMarkup, InlineKeyboardButton
 from blockchain import ethAPI, minterAPI
 from bot_tools import converter
 from bot_tools.converter import currency_in_usd
-from bot_tools.help import correct_name, get_balance_from_currency
+from bot_tools.help import correct_name, get_balance_from_currency, create_cash_flow_record
 from logs import trade_log
 from trade_errors import InsufficientFundsOwner, MinterErrorTransaction, InsufficientFundsAnnouncement, TransactionError
 from keyboard import trade_kb
@@ -26,7 +25,7 @@ def create_announcement(temp_announcement):
                                        type_operation=temp_announcement.type_operation,
                                        trade_currency=trade_currency,
                                        amount=temp_announcement.amount,
-                                       exchange_rate=temp_announcement.exchange_rate,
+                                       currency_value=temp_announcement.currency_value,
                                        status='close')
 
     temp_payment_currency = TempPaymentCurrency.select().where(TempPaymentCurrency.user_id == user.id)
@@ -41,17 +40,6 @@ def create_announcement(temp_announcement):
     return announcement
 
 
-def get_max_limit(temp_announcement):
-    user = temp_announcement.user
-
-    if temp_announcement.type_operation_id == 'sale':
-        trade_currency = temp_announcement.trade_currency
-        trade_amount = temp_announcement.amount
-        rate = temp_announcement.exchange_rate
-
-        virt_balance = VirtualWallet.get(user_id=user.id, currency=trade_currency)
-
-
 def get_ad_info(announc_id):
     trade_direction = {'buy': {'type': 'Покупка',
                                'icon': '📈'},
@@ -64,15 +52,16 @@ def get_ad_info(announc_id):
     type_operation = announcement.type_operation
     trade_currency = announcement.trade_currency
     announc_status = announcement.status
+
     amount = to_bip(announcement.amount)
     price_for_currency = currency_in_usd(trade_currency, 1)
     payment_currency = PaymentCurrency.select().where(PaymentCurrency.announcement_id == announc_id)
 
     txt = f'📰️  Объявление {announcement.id}\n\n' \
         f'**{trade_direction[type_operation]["type"]} {trade_currency} {trade_direction[type_operation]["icon"]}**\n\n' \
-        f'**Стоимость:** {to_bip(announcement.exchange_rate) * amount} USD\n' \
+        f'**Стоимость:** {to_bip(announcement.currency_value) * amount} USD\n' \
         f'**Сумма**: {amount} {trade_currency}\n\n' \
-        f'Цена за 1 {trade_currency}  {to_bip(announcement.exchange_rate)} USD\n\n' \
+        f'Цена за 1 {trade_currency}  {to_bip(announcement.currency_value)} USD\n\n' \
         f'**Платёжные инструменты:**\n'
 
     for curr in payment_currency:
@@ -84,9 +73,9 @@ def get_ad_info(announc_id):
 
 def announcement_list_kb(type_operation, offset):
     if type_operation == 'buy':
-        order_by = Announcement.exchange_rate.desc()
+        order_by = Announcement.currency_value.desc()
     else:
-        order_by = Announcement.exchange_rate
+        order_by = Announcement.currency_value
 
     anc = Announcement
     announcs = (Announcement
@@ -175,7 +164,7 @@ def hold_money(cli, trade):
 
 def start_trade(cli, trade):
     user = trade.user
-    user_wallet = VirtualWallet.get(user_id=user.id, currency=trade.user_currency)
+    user_wallet = VirtualWallet.get(user_id=user.id, currency=trade.payment_currency)
     user_name = correct_name(user)
 
     owner = trade.announcement.user
@@ -188,10 +177,10 @@ def start_trade(cli, trade):
     trade_currency = trade.announcement.trade_currency
 
     #  Выбранный платёжный инструмент пользователя
-    payment_currency = trade.user_currency
+    payment_currency = trade.payment_currency
 
     #  Цена лота от владельца объявления
-    trade_currency_price = trade.announcement.exchange_rate
+    trade_currency_price = trade.announcement.currency_value
 
     #  Цена выбранной валюты
     cost_payment_currency_in_usd = Decimal(converter.currency_in_usd(payment_currency, 1))
@@ -205,9 +194,13 @@ def start_trade(cli, trade):
     if payment_currency == 'USDT':
         user_currency_wallet = Wallet.get(user_id=user.id, currency='ETH')
         owner_currency_wallet = Wallet.get(user_id=owner.id, currency='ETH')
+        user_fee_currency = 'ETH'
+        owner_fee_currency = 'ETH'
     else:
         user_currency_wallet = Wallet.get(user_id=user.id, currency=payment_currency)
         owner_currency_wallet = Wallet.get(user_id=owner.id, currency=trade_currency)
+        user_fee_currency = payment_currency
+        owner_fee_currency = trade_currency
 
     owner_recipient_address = UserPurse.get(user_id=owner.id, currency=payment_currency).address
     user_recipient_address = UserPurse.get(user_id=user.id, currency=trade_currency).address
@@ -240,6 +233,16 @@ def start_trade(cli, trade):
 
     tx_hash_1 = tx_1[0]
     fee_1 = tx_1[1]
+
+    create_cash_flow_record(user=user.id,
+                            trade=trade.id,
+                            type_operation='exchange',
+                            amount=price_deal_in_payment_currency,
+                            tx_fee=fee_1,
+                            currency=payment_currency,
+                            fee_currency=user_fee_currency,
+                            tx_hash=tx_hash_1)
+
     trade_log.successful_tx(cli, 'first', trade, user_currency_wallet.address, owner_recipient_address, payment_currency, price_deal_in_payment_currency, fee_1, tx_hash_1)
 
 
@@ -257,6 +260,15 @@ def start_trade(cli, trade):
     tx_hash_2 = tx_2[0]
     fee_2 = tx_2[1]
 
+    create_cash_flow_record(user=owner.id,
+                            trade=trade.id,
+                            type_operation='exchange',
+                            amount=trade.amount,
+                            tx_fee=fee_2,
+                            currency=trade_currency,
+                            fee_currency=owner_fee_currency,
+                            tx_hash=tx_hash_2)
+
     trade_log.successful_tx(cli, 'second', trade, owner_currency_wallet.address, user_recipient_address, trade_currency,
                             to_bip(trade.amount), fee_2, tx_hash_2)
 
@@ -265,11 +277,12 @@ def start_trade(cli, trade):
 
 def start_semi_auto_trade(cli, trade, amount, recipient_address):
     user = trade.user
-    txt = f'Отправьте {amount} {trade.user_currency} на счёт:\n' \
+    txt = f'Отправьте {amount} {trade.payment_currency} на счёт:\n' \
         f'{recipient_address}'
 
     kb = InlineKeyboardMarkup([[InlineKeyboardButton('Я оплатил', callback_data=f'i payed {trade.id}')],
                                [InlineKeyboardButton('Отменить сделку', callback_data=f'trade cancel {trade.id}')]])
+
     cli.send_message(user.tg_id, txt, reply_markup=kb)
 
 
@@ -312,6 +325,9 @@ def auto_transaction(payment_currency, wallet, recipient_address, amount):
 
 
 def close_trade(cli, trade, owner_fee, user_fee, price_deal_in_payment_currency):
+    trade.status = 'closed'
+    trade.save()
+
     HoldMoney.delete().where(HoldMoney.trade_id == trade.id).execute()
 
     user = trade.user
@@ -323,7 +339,7 @@ def close_trade(cli, trade, owner_fee, user_fee, price_deal_in_payment_currency)
     owner_wallet.balance -= owner_fee
     owner_wallet.save()
 
-    user_wallet = VirtualWallet.get(user_id=user.id, currency=trade.user_currency)
+    user_wallet = VirtualWallet.get(user_id=user.id, currency=trade.payment_currency)
 
     if trade.deposite:
         user_wallet.balance -= to_pip(price_deal_in_payment_currency) + user_fee
@@ -356,3 +372,32 @@ def turn_off_announcement_and_inform(cli, announcement_id):
         cli.send_message(user.tg_id, txt)
     except Exception as e:
         print(f'error 332 trade core {e}')
+
+
+def start_buy_trade(cli, cb, trade):
+    trade_currency_price = trade.announcement.currency_value
+    trade_currency = trade.announcement.trade_currency
+    owner = trade.announcement.user
+    owner_name = correct_name(owner)
+
+    user = trade.user
+    user_name = correct_name(user)
+
+    cost_payment_currency_in_usd = Decimal(converter.currency_in_usd(trade.payment_currency, 1))
+    price_deal_in_usd = to_bip(trade.amount) * to_bip(trade_currency_price)
+
+    price_deal_in_payment_currency = price_deal_in_usd / cost_payment_currency_in_usd
+    comission = to_pip(0)
+    payment_currency = 'ETH' if trade.payment_currency == 'USDT' else trade.payment_currency
+
+    user_wallet = VirtualWallet.get(user_id=user.id, currency=trade_currency)
+
+    if trade.amount + comission > user_wallet.balance:
+        cb.message.delete()
+
+        trade_log.trade_start(cli, trade, owner_name, user_name, trade.announcement.type_operation,
+                              trade_currency_price, trade_currency, price_deal_in_usd, price_deal_in_payment_currency)
+
+        owner_recipient_address = UserPurse.get(user_id=trade.announcement.user_id, currency=payment_currency).address
+        start_semi_auto_trade(cli, trade, price_deal_in_payment_currency, owner_recipient_address)
+        return
