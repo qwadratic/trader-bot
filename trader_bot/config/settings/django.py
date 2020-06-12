@@ -30,6 +30,7 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = [
+    'modeltranslation',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -103,8 +104,19 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 # https://docs.djangoproject.com/en/3.0/topics/i18n/
-
+#LANGUAGE_CODE = 'ru-ru'
 LANGUAGE_CODE = 'en-us'
+
+
+gettext = lambda s: s
+LANGUAGES = [
+    ('ru', 'Russian'),
+    ('en', 'English'),
+]
+
+MODELTRANSLATION_DEFAULT_LANGUAGE = 'ru'
+MODELTRANSLATION_TRANSLATION_REGISTRY = 'trader_bot.translation'
+
 
 TIME_ZONE = 'UTC'
 
