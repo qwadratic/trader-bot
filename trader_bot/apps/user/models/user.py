@@ -1,12 +1,25 @@
 from django.db.models import Model, IntegerField, CharField, DateTimeField, PositiveIntegerField, ForeignKey, CASCADE, \
-    BooleanField, DecimalField, OneToOneField
+    BooleanField, DecimalField, OneToOneField, Manager
 
 
 from django.utils import timezone
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext as _, activate
+
+from trader_bot.apps.bot.models.text import Text
 
 
-class User(Model):
+class GetOrNoneManager(Manager):
+
+    def get_or_none(self, **kwargs):
+        try:
+            return self.get(**kwargs)
+        except self.model.DoesNotExist:
+            return None
+
+
+class TelegramUser(Model):
+    objects = GetOrNoneManager()
+
     telegram_id = PositiveIntegerField(_('Telegram user ID'), unique=True)
     username = CharField(_('User name'), max_length=255, null=True)
     first_name = CharField(_('First name'), max_length=255,null=True)
@@ -17,9 +30,14 @@ class User(Model):
     class Meta:
         verbose_name = 'Telegram User'
 
+    def get_text(self, name):
+        activate(self.settings.language)
+        txt = Text.objects.get(name=name).text
+        return txt
+
 
 class UserFlag(Model):
-    user = ForeignKey(User, related_name='flags', on_delete=CASCADE)
+    user = ForeignKey(TelegramUser, related_name='flags', on_delete=CASCADE)
     temp_currency = CharField(null=True, max_length=255)
     requisites_for_trade = BooleanField(default=False)
     requisites_for_start_deal = BooleanField(default=False)
@@ -32,7 +50,7 @@ class UserFlag(Model):
 
 
 class UserSettings(Model):
-    user = OneToOneField(User, related_name='settings', on_delete=CASCADE)
+    user = OneToOneField(TelegramUser, related_name='settings', on_delete=CASCADE)
     language = CharField(default='ru', max_length=255)
     currency = CharField(default='USD', max_length=255)
     announcement_id = PositiveIntegerField(null=True)
@@ -40,19 +58,19 @@ class UserSettings(Model):
 
 
 class UserRef(Model):
-    user = OneToOneField(User, related_name='ref', on_delete=CASCADE)
-    ref_user = ForeignKey(User, on_delete=CASCADE)
+    user = OneToOneField(TelegramUser, related_name='ref', on_delete=CASCADE)
+    referrer = ForeignKey(TelegramUser, on_delete=CASCADE)
     ref_created_at = DateTimeField(auto_now_add=True)
 
 
 class MsgId(Model):
-    user_id = OneToOneField(User, related_name='msg', on_delete=CASCADE)
+    user = OneToOneField(TelegramUser, related_name='msg', on_delete=CASCADE)
     trade_menu = PositiveIntegerField(null=True)
     wallet_menu = PositiveIntegerField(null=True)
 
 
 class Wallet(Model):
-    user = ForeignKey(User, related_name='wallets', on_delete=CASCADE)
+    user = ForeignKey(TelegramUser, related_name='wallets', on_delete=CASCADE)
     currency = CharField(max_length=255)
     address = CharField(max_length=255)
     mnemonic = CharField(max_length=255, null=True)
@@ -60,13 +78,13 @@ class Wallet(Model):
 
 
 class VirtualWallet(Model):
-    user = ForeignKey(User, related_name='virt_wallets', on_delete=CASCADE)
+    user = ForeignKey(TelegramUser, related_name='virt_wallets', on_delete=CASCADE)
     currency = CharField(max_length=255)
     balance = DecimalField(max_digits=40, decimal_places=0, default=0)
 
 
 class UserPurse(Model):
-    user = ForeignKey(User, related_name='purse', on_delete=CASCADE)
+    user = ForeignKey(TelegramUser, related_name='purse', on_delete=CASCADE)
     name = CharField(max_length=255, null=True)
     currency = CharField(max_length=255)
     address = CharField(max_length=255, null=True)

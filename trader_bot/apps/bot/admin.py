@@ -8,4 +8,4 @@ import trader_bot.translation
 @admin.register(Text)
 class TextAdmin(TranslationAdmin):
 
-    list_display = ('text',)
+    list_display = ('name',)

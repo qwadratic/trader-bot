@@ -11,5 +11,5 @@ class Command(BaseCommand):
         app = Client(
             'session_main',
             api_id=TG_API_ID, api_hash=TG_API_HASH, bot_token=TG_API_TOKEN,
-            plugins={'root': 'k'})
+            plugins={'root': 'trader_bot/apps/bot/handlers'})
         app.run()

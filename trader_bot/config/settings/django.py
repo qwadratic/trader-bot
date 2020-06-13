@@ -30,13 +30,13 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = [
-    'modeltranslation',
-    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'modeltranslation',
+    'django.contrib.admin',
     'trader_bot.apps.bot',
     'trader_bot.apps.user',
     'trader_bot.apps.order',
@@ -114,7 +114,6 @@ LANGUAGES = [
     ('en', 'English'),
 ]
 
-MODELTRANSLATION_DEFAULT_LANGUAGE = 'ru'
 MODELTRANSLATION_TRANSLATION_REGISTRY = 'trader_bot.translation'
 
 

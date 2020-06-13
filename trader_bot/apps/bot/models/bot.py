@@ -1,5 +1,5 @@
 from django.db.models import Model, CharField, PositiveIntegerField, DecimalField, ForeignKey, DateTimeField, CASCADE
-from trader_bot.apps.user.models import User
+from trader_bot.apps.user.models import TelegramUser
 from trader_bot.apps.trade.models import Trade
 
 
@@ -9,7 +9,7 @@ class Service(Model):
 
 
 class CashFlowStatement(Model):
-    user = ForeignKey(User, on_delete=CASCADE)
+    user = ForeignKey(TelegramUser, on_delete=CASCADE)
     trade = ForeignKey(Trade, null=True, on_delete=CASCADE)
     type_operation = CharField(max_length=255)
     amount = DecimalField(max_digits=40, decimal_places=0, default=0)
