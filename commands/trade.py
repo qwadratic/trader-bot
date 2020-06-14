@@ -206,7 +206,7 @@ def choice_payment_instrument(cli, cb):
                     user_flag.requisites_for_trade = False
                     user_flag.save()
 
-                    msg_ids = user.msgid
+                    msg_ids = user.msg
                     msg = cb.message.reply(trade_text.indicate_requisites(temp_announcement.trade_currency))
                     msg_ids.await_requisites = msg.message_id
                     msg_ids.save()
