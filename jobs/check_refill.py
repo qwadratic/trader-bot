@@ -289,3 +289,4 @@ def update_balance(cli, refills):
             print('check_refill, line 272\n', e)
 
     CashFlowStatement.insert_many(refills_list).execute()
+
