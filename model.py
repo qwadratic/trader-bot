@@ -185,8 +185,7 @@ class Service(BaseModel):
 
 #spreadsheets_table_db
 class Text(BaseModel):
-    id = IntegerField(primary_key=True)
-    name = CharField(max_length=255)
+    name = CharField(unique=True)
     text = TextField()
     textru = TextField()
     texten = TextField()

@@ -5,7 +5,7 @@ import peeweedbevolve
 
 from jobs.check_refill import check_refill_bip, check_refill_eth
 from jobs.ref import job_check_ref
-from jobs.ref import json_get
+from jobs.spreadsheet import json_get
 from model import db
 
 
