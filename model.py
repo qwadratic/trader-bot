@@ -182,3 +182,13 @@ class HoldMoney(BaseModel):
 class Service(BaseModel):
     currency = CharField(unique=True)
     last_block = IntegerField()
+
+#spreadsheets_table_db
+class Text(BaseModel):
+    id = IntegerField(primary_key=True)
+    name = CharField(max_length=255)
+    text = TextField()
+    textru = TextField()
+    texten = TextField()
+
+
