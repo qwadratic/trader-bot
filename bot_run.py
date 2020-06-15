@@ -15,7 +15,7 @@ shed = BackgroundScheduler()
 shed.add_job(job_check_ref, 'interval', hours=2)
 shed.add_job(check_refill_bip, 'interval', seconds=5, args=[app])
 shed.add_job(check_refill_eth, 'interval', seconds=10, args=[app])
-shed.add_job(json_get, 'interval', hours=2) #update Text data from spreadsheets
+shed.add_job(json_get, 'interval', hours=24) #update Text data from spreadsheets
 
 shed.start()
 

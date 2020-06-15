@@ -187,7 +187,5 @@ class Service(BaseModel):
 class Text(BaseModel):
     name = CharField(unique=True)
     text = TextField()
-    textru = TextField()
-    texten = TextField()
-
-
+    text_ru = TextField()
+    text_en = TextField()
