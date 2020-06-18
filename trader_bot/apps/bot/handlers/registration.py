@@ -1,7 +1,7 @@
 from pyrogram import Client, Filters
 
 from ...user.logic.filters import ref_link
-from ...user.models import TelegramUser, MsgId, UserSettings, UserFlag, UserRef
+from ...user.models import TelegramUser, UserMsg, UserSettings, UserFlag, UserRef
 from ...order.models import Order
 from trader_bot.apps.bot.helpers.shortcut import get_user
 from ...user.logic import kb
@@ -23,7 +23,7 @@ def start_command(_, m):
 
         )
 
-        MsgId.objects.create(user=user)
+        UserMsg.objects.create(user=user)
         UserFlag.objects.create(user=user)
         UserSettings.objects.create(user=user)
         create_wallets_for_user(user)
@@ -62,7 +62,7 @@ def ref_start(_, m):
 
         )
 
-        MsgId.objects.create(user=user)
+        UserMsg.objects.create(user=user)
         UserFlag.objects.create(user=user)
         create_wallets_for_user(user)
 
@@ -126,10 +126,12 @@ def ref_start(_, m):
                 if referrer.id == user.id:
                     m.reply(user.get_text(name="user-start"), reply_markup=kb.start_menu(user))
                     return
-
+                # TODO TOFOD
                 UserRef.objects.update_or_create(
                     user=user,
-                    referrer=referrer
+                    defaults=dict(
+                        referrer=referrer
+                    )
                 )
 
                 m.reply(user.get_text(name="user-start_ref"), reply_markup=kb.hide(user))

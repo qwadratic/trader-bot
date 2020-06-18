@@ -1,7 +1,8 @@
 from django.db.models import Model, IntegerField, CharField, DateTimeField, PositiveIntegerField, ForeignKey, CASCADE, \
     BooleanField, DecimalField, OneToOneField, Manager
+from django.contrib.postgres.fields import JSONField
 
-
+from django.db.utils import IntegrityError
 from django.utils import timezone
 from django.utils.translation import gettext as _, activate
 
@@ -26,6 +27,17 @@ class TelegramUser(Model):
     last_name = CharField(_('Last name'), max_length=255, null=True)
     last_activity = DateTimeField(_('Last activity'), null=True)
     created_at = DateTimeField(_('Registration date'), auto_now_add=True)
+    cache = JSONField(default=dict(
+        msg=dict(
+            trade_menu=None,
+            wallet_menu=None
+        ),
+        clipboard=dict(
+            currency=None,
+            requisites=list,
+            active_trade=None
+        )
+    ))
 
     class Meta:
         verbose_name = 'Telegram User'
@@ -37,7 +49,14 @@ class TelegramUser(Model):
 
 
 class UserFlag(Model):
+    objects = GetOrNoneManager()
+
     user = ForeignKey(TelegramUser, related_name='flags', on_delete=CASCADE)
+    await_requisites_for_order = BooleanField(default=False)
+    await_currency_rate = BooleanField(default=False)
+    await_requisite_for_order = BooleanField(default=False)
+    await_amount_for_order = BooleanField(default=False)
+
     temp_currency = CharField(null=True, max_length=255)
     requisites_for_trade = BooleanField(default=False)
     requisites_for_start_deal = BooleanField(default=False)
@@ -63,7 +82,7 @@ class UserRef(Model):
     ref_created_at = DateTimeField(auto_now_add=True)
 
 
-class MsgId(Model):
+class UserMsg(Model):
     user = OneToOneField(TelegramUser, related_name='msg', on_delete=CASCADE)
     trade_menu = PositiveIntegerField(null=True)
     wallet_menu = PositiveIntegerField(null=True)
@@ -84,7 +103,9 @@ class VirtualWallet(Model):
 
 
 class UserPurse(Model):
-    user = ForeignKey(TelegramUser, related_name='purse', on_delete=CASCADE)
+    objects = GetOrNoneManager()
+
+    user = ForeignKey(TelegramUser, related_name='requisites', on_delete=CASCADE)
     name = CharField(max_length=255, null=True)
     currency = CharField(max_length=255)
     address = CharField(max_length=255, null=True)
