@@ -245,8 +245,8 @@ def requisite_for_order_from_purse(cli, cb):
         flags.save()
 
 
-@Client.on_message(Filters.create(lambda _, m: get_user(m.from_user.id).flags.get_or_none() and
-                                               get_user(m.from_user.id).flags.get().await_currency_rate))
+@Client.on_message(Filters.create(lambda _, m: get_user(m.from_user.id).flags and
+                                               get_user(m.from_user.id).flags.await_currency_rate))
 def enter_currency_rate(cli, m):
     user = get_user(m.from_user.id)
 
@@ -271,8 +271,8 @@ def enter_currency_rate(cli, m):
     m.reply(user.get_text(name='order-enter_amount'))
 
 
-@Client.on_message(Filters.create(lambda _, m: get_user(m.from_user.id).flags.get_or_none() and
-                                               get_user(m.from_user.id).flags.get().await_amount_for_order))
+@Client.on_message(Filters.create(lambda _, m: get_user(m.from_user.id).flags and
+                                               get_user(m.from_user.id).flags.await_amount_for_order))
 def amount_for_order(cli, m):
     user = get_user(m.from_user.id)
 

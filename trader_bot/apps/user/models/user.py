@@ -51,7 +51,7 @@ class TelegramUser(Model):
 class UserFlag(Model):
     objects = GetOrNoneManager()
 
-    user = ForeignKey(TelegramUser, related_name='flags', on_delete=CASCADE)
+    user = OneToOneField(TelegramUser, related_name='flags', on_delete=CASCADE)
     await_requisites_for_order = BooleanField(default=False)
     await_currency_rate = BooleanField(default=False)
     await_requisite_for_order = BooleanField(default=False)
@@ -97,7 +97,7 @@ class Wallet(Model):
 
 
 class VirtualWallet(Model):
-    user = ForeignKey(TelegramUser, related_name='virt_wallets', on_delete=CASCADE)
+    user = ForeignKey(TelegramUser, related_name='virtual_wallets', on_delete=CASCADE)
     currency = CharField(max_length=255)
     balance = DecimalField(max_digits=40, decimal_places=0, default=0)
 
