@@ -14,16 +14,6 @@ def check_name():
     if len(data_name_list)==0:
         query = write_data()
         query.execute()
-        """
-        for text in request_data:
-            update_data.append(dict(
-                name=text['name'],
-                text=text['text'],
-                text_ru=text['text_ru'],
-                text_en=text['text_en']
-            ))
-        Text.insert(update_data).execute()
-        """
     else:
         for i in request_data:
             request_name_list.append(i['name'])
