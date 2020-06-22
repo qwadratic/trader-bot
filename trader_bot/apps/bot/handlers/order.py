@@ -40,10 +40,9 @@ def trade_menu_controller(cli, cb):
             user=user,
             type_operation='buy'
         )
-        cb.message.edit(cb.message.text)
-        cb.message.reply(
+        cb.message.edit(
             user.get_text(name='order-select_trade_currency').format(
-                type_operation=user.get_text(name='order-order-type_operation_translate_buy_1')),
+                type_operation=user.get_text(name='order-type_operation_translate_buy_1')),
             reply_markup=kb.trade_currency(user))
 
     elif button == 'new_sale':
@@ -59,8 +58,7 @@ def trade_menu_controller(cli, cb):
             reply_markup=kb.trade_currency(user))
 
     elif button == 'orders':
-        cb.message.edit(cb.message.text)
-        cb.message.reply(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list('sale', 0))
+        cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list('sale', 0))
 
     elif button == 'my_orders':
         pass
@@ -111,16 +109,29 @@ def select_payment_currency(cli, cb):
         user.cache['clipboard']['requisites'].clear()
         user.save()
 
-        for currency in payment_currency_list:
+        if order.type_operation == 'sale':
+
+            for currency in payment_currency_list:
+                user.cache['clipboard']['requisites'].append(currency)
+
+            currency = user.cache['clipboard']['currency'] = user.cache['clipboard']['requisites'][0]
+            user.save()
+
+            cb.message.edit(cb.message.text)
+            cb.message.reply(
+                user.get_text(name='order-select_requisite_for_order').format(currency=currency),
+                reply_markup=kb.choice_requisite_for_order(order, currency))
+
+        if order.type_operation == 'buy':
+            currency = order.trade_currency
             user.cache['clipboard']['requisites'].append(currency)
+            user.cache['clipboard']['currency'] = currency
+            user.save()
 
-        currency = user.cache['clipboard']['currency'] = user.cache['clipboard']['requisites'][0]
-        user.save()
-
-        cb.message.edit(cb.message.text)
-        cb.message.reply(
-            user.get_text(name='order-select_requisite_for_order').format(currency=currency),
-            reply_markup=kb.choice_requisite_for_order(order, currency))
+            cb.message.edit(cb.message.text)
+            cb.message.reply(
+                user.get_text(name='order-select_requisite_for_order').format(currency=currency),
+                reply_markup=kb.choice_requisite_for_order(order, currency))
 
     elif payment_currency == 'back':
         order.payment_currency.clear()

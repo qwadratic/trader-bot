@@ -64,7 +64,7 @@ def create_order(temp_order):
             amount=order.amount,
             currency_rate=order.currency_rate,
             payment_currency=order.trade_currency,
-            requisites={currency: order.requisites[currency]},
+            requisites={order.trade_currency: order.requisites[order.trade_currency]},
             status='close'
 
         )

@@ -24,7 +24,8 @@ class DeleteAndCreateManager(Manager):
         try:
             return self.create(**kwargs)
         except IntegrityError:
-            self.get(**kwargs).delete()
+            print(kwargs)
+            self.get(user=kwargs['user']).delete()
             return self.create(**kwargs)
 
 
