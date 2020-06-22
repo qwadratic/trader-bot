@@ -53,3 +53,15 @@ class Order(Model):
     created_at = DateTimeField(auto_now_add=True)
     status = CharField(max_length=255)
 
+
+class OrderMirror(Model):
+    order = ForeignKey(Order, related_name='mirror', on_delete=CASCADE)
+
+    type_operation = CharField(max_length=255)
+    trade_currency = CharField(max_length=255)
+    amount = DecimalField(max_digits=40, decimal_places=0)
+    currency_rate = DecimalField(max_digits=40, decimal_places=0)
+    payment_currency = JSONField(default=dict)
+    requisites = JSONField(default=dict)
+    created_at = DateTimeField(auto_now_add=True)
+    status = CharField(max_length=255)
