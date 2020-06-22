@@ -40,4 +40,3 @@ def write_data():
             text_en=i['text_en']
         ))
     return Text.insert(update_data)
-
