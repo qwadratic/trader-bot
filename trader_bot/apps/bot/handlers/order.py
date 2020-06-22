@@ -2,9 +2,10 @@ from time import sleep
 
 from pyrogram import Client, Filters
 
-from trader_bot.apps.order.logic.core import get_order_info
+from trader_bot.apps.order.logic.core import get_order_info, create_order
 from trader_bot.apps.order.logic.text_func import choice_payment_currency_text
-from ..helpers import get_user, delete_msg, to_bip, to_pip, currency_in_user_currency
+from trader_bot.apps.user.models import UserPurse
+from ..helpers import get_user, delete_msg, to_bip, to_pip, currency_in_user_currency, currency_in_usd, check_address
 
 from ...order.logic import kb
 
@@ -52,8 +53,9 @@ def trade_menu_controller(cli, cb):
             type_operation='sale'
         )
 
-        cb.message.edit(user.get_text(name='order-select_trade_currency').format(
-                type_operation=user.get_text(name='order-order-type_operation_translate_buy_1')),
+        cb.message.edit(
+            user.get_text(name='order-select_trade_currency').format(
+                type_operation=user.get_text(name='order-type_operation_translate_sale_1')),
             reply_markup=kb.trade_currency(user))
 
     elif button == 'orders':
@@ -123,7 +125,14 @@ def select_payment_currency(cli, cb):
     elif payment_currency == 'back':
         order.payment_currency.clear()
         order.save()
-        cb.message.edit(user.get_text(name='order-select_trade_currency'), reply_markup=kb.trade_currency(user))
+        if order.type_operation == 'sale':
+            txt = user.get_text(name='order-select_trade_currency').format(
+                type_operation=user.get_text(name='order-type_operation_translate_sale_1'))
+        else:
+            txt = user.get_text(name='order-select_trade_currency').format(
+                type_operation=user.get_text(name='order-type_operation_translate_buy_1'))
+
+        cb.message.edit(txt, reply_markup=kb.trade_currency(user))
 
     # input currency via inline kb
     else:
@@ -134,8 +143,7 @@ def select_payment_currency(cli, cb):
 
         order.save()
 
-        cb.message.edit(cb.message.text)
-        cb.message.reply(choice_payment_currency_text(order), reply_markup=kb.payment_currency(trade_currency, user))
+        cb.message.edit(choice_payment_currency_text(order), reply_markup=kb.payment_currency(trade_currency, user))
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:19] == 'requisite_for_order'))
@@ -143,7 +151,7 @@ def select_requisite_for_order(cli, cb):
     user = get_user(cb.from_user.id)
     order = user.temp_order
     cache = user.cache
-    flags = user.flags.get()
+    flags = user.flags
 
     current_currency = user.cache['clipboard']['currency']
     choice = cb.data.split('-')[1]
@@ -207,19 +215,71 @@ def select_requisite_for_order(cli, cb):
 
     if choice == 'add_new':
         flags.await_requisite_for_order = True
+        flags.save()
 
         cb.message.edit(cb.message.text)
-        cb.message.reply(user.get_text(name='purse-enter_address'))
+        cb.message.reply(user.get_text(name='purse-enter_address').format(currency=current_currency))
+
+
+@Client.on_message(Filters.create(lambda _, m: get_user(m.from_user.id).flags and
+                                               get_user(m.from_user.id).flags.await_requisite_for_order))
+def requisite_for_order(cli, m):
+    user = get_user(m.from_user.id)
+    order = user.temp_order
+    flags = user.flags
+
+    current_currency = user.cache['clipboard']['currency']
+    requisite = UserPurse.objects.create(user=user, currency=current_currency)
+
+    address = m.text if check_address(m.text, current_currency) else None
+    if not address:
+        msg = m.reply(user.get_text(name='bot-invalid_address'))
+        sleep(3)
+        msg.delete()
+        return
+
+    if address:
+        requisite.address = address
+        requisite.status = 'valid'
+        requisite.save()
+
+        flags.await_requisite_for_order = False
+        flags.save()
+
+    order.requisites[current_currency] = requisite.address
+    order.save()
+
+    user.cache['clipboard']['requisites'].remove(current_currency)
+
+    if len(user.cache['clipboard']['requisites']) <= 0:
+
+        m.reply(user.get_text(name='order-enter_currency_rate').format(
+            trade_currency=order.trade_currency,
+            user_currency=user.settings.currency,
+            price=currency_in_user_currency(order.trade_currency, user.settings.currency, 1)))
+
+        flags.await_currency_rate = True
+        flags.save()
+    else:
+        currency = user.cache['clipboard']['requisites'][0]
+
+        user.cache['clipboard']['currency'] = currency
+
+        m.reply(
+            user.get_text(name='order-select_requisite_for_order').format(currency=currency),
+            reply_markup=kb.choice_requisite_for_order(order, currency))
+
+    user.save()
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:20] == 'requisite_from_purse'))
 def requisite_for_order_from_purse(cli, cb):
     user = get_user(cb.from_user.id)
     order = user.temp_order
-    flags = user.flags.get()
+    flags = user.flags
     current_currency = user.cache['clipboard']['currency']
 
-    button = cb.data.split('-')[0]
+    button = cb.data.split('-')[1]
 
     if button == 'back':
         cb.message.edit(
@@ -230,7 +290,8 @@ def requisite_for_order_from_purse(cli, cb):
 
     if button == 'use':
         req_id = int(cb.data.split('-')[2])
-        internal_address = user.requisites.get(id=req_id)
+        internal_address = user.requisites.get(id=req_id).address
+
         order.requisites[current_currency] = internal_address
         order.save()
 
@@ -251,7 +312,7 @@ def enter_currency_rate(cli, m):
     user = get_user(m.from_user.id)
 
     try:
-        value = to_pip(Decimal(m.text.replace(',', '.')))
+        value = Decimal(m.text.replace(',', '.'))
     except InvalidOperation:
 
         msg = m.reply(user.get_text(name='bot-type_error'))
@@ -259,16 +320,23 @@ def enter_currency_rate(cli, m):
         msg.delete()
         return
 
+    currency_rate = to_pip(currency_in_usd(user.settings.currency, value))
+
     order = user.temp_order
-    order.currency_rate = value
+    order.currency_rate = currency_rate
     order.save()
 
-    flags = user.flags.get()
+    flags = user.flags
     flags.await_currency_rate = False
     flags.await_amount_for_order = True
     flags.save()
 
-    m.reply(user.get_text(name='order-enter_amount'))
+    if order.type_operation == 'sale':
+        type_operation = user.get_text(name='order-type_operation_translate_sale_1')
+    else:
+        type_operation = user.get_text(name='order-type_operation_translate_buy_1')
+
+    m.reply(user.get_text(name='order-enter_amount').format(type_operation=type_operation))
 
 
 @Client.on_message(Filters.create(lambda _, m: get_user(m.from_user.id).flags and
@@ -286,21 +354,12 @@ def amount_for_order(cli, m):
         return
 
     temp_order = user.temp_order
-    temp_order.amount = to_pip(amount)
+    temp_order.amount = amount
 
-    flags = user.flags.get()
+    flags = user.flags
     flags.await_amount_for_order = False
     flags.save()
 
-    order = Order.objects.create(
-        user=user,
-        type_operation=temp_order.type_operation,
-        trade_currency=temp_order.trade_currency,
-        amount=temp_order.amount,
-        currency_rate=temp_order.currency_rate,
-        payment_currency=temp_order.payment_currency,
-        requisites=temp_order.requisites,
-        status='close'
-    )
+    order = create_order(temp_order)
 
-    m.reply(get_order_info(order.id))
+    m.reply(get_order_info(order.id), reply_markup=kb.order_for_owner(order, 1))
