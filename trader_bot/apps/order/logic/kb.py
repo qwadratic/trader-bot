@@ -261,8 +261,8 @@ def order_for_owner(order, location):
             [
                 [InlineKeyboardButton(user.get_text(name='order-kb-share'), callback_data=f'order_info-share')],
                 [InlineKeyboardButton(f'{marker_status_button[order.status]}',callback_data=f'order_info-switch')],
-                [InlineKeyboardButton(user.get_text(name='bot-kb-close'), callback_data=f'order_info-close'),
-                 InlineKeyboardButton(user.get_text(name='bot-kb-delete'), callback_data=f'order_info-delete')]
+                [InlineKeyboardButton(user.get_text(name='kb-close'), callback_data=f'order_info-close'),
+                 InlineKeyboardButton(user.get_text(name='kb-delete'), callback_data=f'order_info-delete')]
 
             ]
         )
@@ -272,8 +272,8 @@ def order_for_owner(order, location):
             [
                 [InlineKeyboardButton(user.get_text(name='order-kb-share'), callback_data=f'order_info-share')],
                 [InlineKeyboardButton(f'{marker_status_button[order.status]}', callback_data=f'order_info-switch')],
-                [InlineKeyboardButton(user.get_text(name='bot-kb-back'), callback_data=f'order_info-back'),
-                 InlineKeyboardButton(user.get_text(name='bot-kb-delete'), callback_data=f'order_info-delete')]
+                [InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=f'order_info-back'),
+                 InlineKeyboardButton(user.get_text(name='kb-delete'), callback_data=f'order_info-delete')]
 
             ]
         )

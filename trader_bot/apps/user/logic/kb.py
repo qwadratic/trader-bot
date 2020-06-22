@@ -79,7 +79,7 @@ choice_currency_for_wallet = InlineKeyboardMarkup(
         [InlineKeyboardButton('USD', callback_data='chcurr-USD'),
          InlineKeyboardButton('RUB', callback_data='chcurr-RUB'),
          InlineKeyboardButton('UAH', callback_data='chcurr-UAH')],
-        [InlineKeyboardButton('🔙 Назад', callback_data='chcurr-back')]
+        [InlineKeyboardButton('🔙', callback_data='chcurr-back')]
 
     ])
 
@@ -109,8 +109,8 @@ def requisite(user, requisite_id):
 def skip_add_requisites_name(user):
     kb = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton(user.get_text(name='bot-kb-skip'), callback_data=f'addreq-skip')],
-                [InlineKeyboardButton(user.get_text(name='bot-kb-cancel'), callback_data=f'addreq-cancel')]
+                [InlineKeyboardButton(user.get_text(name='kb-skip'), callback_data=f'addreq-skip')],
+                [InlineKeyboardButton(user.get_text(name='kb-cancel'), callback_data=f'addreq-cancel')]
             ]
         )
 
@@ -120,7 +120,7 @@ def skip_add_requisites_name(user):
 def cancel_add_requisites(user):
     kb = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton(user.get_text(name='bot-kb-cancel'), callback_data=f'addreq-cancel')]
+                [InlineKeyboardButton(user.get_text(name='kb-cancel'), callback_data=f'addreq-cancel')]
             ]
         )
 
@@ -130,7 +130,7 @@ def cancel_add_requisites(user):
 def cancel_edit_requisite(user, requisite_id):
     kb = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton(user.get_text(name='bot-kb-cancel'), callback_data=f'requisite-cancel-{requisite_id}')]
+                [InlineKeyboardButton(user.get_text(name='kb-cancel'), callback_data=f'requisite-cancel-{requisite_id}')]
             ]
         )
 
@@ -144,15 +144,19 @@ def edit_requisite_name(user, requisite_id):
         kb = InlineKeyboardMarkup(
                 [
                     [InlineKeyboardButton(user.get_text(name='purse-kb-delete'), callback_data=f'requisite-delname-{requisite_id}')],
-                    [InlineKeyboardButton(user.get_text(name='bot-kb-cancel'), callback_data=f'requisite-cancel-{requisite_id}')]
+                    [InlineKeyboardButton(user.get_text(name='kb-cancel'), callback_data=f'requisite-cancel-{requisite_id}')]
                 ]
             )
 
     else:
         kb = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton(user.get_text(name='bot-kb-cancel'), callback_data=f'requisite-cancel-{requisite_id}')]
+                [InlineKeyboardButton(user.get_text(name='kb-cancel'), callback_data=f'requisite-cancel-{requisite_id}')]
             ]
         )
 
     return kb
+
+
+def hide_notification(user):
+    return InlineKeyboardMarkup([[InlineKeyboardButton(user.get_text(name='kb-hide'), callback_data='hide')]])

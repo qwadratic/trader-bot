@@ -1,9 +1,20 @@
-from django.db.models import Model, CharField, PositiveIntegerField, DecimalField, ForeignKey, DateTimeField, CASCADE
+from django.db.models import Manager, Model, CharField, PositiveIntegerField, DecimalField, ForeignKey, DateTimeField, CASCADE
 from trader_bot.apps.user.models import TelegramUser
 from trader_bot.apps.trade.models import Trade
 
 
+class GetOrNoneManager(Manager):
+
+    def get_or_none(self, **kwargs):
+        try:
+            return self.get(**kwargs)
+        except self.model.DoesNotExist:
+            return None
+
+
 class Service(Model):
+    objects = GetOrNoneManager()
+
     currency = CharField(max_length=255, unique=True)
     last_block = PositiveIntegerField()
 
