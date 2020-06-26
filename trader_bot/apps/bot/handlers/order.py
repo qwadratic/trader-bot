@@ -2,7 +2,7 @@ from time import sleep
 
 from pyrogram import Client, Filters
 
-from trader_bot.apps.order.logic.core import get_order_info, create_order
+from trader_bot.apps.order.logic.core import get_order_info, create_order, order_info_for_owner
 from trader_bot.apps.order.logic.text_func import choice_payment_currency_text
 from trader_bot.apps.user.models import UserPurse
 from ..helpers import get_user, delete_msg, to_bip, to_pip, currency_in_user_currency, currency_in_usd, check_address
@@ -58,7 +58,7 @@ def trade_menu_controller(cli, cb):
             reply_markup=kb.trade_currency(user))
 
     elif button == 'orders':
-        cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list('sale', 0))
+        cb.message.reply(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list(user.settings.currency, 'sale', 0))
 
     elif button == 'my_orders':
         pass
@@ -371,6 +371,18 @@ def amount_for_order(cli, m):
     flags.await_amount_for_order = False
     flags.save()
 
-    order = create_order(temp_order)
+    create_order(temp_order)
 
-    m.reply(get_order_info(order.id), reply_markup=kb.order_for_owner(order, 1))
+    m.reply(order_info_for_owner(temp_order.order_id), reply_markup=kb.order_for_owner(temp_order, 1))
+
+
+@Client.on_message(Filters.regex(r'q'))
+def qwe(cli, m):
+    user = get_user(m.from_user.id)
+    orders = Order.objects.all()
+
+    for o in orders:
+        print("trade_currency: " + o.trade_currency)
+        print(to_bip(o.amount))
+        print(to_bip(o.currency_rate))
+        print()

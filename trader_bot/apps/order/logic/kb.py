@@ -1,6 +1,8 @@
+from decimal import Decimal
+
 from pyrogram import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
 
-from ...order.models import Order
+from ...bot.helpers import to_bip, currency_in_usd
 
 
 def trade_menu(user):
@@ -193,20 +195,39 @@ def requisites_from_purse(user):
     return InlineKeyboardMarkup(kb)
 
 
-def order_list(type_operation, offset):
+def order_list(user_currency, type_operation, offset):
     # TODO Решить здесь задачку
 
     if type_operation == 'buy':
         order_by = 'currency_rate'
+        order_mirror = '-currency_rate'
     else:
         order_by = '-currency_rate'
+        order_mirror = 'currency_rate'
 
-    sort_orders = Order.objects.filter(status='open', type_operation=type_operation).order_by(order_by)[offset:offset+7]
-    print(sort_orders)
-
-    all_orders = Order.objects.filter(status='open')
-    kb = []
-    # for order in sort_orders:
+    # sort_orders = [m for m in Order.objects.filter(status='close', type_operation=type_operation).order_by(order_by)]
+    # mirror_orders = [m for m in OrderMirror.objects.filter(
+    #     type_operation=type_operation,
+    #     order__status='close').order_by(order_mirror)
+    #                  ]
+    # orders = sort_orders + mirror_orders
+    #
+    # kb = [[InlineKeyboardButton('eqw', callback_data='asdd')]]
+    #
+    # for order in orders:#[offset:offset+7]:
+    #
+    #     if order.status == 'mirror':
+    #         p = to_bip(order.currency_rate) / Decimal(currency_in_usd(order.payment_currency, 1))
+    #
+    #         button_name = f'{round(p, 4)} {order.payment_currency} ({to_bip(order.currency_rate)} {user_currency}):' \
+    #             f' {to_bip(order.amount)} {order.trade_currency}'
+    #         kb.append([InlineKeyboardButton(button_name, callback_data='asdd')])
+    #
+    #         return InlineKeyboardMarkup(kb)
+   
+    #print(mirror_orders)
+    #all_orders = Order.objects.filter(status='open')
+    # for order in sort_orders:[offset:offset+7]
     #     kb.append([InlineKeyboardButton()])
 
 
