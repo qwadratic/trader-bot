@@ -160,3 +160,40 @@ def edit_requisite_name(user, requisite_id):
 
 def hide_notification(user):
     return InlineKeyboardMarkup([[InlineKeyboardButton(user.get_text(name='kb-hide'), callback_data='hide')]])
+
+
+def settings_menu(user):
+    kb = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton(user.get_text(name='user-kb-language'), callback_data=f'setuser-language'),
+                 InlineKeyboardButton(user.get_text(name='user-kb-currency'), callback_data=f'setuser-currency')],
+                [InlineKeyboardButton(user.get_text(name='user-kb-service_info'), callback_data=f'setuser-about')],
+                [InlineKeyboardButton(user.get_text(name='kb-close'), callback_data=f'hide')]
+            ]
+        )
+    return kb
+
+
+def set_language(user):
+    kb = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton('🇬🇧 English', callback_data=f'userset-language-en')],
+                [InlineKeyboardButton('🇷🇺 Русский', callback_data=f'userset-language-ru')],
+                [InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=f'userset-back-1')]
+            ]
+        )
+
+    return kb
+
+
+def set_currency(user):
+    kb = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton(user.get_text(name='user-kb-usd'), callback_data=f'userset-currency-USD')],
+                [InlineKeyboardButton(user.get_text(name='user-kb-uah'), callback_data=f'userset-currency-UAH')],
+                [InlineKeyboardButton(user.get_text(name='user-kb-rub'), callback_data=f'userset-currency-RUB')],
+                [InlineKeyboardButton('🔙 Назад', callback_data=f'userset-back-1')]
+            ]
+        )
+
+    return kb
