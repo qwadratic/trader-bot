@@ -61,8 +61,7 @@ def trade_menu_controller(cli, cb):
         cb.message.reply(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list(user.settings.currency, 'sale', 0))
 
     elif button == 'my_orders':
-        pass
-        # cb.message.edit(user.get_text(name='order-my_orders'), reply_markup=user_kb.my_announcement(user, 0))
+        cb.message.edit(user.get_text(name='order-my_orders'), reply_markup=kb.owner_order_list(user, 0))
 
     elif button == 'my_trades':
         pass
@@ -371,18 +370,6 @@ def amount_for_order(cli, m):
     flags.await_amount_for_order = False
     flags.save()
 
-    create_order(temp_order)
+    order = create_order(temp_order)
 
-    m.reply(order_info_for_owner(temp_order.order_id), reply_markup=kb.order_for_owner(temp_order, 1))
-
-
-@Client.on_message(Filters.regex(r'q'))
-def qwe(cli, m):
-    user = get_user(m.from_user.id)
-    orders = Order.objects.all()
-
-    for o in orders:
-        print("trade_currency: " + o.trade_currency)
-        print(to_bip(o.amount))
-        print(to_bip(o.currency_rate))
-        print()
+    m.reply(order_info_for_owner(order), reply_markup=kb.order_for_owner(order, 1))

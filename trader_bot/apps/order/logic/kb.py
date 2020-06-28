@@ -1,3 +1,4 @@
+import math
 from decimal import Decimal
 
 from pyrogram import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
@@ -195,7 +196,7 @@ def requisites_from_purse(user):
     return InlineKeyboardMarkup(kb)
 
 
-def order_list(user_currency, type_operation, offset):
+def order_list(user, type_operation, offset):
     # TODO Решить здесь задачку
 
     if type_operation == 'buy':
@@ -204,6 +205,7 @@ def order_list(user_currency, type_operation, offset):
     else:
         order_by = '-currency_rate'
         order_mirror = 'currency_rate'
+
 
     # sort_orders = [m for m in Order.objects.filter(status='close', type_operation=type_operation).order_by(order_by)]
     # mirror_orders = [m for m in OrderMirror.objects.filter(
@@ -270,6 +272,38 @@ def order_list(user_currency, type_operation, offset):
     # kb = InlineKeyboardMarkup(kb_list)
     #
     # return kb
+
+
+def owner_order_list(user, offset):
+    sort_orders = user.parent_orders.all()[offset:offset+7]
+    all_orders = user.parent_orders.all()
+
+    kb_list = [[InlineKeyboardButton(user.get_text(name='kb-back'), callback_data='owner_order-back')]]
+
+    for order in sort_orders:
+        button_name = f'[{order.type_operation}]{order.trade_currency}'
+        kb_list.append([InlineKeyboardButton(button_name, callback_data=f'owner_order-open-{order.id}')])
+
+    if offset == 0 and len(all_orders) <= 7:
+        return InlineKeyboardMarkup(kb_list)
+
+    elif offset == 0:
+        position = f'{int(offset + 2)}/{int(math.ceil(len(all_orders) / 7))}'
+        kb_list.append([InlineKeyboardButton(f'{position} ⇒', callback_data=f'miresult forw {offset}')])
+
+    elif 0 < offset + 7 >= len(all_orders):
+        position = f'{int(math.ceil(len(all_orders) / 7)) - 1}/{int(math.ceil(len(all_orders) / 7))}'
+
+        kb_list.append([InlineKeyboardButton(f'⇐ {position}', callback_data=f'miresult back {offset}')])
+
+    else:
+        position_1 = f'{int((offset + 7) / 7 - 1)}/{int(math.ceil(len(all_orders) / 7))}'
+        position_2 = f'{int(offset / 7 + 2)}/{int(math.ceil(len(all_orders) / 7))}'
+
+        kb_list.append([InlineKeyboardButton(f'⇐ {position_1}', callback_data=f'miresult back {offset}'),
+                        InlineKeyboardButton(f'{position_2} ⇒', callback_data=f'miresult forw {offset}')])
+
+    return InlineKeyboardMarkup(kb_list)
 
 
 def order_for_owner(order, location):

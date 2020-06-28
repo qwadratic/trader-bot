@@ -35,7 +35,6 @@ class DeleteAndCreateManager(Manager):
 class TempOrder(Model):
     objects = DeleteAndCreateManager()
 
-    order_id = UUIDField(default=uuid.uuid4)
     user = OneToOneField(TelegramUser, related_name='temp_order', on_delete=CASCADE)
     type_operation = CharField(null=True, max_length=255)
     trade_currency = CharField(null=True, max_length=255)
@@ -46,18 +45,28 @@ class TempOrder(Model):
     status = CharField(max_length=255, default='close')
 
 
-class Order(Model):
-    objects = GetOrNoneManager()
+class ParentOrder(Model):
+    order_id = UUIDField(default=uuid.uuid4)
+    user = ForeignKey(TelegramUser, related_name='parent_orders', on_delete=CASCADE)
+    type_operation = CharField(null=True, max_length=255)
+    trade_currency = CharField(null=True, max_length=255)
+    amount = DecimalField(max_digits=40, decimal_places=0)
+    currency_rate = DecimalField(max_digits=40, decimal_places=0, null=True)
+    payment_currency = ArrayField(CharField(max_length=50), size=10, default=list)
+    requisites = JSONField(default=dict)
+    status = CharField(max_length=255, default='close')
+    created_at = DateTimeField(auto_now_add=True)
 
-    order_id = UUIDField(default=None)
-    user = ForeignKey(TelegramUser, related_name='orders', on_delete=CASCADE)
+
+class Order(Model):
+    parent_order = ForeignKey(ParentOrder, on_delete=CASCADE)
     type_operation = CharField(max_length=255)
     trade_currency = CharField(max_length=255)
     amount = DecimalField(max_digits=40, decimal_places=0)
     currency_rate = DecimalField(max_digits=40, decimal_places=0)
     payment_currency = CharField(max_length=255)
     requisites = CharField(max_length=255)
-    status = CharField(max_length=255)
+    status = CharField(max_length=255, default='close')
     mirror = BooleanField(default=False)
-    created_at = DateTimeField(auto_now_add=True)
+
 
