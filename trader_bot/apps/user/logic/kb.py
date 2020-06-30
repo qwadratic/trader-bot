@@ -9,7 +9,7 @@ choice_language = InlineKeyboardMarkup(
         )
 
 
-def choice_currency(user):
+def select_currency(user):
     kb = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton(user.get_text(name='user-kb-usd'), callback_data=f'choicecurrency-USD')],

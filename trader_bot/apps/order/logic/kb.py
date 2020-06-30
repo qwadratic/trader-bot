@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from pyrogram import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
 
+from trader_bot.apps.order.models import Order
 from ...bot.helpers import to_bip, currency_in_usd
 
 
@@ -196,82 +197,49 @@ def requisites_from_purse(user):
     return InlineKeyboardMarkup(kb)
 
 
-def order_list(user, type_operation, offset):
-    # TODO Решить здесь задачку
-
-    if type_operation == 'buy':
+def order_list(user, type_orders, offset):
+    # TODO статус поставить
+    if type_orders == 'buy':
         order_by = 'currency_rate'
-        order_mirror = '-currency_rate'
+
     else:
         order_by = '-currency_rate'
-        order_mirror = 'currency_rate'
 
+    orders = Order.objects.filter(type_operation=type_orders).exclude(parent_order__user=user).order_by(order_by)[offset:offset+7]
+    all_orders = Order.objects.filter(type_operation=type_orders).exclude(parent_order__user=user)
 
-    # sort_orders = [m for m in Order.objects.filter(status='close', type_operation=type_operation).order_by(order_by)]
-    # mirror_orders = [m for m in OrderMirror.objects.filter(
-    #     type_operation=type_operation,
-    #     order__status='close').order_by(order_mirror)
-    #                  ]
-    # orders = sort_orders + mirror_orders
-    #
-    # kb = [[InlineKeyboardButton('eqw', callback_data='asdd')]]
-    #
-    # for order in orders:#[offset:offset+7]:
-    #
-    #     if order.status == 'mirror':
-    #         p = to_bip(order.currency_rate) / Decimal(currency_in_usd(order.payment_currency, 1))
-    #
-    #         button_name = f'{round(p, 4)} {order.payment_currency} ({to_bip(order.currency_rate)} {user_currency}):' \
-    #             f' {to_bip(order.amount)} {order.trade_currency}'
-    #         kb.append([InlineKeyboardButton(button_name, callback_data='asdd')])
-    #
-    #         return InlineKeyboardMarkup(kb)
-   
-    #print(mirror_orders)
-    #all_orders = Order.objects.filter(status='open')
-    # for order in sort_orders:[offset:offset+7]
-    #     kb.append([InlineKeyboardButton()])
+    kb_list = [[InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=f'order_list-back')]]
+    if type_orders == 'sale':
+        kb_list.append([InlineKeyboardButton(user.get_text(name='order-kb-look_at_the_buy'), callback_data=f'order_list-switch-buy')])
+    else:
+        kb_list.append([InlineKeyboardButton(user.get_text(name='order-kb-look_at_the_sale'), callback_data=f'order_list-switch-sale')])
 
+    for order in orders:
+        payment_currency_in_trade_currency = to_bip(order.currency_rate)/Decimal(currency_in_usd(order.payment_currency, 1))
+        button_name = f'{round(payment_currency_in_trade_currency, 6)} {order.payment_currency} ({round(to_bip(order.currency_rate), 2)} USD): ' \
+            f'{to_bip(order.amount)} {order.trade_currency}'
+        kb_list.append([InlineKeyboardButton(button_name, callback_data=f'order_list-open-{order.id}-{type_orders}-{offset}')])
 
-    # # icon = {1: 'Ⓜ️', 2: '🏵',
-    # #         3: '💸', 4: '',
-    # #         5: '', 6: '',
-    # #         7: ''}
-    #
-    # buttons = {'buy': {'name': 'Смотреть список на продажу',
-    #                    'cb': 'sale'},
-    #            'sale': {'name': 'Смотреть список на покупку',
-    #                     'cb': 'buy'}}
-    #
-    # kb_list = []
-    # kb_list.append([InlineKeyboardButton(buttons[type_operation]['name'],
-    #                                      callback_data=f'annlist t {buttons[type_operation]["cb"]} {offset}')])
-    # for an in announcs:
-    #     currency_trade = an.trade_currency
-    #     amount = an.amount
-    #     # pay_curr = an.payment_currency
-    #     pay_curr = PaymentCurrency.select().where(PaymentCurrency.announcement_id == an.id)
-    #     curs = ''
-    #     for curr in pay_curr:
-    #         curs += f'{curr.payment_currency} '
-    #     name = f'{currency_trade} : {to_bip(amount)}'
-    #
-    #     kb_list.append([InlineKeyboardButton(name, callback_data=f'open announc {an.id}')])
-    #
-    # if len(all_announc) < 7:
-    #     kb_list.append([InlineKeyboardButton('🔙 Назад', callback_data=f'annlist back {type_operation} {offset}')])
-    #
-    # else:
-    #     numb_list_l = f'/{math.ceil(len(all_announc) / 7)}'
-    #     numb_list_r = f'/{math.ceil(len(all_announc) / 7)}'
-    #     kb_list.append(
-    #         [InlineKeyboardButton(f'⇐ {numb_list_l}', callback_data=f'annlist left {type_operation} {offset}'),
-    #          InlineKeyboardButton('🔙 Назад', callback_data=f'annlist back {type_operation} {offset}'),
-    #          InlineKeyboardButton(f'{numb_list_r} ⇒', callback_data=f'annlist right {type_operation} {offset}')])
-    #
-    # kb = InlineKeyboardMarkup(kb_list)
-    #
-    # return kb
+    if offset == 0 and len(all_orders) <= 7:
+        return InlineKeyboardMarkup(kb_list)
+
+    elif offset == 0:
+        position = f'{int(offset + 2)}/{int(math.ceil(len(all_orders) / 7))}'
+        kb_list.append([InlineKeyboardButton(f'{position} ⇒', callback_data=f'order_list-move-right-{type_orders}-{offset}')])
+
+    elif 0 < offset + 7 >= len(all_orders):
+        position = f'{int(math.ceil(len(all_orders) / 7)) - 1}/{int(math.ceil(len(all_orders) / 7))}'
+
+        kb_list.append([InlineKeyboardButton(f'⇐ {position}', callback_data=f'order_list-move-left-{type_orders}-{offset}')])
+
+    else:
+        position_1 = f'{int((offset + 7) / 7 - 1)}/{int(math.ceil(len(all_orders) / 7))}'
+        position_2 = f'{int(offset / 7 + 2)}/{int(math.ceil(len(all_orders) / 7))}'
+
+        kb_list.append([InlineKeyboardButton(f'⇐ {position_1}', callback_data=f'order_list-move-left-{type_orders}-{offset}'),
+                        InlineKeyboardButton(f'{position_2} ⇒', callback_data=f'order_list-move-right-{type_orders}-{offset}')])
+
+    return InlineKeyboardMarkup(kb_list)
 
 
 def owner_order_list(user, offset):
@@ -289,19 +257,19 @@ def owner_order_list(user, offset):
 
     elif offset == 0:
         position = f'{int(offset + 2)}/{int(math.ceil(len(all_orders) / 7))}'
-        kb_list.append([InlineKeyboardButton(f'{position} ⇒', callback_data=f'miresult forw {offset}')])
+        kb_list.append([InlineKeyboardButton(f'{position} ⇒', callback_data=f'owner_order-move-right-{offset}')])
 
     elif 0 < offset + 7 >= len(all_orders):
         position = f'{int(math.ceil(len(all_orders) / 7)) - 1}/{int(math.ceil(len(all_orders) / 7))}'
 
-        kb_list.append([InlineKeyboardButton(f'⇐ {position}', callback_data=f'miresult back {offset}')])
+        kb_list.append([InlineKeyboardButton(f'⇐ {position}', callback_data=f'owner_order-move-left-{offset}')])
 
     else:
         position_1 = f'{int((offset + 7) / 7 - 1)}/{int(math.ceil(len(all_orders) / 7))}'
         position_2 = f'{int(offset / 7 + 2)}/{int(math.ceil(len(all_orders) / 7))}'
 
-        kb_list.append([InlineKeyboardButton(f'⇐ {position_1}', callback_data=f'miresult back {offset}'),
-                        InlineKeyboardButton(f'{position_2} ⇒', callback_data=f'miresult forw {offset}')])
+        kb_list.append([InlineKeyboardButton(f'⇐ {position_1}', callback_data=f'owner_order-move-left-{offset}'),
+                        InlineKeyboardButton(f'{position_2} ⇒', callback_data=f'owner_order-move-right-{offset}')])
 
     return InlineKeyboardMarkup(kb_list)
 
@@ -314,10 +282,10 @@ def order_for_owner(order, location):
     if location == 1:
         kb = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton(user.get_text(name='order-kb-share'), callback_data=f'order_info-share')],
-                [InlineKeyboardButton(f'{marker_status_button[order.status]}',callback_data=f'order_info-switch')],
-                [InlineKeyboardButton(user.get_text(name='kb-close'), callback_data=f'order_info-close'),
-                 InlineKeyboardButton(user.get_text(name='kb-delete'), callback_data=f'order_info-delete')]
+                [InlineKeyboardButton(user.get_text(name='order-kb-share'), callback_data=f'order_info-share-{order.id}')],
+                [InlineKeyboardButton(f'{marker_status_button[order.status]}',callback_data=f'order_info-switch-{order.id}')],
+                [InlineKeyboardButton(user.get_text(name='kb-close'), callback_data=f'order_info-close-{order.id}'),
+                 InlineKeyboardButton(user.get_text(name='kb-delete'), callback_data=f'order_info-delete-{order.id}')]
 
             ]
         )
@@ -325,12 +293,24 @@ def order_for_owner(order, location):
     else:
         kb = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton(user.get_text(name='order-kb-share'), callback_data=f'order_info-share')],
-                [InlineKeyboardButton(f'{marker_status_button[order.status]}', callback_data=f'order_info-switch')],
-                [InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=f'order_info-back'),
-                 InlineKeyboardButton(user.get_text(name='kb-delete'), callback_data=f'order_info-delete')]
+                [InlineKeyboardButton(user.get_text(name='order-kb-share'), callback_data=f'order_info-share-{order.id}')],
+                [InlineKeyboardButton(f'{marker_status_button[order.status]}', callback_data=f'order_info-switch-{order.id}')],
+                [InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=f'order_info-back-my_orders'),
+                 InlineKeyboardButton(user.get_text(name='kb-delete'), callback_data=f'order_info-delete-{order.id}')]
 
             ]
         )
 
+    return kb
+
+
+def order_for_user(user, order_id, type_orders, offset):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='order-kb-share'), callback_data=f'order_info-share-{order_id}')],
+            [InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=f'order_info-back-order_list-{type_orders}-{offset}'),
+             InlineKeyboardButton(user.get_text(name='order-kb-start_trade'), callback_data=f'start_trade-{order_id}')]
+
+        ]
+    )
     return kb

@@ -58,7 +58,7 @@ def trade_menu_controller(cli, cb):
             reply_markup=kb.trade_currency(user))
 
     elif button == 'orders':
-        cb.message.reply(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list(user.settings.currency, 'sale', 0))
+        cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list(user, 'sale', 0))
 
     elif button == 'my_orders':
         cb.message.edit(user.get_text(name='order-my_orders'), reply_markup=kb.owner_order_list(user, 0))
@@ -67,6 +67,59 @@ def trade_menu_controller(cli, cb):
         pass
     elif button == 'notifications':
         pass
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:10] == 'order_list'))
+def order_list(cli, cb):
+    user = get_user(cb.from_user.id)
+
+    action = cb.data.split('-')[1]
+
+    if action == 'back':
+        cb.message.edit(user.get_text(name='user-trade_menu'), reply_markup=kb.trade_menu(user))
+
+    elif action == 'switch':
+        type_orders = cb.data.split('-')[2]
+        cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list(user, type_orders, 0))
+
+    elif action == 'move':
+        cours = cb.data.split('-')[2]
+        type_operation = cb.data.split('-')[3]
+        offset = int(cb.data.split('-')[4])
+
+        if cours == 'right':
+            offset += 7
+
+        elif cours == 'left':
+            offset -= 7
+
+        cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list(user, type_operation, offset))
+
+    elif action == 'open':
+        order_id = int(cb.data.split('-')[2])
+        type_orders = cb.data.split('-')[3]
+        offset = int(cb.data.split('-')[4])
+        cb.message.edit(get_order_info(user, order_id), reply_markup=kb.order_for_user(user, order_id, type_orders, offset))
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:10] == 'order_info'))
+def order_info(cli, cb):
+    user = get_user(cb.from_user.id)
+
+    action = cb.data.split('-')[1]
+
+    if action == 'back':
+        cours = cb.data.split('-')[2]
+        if cours == 'order_list':
+            type_orders = cb.data.split('-')[3]
+            offset = int(cb.data.split('-')[4])
+            cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list(user, type_orders, offset))
+
+        elif cours == 'my_orders':
+            cb.message.edit(user.get_text(name='order-my_orders'), reply_markup=kb.owner_order_list(user, 0))
+
+    elif action == 'share':
+        cli.answer_callback_query(cb.id, 'coming soon')
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:14] == 'trade_currency'))

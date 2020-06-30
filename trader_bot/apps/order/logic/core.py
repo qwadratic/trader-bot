@@ -5,24 +5,24 @@ from ..models import Order, ParentOrder
 from ...bot.helpers import to_pip, to_bip, currency_in_user_currency, currency_in_usd
 
 
-def get_order_info(order_id):
+def get_order_info(user, order_id):
+    #  TODO учесть валюту юзера
+
     trade_direction = {'buy': {'type': 'Покупка',
                                'icon': '📈'},
                        'sale': {'type': 'Продажа',
                                 'icon': '📉'}}
-    status = {'open': '⚪️ Активно',
-              'close': '🔴 Отключено'}
 
-    order = Order.objects.get(order_id=order_id)
-    user_currency = order.user.settings.currency
+    order = Order.objects.get(id=order_id)
+    user_currency = user.settings.currency
     type_operation = order.type_operation
     trade_currency = order.trade_currency
     currency_rate = to_bip(order.currency_rate)
     amount = to_bip(order.amount)
 
-    payment_currency= order.payment_currency
+    payment_currency = order.payment_currency
 
-    txt = order.user.get_text(name='order-order_info').format(
+    txt = user.get_text(name='order-order_info').format(
         order_id=order.id,
         type_operation=trade_direction[type_operation]["type"],
         trade_currency=trade_currency,

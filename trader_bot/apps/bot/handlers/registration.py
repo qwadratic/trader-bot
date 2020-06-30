@@ -8,7 +8,7 @@ from ...user.logic import kb
 from ...user.logic.core import create_wallets_for_user
 
 
-@Client.on_message(Filters.command('start') & ~ref_link)
+@Client.on_message(Filters.command('start') & ~ref_link, group=-1)
 def start_command(_, m):
     tg_user = m.from_user
 
@@ -40,7 +40,7 @@ def start_command(_, m):
     m.reply(user.get_text(name='user-start'), reply_markup=kb.start_menu(user))
 
 
-@Client.on_message(Filters.command('start') & ref_link)
+@Client.on_message(Filters.command('start') & ref_link, group=-1)
 def ref_start(_, m):
     comm = m.command
     ref_type = comm[1][:1]
@@ -175,7 +175,7 @@ def choice_language_cb(_, cb):
     user_set.language = language
     user_set.save()
 
-    cb.message.edit(user.get_text(name='user-choice_currency'), reply_markup=kb.choice_currency(user))
+    cb.message.edit(user.get_text(name='user-registration-select_currency'), reply_markup=kb.select_currency(user))
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:14] == 'choicecurrency'))

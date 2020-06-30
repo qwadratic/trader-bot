@@ -34,7 +34,7 @@ class TelegramUser(Model):
         ),
         clipboard=dict(
             currency=None,
-            requisites=list,
+            requisites=list(),
             active_trade=None
         )
     ))
