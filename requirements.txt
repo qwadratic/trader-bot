@@ -3,6 +3,7 @@ django-dotenv
 django-environ==0.4.5
 Pyrogram==0.17.1
 TgCrypto==1.2.0
-psycopg2==2.8.4
+psycopg2-binary==2.8.5
 APScheduler==3.6.3
 django-modeltranslation
+web3
