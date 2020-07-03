@@ -53,9 +53,6 @@ def create_usdt_tx(from_address, to_address, value, private_key, gasPrice):
     return w3.eth.account.signTransaction(tx, private_key)
 
 
-'create_usdt_tx("0x5C0Bcf49A674004D9a105459AEc1dB06A885A562", "0xDdE92cF2069032a7275E9779071Fe06e98ef7518", 1, "A540CB4A6F52EEAED4FBA6D87FD613EA73BA9EDA1F5A7CC75CA779E25BF98C9B")'
-
-
 def get_balance(address, currency):
     if currency == 'ETH':
         return w3.eth.getBalance(Web3.toChecksumAddress(address))
@@ -67,4 +64,7 @@ def get_balance(address, currency):
         decimals = usdt_erc20.functions.decimals().call()
         balance_decimal = balance / Decimal(10 ** decimals)
         return Web3.toWei(balance_decimal, 'ether')
+
+
+
 

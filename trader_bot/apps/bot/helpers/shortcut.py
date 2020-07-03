@@ -1,7 +1,7 @@
 from django.db.models import Manager
 
 from trader_bot.apps.bot.blockchain import minterAPI, ethAPI
-from trader_bot.apps.bot.models import CashFlowStatement
+from trader_bot.apps.bot.models import CashFlow
 from trader_bot.apps.user.models import TelegramUser
 
 
@@ -39,5 +39,3 @@ def check_address(address, currency):
     return valid
 
 
-def create_cash_flow_record(**data):
-    CashFlowStatement.objects.create(**data)

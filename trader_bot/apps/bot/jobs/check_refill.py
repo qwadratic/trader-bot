@@ -2,9 +2,9 @@
 from web3.exceptions import TransactionNotFound
 
 from ..blockchain import ethAPI, minterAPI
-from ..helpers import to_pip, to_bip, retry, create_cash_flow_record
+from ..helpers import to_pip, to_bip, retry
 
-from ..models import CashFlowStatement, Service
+from ..models import CashFlow, Service
 from ...user.models import Wallet
 
 from ...user.logic import kb
@@ -14,6 +14,7 @@ from hexbytes import HexBytes
 
 def check_refill_eth(cli):
 
+    # contract address
     usdt_address = '0xdac17f958d2ee523a2206206994597c13d831ec7'
     current_block = ethAPI.w3.eth.blockNumber
     addresses = [w.address.lower() for w in Wallet.objects.filter(currency='ETH')]
@@ -47,11 +48,11 @@ def check_refill_eth(cli):
                 if len(tx.logs) == 0:
 
                     try:
-                        tx = ethAPI.w3.eth.getTransaction(tx_hash)
+                        tx = ethAPI.w3.eth.getTransactionReceipt(tx_hash)
                     except TransactionNotFound:
                         continue
 
-                    if tx.to and tx.to.lower() in addresses:
+                    if tx.to in addresses or tx.to.lower() in addresses:
                         to_and_currency = (tx.to.lower(), 'ETH')
                         if to_and_currency in refill_txs:
                             continue
@@ -186,7 +187,7 @@ def update_eth_balance(cli, refill_txs):
             balance = ethAPI.get_balance(address, currency)
 
             refills_list.append(dict(user=user.id,
-                                     type_operation='refill',
+                                     type_operation='deposit',
                                      amount=balance,
                                      currency=currency))
 
@@ -203,8 +204,7 @@ def update_eth_balance(cli, refill_txs):
         except Exception as e:
             print('check_refill, line 197\n', e)
 
-    CashFlowStatement.objects.bulk_create([CashFlowStatement(**q) for q in refills_list])
-
+    CashFlow.objects.bulk_create([CashFlow(**q) for q in refills_list])
 
 
 def check_refill_bip(cli):
@@ -279,7 +279,7 @@ def update_balance(cli, refills):
         txt_refills += f'\n**{to_bip(refill_in_pip)} BIP**'
 
         refills_list.append(dict(user=user,
-                                 type_operation='refill',
+                                 type_operation='deposit',
                                  amount=user_balance,
                                  currency='BIP'))
 
@@ -289,5 +289,5 @@ def update_balance(cli, refills):
         except Exception as e:
             print('check_refill, line 272\n', e)
 
-    CashFlowStatement.objects.bulk_create([CashFlowStatement(**q) for q in refills_list])
+    CashFlow.objects.bulk_create([CashFlow(**q) for q in refills_list])
 

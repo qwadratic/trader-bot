@@ -56,11 +56,12 @@ class UserFlag(Model):
     await_currency_rate = BooleanField(default=False)
     await_requisite_for_order = BooleanField(default=False)
     await_amount_for_order = BooleanField(default=False)
+    await_amount_for_trade = BooleanField(default=False)
+    await_tx_hash = BooleanField(default=False)
 
     temp_currency = CharField(null=True, max_length=255)
     requisites_for_trade = BooleanField(default=False)
     requisites_for_start_deal = BooleanField(default=False)
-    await_amount_for_trade = BooleanField(default=False)
     await_currency_value = BooleanField(default=False)
     await_amount_for_deal = BooleanField(default=False)
     await_requisites_address = BooleanField(default=False)
