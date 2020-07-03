@@ -206,11 +206,11 @@ def confirm_payment(cli, cb):
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:22] == 'second_confirm_payment'))
 def second_payment(cli, cb):
-    user = get_user(cb.from_user.id)
+    owner = get_user(cb.from_user.id)
     trade_id = int(cb.data.split('-')[2])
     trade = Trade.objects.get(id=trade_id)
 
-    owner = trade.order.parent_order.user
+    user = trade.user
 
     answer = cb.data.split('-')[1]
 
@@ -240,8 +240,8 @@ def second_payment(cli, cb):
             payment_currency=trade.payment_currency
         )
 
-        cb.message.reply(txt_for_user)
-        cli.send_message(owner.telegram_id, txt_for_owner)
+        cb.message.reply(txt_for_owner)
+        cli.send_message(user.telegram_id, txt_for_user)
 
     elif answer == 'no':
         cli.answer_callback_query(cb.id, 'Пожалуйста, не торопитесь. По нашим данным транзакция успешна.',
