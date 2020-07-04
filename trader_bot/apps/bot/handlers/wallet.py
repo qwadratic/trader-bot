@@ -30,6 +30,15 @@ def wallet_menu(cli, cb):
     if button == 'purse':
         cb.message.edit(user.get_text(name='purse-purse_menu'), reply_markup=kb.purse_menu(user))
 
+    if button == 'deposit':
+
+        wallets = user.wallets.exclude(currency__in=['UAH', 'RUB', 'USD', 'BTC'])
+
+        for w in wallets:
+            wal = f'{w.currency}\n' \
+                f'```{w.address}```'
+            cb.message.reply(wal)
+
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:5] == 'purse'))
 def purse_menu(cli, cb):

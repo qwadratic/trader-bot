@@ -88,8 +88,9 @@ def confirm_amount_for_trade(cli, cb):
     answer = cb.data.split('-')[1]
 
     if answer == 'yes':
-
-        cb.message.edit(user.get_text(name='trade-select_type_trade'), reply_markup=kb.select_type_trade(user))
+        txt = f'\n\n{user.get_text(name="bot-you_choosed").format(foo="yes")}'
+        cb.message.edit(cb.message.text+txt)
+        cb.message.reply(user.get_text(name='trade-select_type_trade'), reply_markup=kb.select_type_trade(user))
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:17] == 'select_type_order'))

@@ -46,7 +46,7 @@ def hide(user):
 def wallet_menu(user):
     kb = InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton(user.get_text(name='wallet-kb-deposite'), callback_data=f'wallet_menu-deposite'),
+            [InlineKeyboardButton(user.get_text(name='wallet-kb-deposite'), callback_data=f'wallet_menu-deposit'),
              InlineKeyboardButton(user.get_text(name='wallet-kb-withdraw'), callback_data=f'wallet_menu-withdraw')],
             [InlineKeyboardButton(user.get_text(name='wallet-kb-purse'), callback_data=f'wallet_menu-purse')],
             [InlineKeyboardButton(user.get_text(name='wallet-kb-affiliate_program'), callback_data=f'wallet_menu-afiliate_program')],
