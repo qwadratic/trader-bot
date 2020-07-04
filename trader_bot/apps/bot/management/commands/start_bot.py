@@ -15,10 +15,10 @@ class Command(BaseCommand):
             api_id=TG_API_ID, api_hash=TG_API_HASH, bot_token=TG_API_TOKEN,
             plugins={'root': 'trader_bot/apps/bot/handlers'})
 
-        # shed = BackgroundScheduler()
-        # shed.add_job(check_refill_bip, 'interval', seconds=5, args=[app])
-        # shed.add_job(check_refill_eth, 'interval', seconds=10, args=[app])
-        #
-        # shed.start()
+        shed = BackgroundScheduler()
+        shed.add_job(check_refill_bip, 'interval', seconds=5, args=[app])
+        shed.add_job(check_refill_eth, 'interval', seconds=10, args=[app])
+
+        shed.start()
 
         app.run()
