@@ -166,6 +166,7 @@ def select_payment_currency(cli, cb):
             for currency in payment_currency_list:
                 user.cache['clipboard']['requisites'].append(currency)
 
+            # текущая валюта для выбора реквизитов
             currency = user.cache['clipboard']['currency'] = user.cache['clipboard']['requisites'][0]
             user.save()
 

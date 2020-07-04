@@ -89,32 +89,60 @@ def create_order(temp_order):
     )
 
     order_list = []
-    for currency in payment_currency_list:
 
-        order_list.append(dict(
-            parent_order=order,
-            type_operation=order.type_operation,
-            trade_currency=order.trade_currency,
-            amount=order.amount,
-            currency_rate=order.currency_rate,
-            payment_currency=currency,
-            requisites=order.requisites[currency]
-        ))
+    if order.type_operation == 'sale':
+        for currency in payment_currency_list:
 
-        type_operation = 'buy' if temp_order.type_operation == 'sale' else 'sale'
+            order_list.append(dict(
+                parent_order=order,
+                type_operation=order.type_operation,
+                trade_currency=order.trade_currency,
+                amount=order.amount,
+                currency_rate=order.currency_rate,
+                payment_currency=currency,
+                requisites=order.requisites[currency]
+            ))
 
-        amount = to_bip(order.amount) * to_bip(order.currency_rate) / Decimal(currency_in_usd(currency, 1))
+            type_operation = 'buy' if temp_order.type_operation == 'sale' else 'sale'
 
-        order_list.append(dict(
-            parent_order=order,
-            type_operation=type_operation,
-            trade_currency=currency,
-            amount=to_pip(amount),
-            currency_rate=to_pip(1/to_bip(order.currency_rate)),
-            payment_currency=order.trade_currency,
-            requisites=order.requisites[currency],
-            mirror=True
-        ))
+            amount = to_bip(order.amount) * to_bip(order.currency_rate) / Decimal(currency_in_usd(currency, 1))
+
+            order_list.append(dict(
+                parent_order=order,
+                type_operation=type_operation,
+                trade_currency=currency,
+                amount=to_pip(amount),
+                currency_rate=to_pip(1/to_bip(order.currency_rate)),
+                payment_currency=order.trade_currency,
+                requisites=order.requisites[currency],
+                mirror=True
+            ))
+    else:
+        for currency in payment_currency_list:
+            order_list.append(dict(
+                parent_order=order,
+                type_operation=order.type_operation,
+                trade_currency=order.trade_currency,
+                amount=order.amount,
+                currency_rate=order.currency_rate,
+                payment_currency=currency,
+                requisites=order.requisites[order.trade_currency]
+            ))
+
+            type_operation = 'buy' if temp_order.type_operation == 'sale' else 'sale'
+
+            amount = to_bip(order.amount) * to_bip(order.currency_rate) / Decimal(currency_in_usd(currency, 1))
+
+            order_list.append(dict(
+                parent_order=order,
+                type_operation=type_operation,
+                trade_currency=currency,
+                amount=to_pip(amount),
+                currency_rate=to_pip(1 / to_bip(order.currency_rate)),
+                payment_currency=order.trade_currency,
+                requisites=order.requisites[order.trade_currency],
+                mirror=True
+            ))
 
     Order.objects.bulk_create([Order(**r) for r in order_list])
 
