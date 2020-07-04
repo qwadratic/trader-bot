@@ -25,7 +25,7 @@ def auto_trade(trade):
         type_operation='transfer',
         amount=trade.price_trade,
         currency=trade.payment_currency,
-        tx_hahs=trade.tx_hash
+        tx_hash=trade.tx_hash
     ))
 
     owner_balance = owner.virtual_wallets.get(currency=trade.order.payment_currency)
