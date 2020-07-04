@@ -228,13 +228,14 @@ def check_refill_bip(cli):
     if block_diff > 1:
         refills = {}
         for i in range(1, block_diff + 1):
-            txs = list(filter(lambda t: t['type'] == 1 and t['data']['to'] in addresses and t['data']['coin'] == 'BIP',
-                              minterAPI.API.get_block(last_block + i)['result']['transactions']))
+            if 'result' in minterAPI.API.get_block(last_block + i):
+                txs = list(filter(lambda t: t['type'] == 1 and t['data']['to'] in addresses and t['data']['coin'] == 'BIP',
+                                  minterAPI.API.get_block(last_block + i)['result']['transactions']))
 
-            for tx in txs:
-                value = tx['data']['value']
-                coin = tx['data']['coin']
-                refills[tx['data']['to'], coin] = value
+                for tx in txs:
+                    value = tx['data']['value']
+                    coin = tx['data']['coin']
+                    refills[tx['data']['to'], coin] = value
 
     else:
         refill_txs = list(filter(lambda t: t['type'] == 1 and t['data']['to'] in addresses and t['data']['coin'] == 'BIP',
