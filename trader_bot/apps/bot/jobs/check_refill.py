@@ -52,13 +52,12 @@ def check_refill_eth(cli):
                     except TransactionNotFound:
                         continue
 
-                    if tx.to in addresses or tx.to.lower() in addresses:
+                    if tx.to and tx.to.lower() in addresses:
                         to_and_currency = (tx.to.lower(), 'ETH')
                         if to_and_currency in refill_txs:
                             continue
 
                         refill_txs[to_and_currency] = 1
-
                     continue
 
                 if tx.to and tx.to.lower() != usdt_address.lower():
