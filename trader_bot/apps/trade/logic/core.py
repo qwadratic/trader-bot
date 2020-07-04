@@ -13,7 +13,7 @@ def hold_money(trade):
 
 
 def auto_trade(trade):
-    owner = trade.order.parent_order
+    owner = trade.order.parent_order.user
     user = trade.user
 
     cashflow_list = []
