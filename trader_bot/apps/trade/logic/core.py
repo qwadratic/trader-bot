@@ -41,7 +41,7 @@ def auto_trade(trade):
         currency=trade.order.trade_currency
     ))
 
-    user_balance = user.vitual_wallets.get(currency=trade.order.trade_currency)
+    user_balance = user.virtual_wallets.get(currency=trade.order.trade_currency)
     user_balance.balance += trade.amount
     user_balance.save()
 
