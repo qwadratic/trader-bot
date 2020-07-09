@@ -41,11 +41,11 @@ def amount_for_trade(cli, m):
     trade = Trade.objects.get(id=user.cache['clipboard']['active_trade'])
 
     try:
-        amount = Decimal(m.text.replace(',', '.'))
+        amount = to_pip(Decimal(m.text.replace(',', '.')))
         if amount == 0:
             raise InvalidOperation
 
-        if amount > to_bip(trade.order.amount):
+        if amount > trade.order.amount:
             msg = m.reply(f'Вы не можете купить больше чем {to_bip(trade.order.amount)} {trade.order.trade_currency}')
             sleep(5)
             msg.delete()
@@ -57,7 +57,11 @@ def amount_for_trade(cli, m):
         msg.delete()
         return
 
-    trade.amount = to_pip(amount)
+    price_trade = to_bip(amount) * to_bip(trade.order.currency_rate) / to_bip(
+        trade.order.parent_order.payment_currency_rate[trade.payment_currency])
+
+    trade.price_trade = to_pip(price_trade)
+    trade.amount = amount
     trade.save()
 
     flags = user.flags
@@ -69,13 +73,11 @@ def amount_for_trade(cli, m):
     else:
         type_translate = user.get_text(name='order-type_operation_translate_sale_1')
 
-    price_trade = amount*to_bip(trade.order.currency_rate) / Decimal(currency_in_usd(trade.payment_currency, 1))
-
     txt = user.get_text(name='trade-confirm_amount_for_trade').format(
         type_operation=type_translate,
-        amount=amount,
+        amount=to_bip(amount),
         payment_currency=trade.order.trade_currency,
-        price_trade=round(price_trade, 6),
+        price_trade=price_trade,
         trade_currency=trade.payment_currency
     )
     m.reply(txt, reply_markup=kb.confirm_amount_for_trade(user))
@@ -102,9 +104,6 @@ def select_type_order(cli, cb):
 
     button = cb.data.split('-')[1]
 
-    price_trade = to_bip(trade.amount) * to_bip(trade.order.currency_rate) / Decimal(currency_in_usd(trade.payment_currency, 1))
-    trade.price_trade = to_pip(price_trade)
-
     if trade.order.type_operation == 'sale':
         type_translate_for_user = user.get_text(name='order-type_operation_translate_buy_2')
         type_translate_for_owner = owner.get_text(name='order-type_operation_translate_sale_2')
@@ -115,7 +114,7 @@ def select_type_order(cli, cb):
     if button == 'internal_wallet':
         virtual_wallet = user.virtual_wallets.get(currency=trade.payment_currency)
 
-        if to_pip(price_trade) > virtual_wallet.balance:
+        if trade.price_trade > virtual_wallet.balance:
             cb.message.edit(user.get_text(name='trade-not_enough_money_to_trade'), reply_markup=kb.not_enough_money_to_trade(user))
             return
 
@@ -129,7 +128,7 @@ def select_type_order(cli, cb):
             type_operation=type_translate_for_user,
             amount=round(to_bip(trade.amount), 6),
             trade_currency=trade.order.trade_currency,
-            price_trade=price_trade,
+            price_trade=to_bip(trade.price_trade),
             payment_currency=trade.payment_currency
         )
 
@@ -137,7 +136,7 @@ def select_type_order(cli, cb):
             type_operation=type_translate_for_owner,
             amount=round(to_bip(trade.amount), 6),
             trade_currency=trade.order.trade_currency,
-            price_trade=price_trade,
+            price_trade=to_bip(trade.price_trade),
             payment_currency=trade.payment_currency
         )
 
@@ -154,7 +153,7 @@ def select_type_order(cli, cb):
 
         # TODO тут логика с депонированием
         cb.message.reply(user.get_text(name='trade-semi_automatic_start').format(
-            amount=round(price_trade, 6),
+            amount=to_bip(trade.price_trade),
             currency=trade.payment_currency,
             address=owner_requisite
         ), reply_markup=kb.cancel_trade(user))

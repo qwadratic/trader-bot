@@ -161,6 +161,11 @@ def select_payment_currency(cli, cb):
         user.cache['clipboard']['requisites'].clear()
         user.save()
 
+        # TODO расширить логику для валют из "таблицы"
+        for currency in payment_currency_list:
+            order.payment_currency_rate[currency] = to_pip(currency_in_usd(currency, 1))
+        order.save()
+
         if order.type_operation == 'sale':
 
             for currency in payment_currency_list:
@@ -198,7 +203,7 @@ def select_payment_currency(cli, cb):
 
         cb.message.edit(txt, reply_markup=kb.trade_currency(user))
 
-    # input currency via inline kb
+    # select currency via inline kb
     else:
         if payment_currency in payment_currency_list:
             payment_currency_list.remove(payment_currency)

@@ -19,13 +19,12 @@ def wallet_info(user):
     virt_wallets = user.virtual_wallets.exclude(currency__in=['UAH', 'RUB', 'USD'])
     txt = user.get_text(name='wallet-wallet_info')
 
-    balance_in_user_currency = 0
-
     for w in virt_wallets:
 
         if w.balance > 0:
             balance_in_user_currency = currency_in_user_currency(w.currency, user_currency, to_bip(w.balance))
+        else:
+            balance_in_user_currency = 0
 
         txt += f'\n{round(to_bip(w.balance), 4)} {w.currency} ~{round(balance_in_user_currency, 2)} {user_currency}'
-
     return txt
