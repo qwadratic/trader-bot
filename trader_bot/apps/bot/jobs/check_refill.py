@@ -1,4 +1,4 @@
-
+from requests import ReadTimeout
 from web3.exceptions import TransactionNotFound
 
 from ..blockchain import ethAPI, minterAPI
@@ -12,6 +12,7 @@ from ...user.logic import kb
 from hexbytes import HexBytes
 
 
+@retry(Exception)
 def check_refill_eth(cli):
 
     # contract address
@@ -206,6 +207,7 @@ def update_eth_balance(cli, refill_txs):
     CashFlow.objects.bulk_create([CashFlow(**q) for q in refills_list])
 
 
+@retry(ReadTimeout)
 def check_refill_bip(cli):
     current_block = minterAPI.API.get_latest_block_height()
 
