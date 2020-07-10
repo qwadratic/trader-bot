@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from requests import ReadTimeout
 from web3.exceptions import TransactionNotFound
 
@@ -26,8 +28,8 @@ def check_refill_eth(cli):
         return
 
     last_block = service.last_block
-    if current_block == service.last_block:
-        return
+    # if current_block == service.last_block:
+    #     return
 
     block_diff = current_block - last_block
 
@@ -58,7 +60,7 @@ def check_refill_eth(cli):
                         if to_and_currency in refill_txs:
                             continue
 
-                        refill_txs[to_and_currency] = 1
+                        refill_txs[to_and_currency] = tx.value
                     continue
 
                 if tx.to and tx.to.lower() != usdt_address.lower():
@@ -88,14 +90,14 @@ def check_refill_eth(cli):
                     else:
                         receiver_address = '0x' + element['topics'][2].hex()[len_0x + len_gap:]
 
-                    #amount = Web3.toWei(int(element['data'], 16) / 1000000, 'ether')
+                    amount = ethAPI.Web3.toWei(int(element['data'], 16) / 1000000, 'ether')
 
                     if receiver_address in addresses:
                         to_and_currency = (receiver_address, 'USDT')
                         if to_and_currency in refill_txs:
                             continue
 
-                        refill_txs[to_and_currency] = 1
+                        refill_txs[to_and_currency] = amount
 
                 if not topics_flag:
                     continue
@@ -123,7 +125,7 @@ def check_refill_eth(cli):
                     if to_and_currency in refill_txs:
                         continue
 
-                    refill_txs[to_and_currency] = 1
+                    refill_txs[to_and_currency] = tx.value
 
                 continue
 
@@ -154,14 +156,14 @@ def check_refill_eth(cli):
                 else:
                     receiver_address = '0x' + element['topics'][2].hex()[len_0x + len_gap:]
 
-                amount = int(element['data'], 16) / 1000000
+                amount = ethAPI.Web3.toWei(int(element['data'], 16) / 1000000, 'ether')
 
                 if receiver_address.lower() in addresses:
                     to_and_currency = (receiver_address, 'USDT')
                     if to_and_currency in refill_txs:
                         continue
 
-                    refill_txs[to_and_currency] = 1
+                    refill_txs[to_and_currency] = amount
 
             if not topics_flag:
                 continue
@@ -178,6 +180,7 @@ def update_eth_balance(cli, refill_txs):
         address_refills[address][coin] = refill_pip
 
     refills_list = []
+
     for address in address_refills:
         user = Wallet.objects.get(address=address).user
 
@@ -186,15 +189,15 @@ def update_eth_balance(cli, refill_txs):
         for currency in address_refills[address]:
             balance = ethAPI.get_balance(address, currency)
 
+            virt_wallet = user.virtual_wallets.get(currency=currency)
+            refill = address_refills[address][currency]
+            virt_wallet.balance += refill
+            virt_wallet.save()
+
             refills_list.append(dict(user=user.id,
                                      type_operation='deposit',
-                                     amount=balance,
+                                     amount=refill,
                                      currency=currency))
-
-            virt_wallet = user.virtual_wallets.get(currency=currency)
-            refill = balance - virt_wallet.balance
-            virt_wallet.balance = balance
-            virt_wallet.save()
 
             txt_refills += f'\n**{to_bip(refill)} {currency}**'
         try:
@@ -282,7 +285,7 @@ def update_balance(cli, refills):
 
         refills_list.append(dict(user=user,
                                  type_operation='deposit',
-                                 amount=user_balance,
+                                 amount=refill_in_pip,
                                  currency='BIP'))
 
         try:
