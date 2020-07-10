@@ -189,3 +189,4 @@ class Text(BaseModel):
     text = TextField()
     text_ru = TextField()
     text_en = TextField()
+
