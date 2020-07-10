@@ -7,3 +7,5 @@ psycopg2-binary==2.8.5
 APScheduler==3.6.3
 django-modeltranslation
 web3
+minter-sdk==1.0.32
+cachetools
