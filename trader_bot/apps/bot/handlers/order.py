@@ -135,10 +135,14 @@ def select_trade_currency(_, cb):
         temp_order.trade_currency = trade_currency
         temp_order.save()
 
-        txt = f'\n\n{user.get_text(name="bot-you_choosed").format(foo=trade_currency)}'
+        if temp_order.type_operation == 'sale':
+            txt = f'\n\n{user.get_text(name="order-type_operation_translate_sale_3").format(currency=trade_currency)}'
+        else:
+            txt = f'\n\n{user.get_text(name="order-type_operation_translate_buy_3").format(currency=trade_currency)}'
+
         cb.message.edit(cb.message.text + txt)
         cb.message.reply(
-            user.get_text('order-choice_payment_currency'),
+            user.get_text('order-select_payment_currency').format(currency=temp_order.trade_currency),
             reply_markup=kb.payment_currency(trade_currency, user))
 
 
@@ -402,19 +406,31 @@ def enter_currency_rate(cli, m):
 
     if order.type_operation == 'sale':
         type_operation = user.get_text(name='order-type_operation_translate_sale_1')
+        max_amount = round(to_bip(user.virtual_wallets.get(currency=order.trade_currency).balance), 6)
     else:
         type_operation = user.get_text(name='order-type_operation_translate_buy_1')
+        max_amount = '))'
 
-    m.reply(user.get_text(name='order-enter_amount').format(type_operation=type_operation))
+    m.reply(user.get_text(name='order-enter_amount').format(
+        type_operation=type_operation,
+        currency=order.trade_currency,
+        amount=max_amount))
 
 
 @Client.on_message(Filters.create(lambda _, m: get_user(m.from_user.id).flags and
                                                get_user(m.from_user.id).flags.await_amount_for_order))
 def amount_for_order(cli, m):
     user = get_user(m.from_user.id)
+    temp_order = user.temp_order
 
     try:
         amount = to_pip(Decimal(m.text.replace(',', '.')))
+        if temp_order.type_operation == 'sale':
+            if amount > user.virtual_wallets.get(currency=temp_order.trade_currency).balance:
+                msg = m.reply(f'Вы не можете продать больше чем {to_bip(user.virtual_wallets.get(currency=temp_order.trade_currency).balance)} {temp_order.trade_currency}')
+                sleep(5)
+                msg.delete()
+                return
     except InvalidOperation:
 
         msg = m.reply(user.get_text(name='bot-type_error'))
@@ -422,7 +438,6 @@ def amount_for_order(cli, m):
         msg.delete()
         return
 
-    temp_order = user.temp_order
     temp_order.amount = amount
 
     flags = user.flags
