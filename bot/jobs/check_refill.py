@@ -48,18 +48,13 @@ def check_refill_eth(cli):
                     continue
 
                 if len(tx.logs) == 0:
-
-                    try:
-                        tx = w3.eth.getTransactionReceipt(tx_hash)
-                    except TransactionNotFound:
-                        continue
-
                     if tx.to and tx.to.lower() in addresses:
                         to_and_currency = (tx.to.lower(), 'ETH')
                         if to_and_currency in refill_txs:
                             continue
+                        txh = w3.eth.getTransaction(tx_hash)
 
-                        refill_txs[to_and_currency] = tx.value
+                        refill_txs[to_and_currency] = txh.value
                     continue
 
                 if tx.to and tx.to.lower() != usdt_address.lower():
@@ -114,17 +109,14 @@ def check_refill_eth(cli):
 
             if len(tx.logs) == 0:
 
-                try:
-                    tx = w3.eth.getTransaction(tx_hash)
-                except TransactionNotFound:
-                    continue
-
                 if tx.to and tx.to.lower() in addresses:
                     to_and_currency = (tx.to.lower(), 'ETH')
                     if to_and_currency in refill_txs:
                         continue
 
-                    refill_txs[to_and_currency] = tx.value
+                    txh = w3.eth.getTransaction(tx_hash)
+
+                    refill_txs[to_and_currency] = txh.value
 
                 continue
 
@@ -179,7 +171,6 @@ def update_eth_balance(cli, refill_txs):
         address_refills[address][coin] = refill_pip
 
     refills_list = []
-
 
     for address in address_refills:
         user = Wallet.objects.get(address=address).user
