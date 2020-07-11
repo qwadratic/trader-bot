@@ -18,13 +18,13 @@ def start_trade(cli, cb):
     order_id = int(cb.data.split('-')[1])
 
     order = Order.objects.get(id=order_id)
-
+   
     trade = Trade.objects.create(
         order=order,
         user=user,
         trade_currency=order.trade_currency,
         payment_currency=order.payment_currency,
-        trade_currency_rate=order.parent_order.trade_currency,
+        trade_currency_rate=order.parent_order.currency_rate,
         payment_currency_rate=order.parent_order.payment_currency_rate[order.payment_currency]
     )
 
