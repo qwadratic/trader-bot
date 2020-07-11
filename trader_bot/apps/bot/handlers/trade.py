@@ -22,7 +22,10 @@ def start_trade(cli, cb):
     trade = Trade.objects.create(
         order=order,
         user=user,
-        payment_currency=order.payment_currency
+        trade_currency=order.trade_currency,
+        payment_currency=order.payment_currency,
+        trade_currency_rate=order.parent_order.trade_currency,
+        payment_currency_rate=order.parent_order.payment_currency_rate[order.payment_currency]
     )
 
     user.cache['clipboard']['active_trade'] = trade.id
@@ -46,7 +49,7 @@ def amount_for_trade(cli, m):
             raise InvalidOperation
 
         if amount > trade.order.amount:
-            msg = m.reply(f'Вы не можете купить больше чем {to_bip(trade.order.amount)} {trade.order.trade_currency}')
+            msg = m.reply(f'Вы не можете купить больше чем {to_bip(trade.order.amount)} {trade.trade_currency}')
             sleep(5)
             msg.delete()
             return
@@ -57,8 +60,8 @@ def amount_for_trade(cli, m):
         msg.delete()
         return
 
-    price_trade = to_bip(amount) * to_bip(trade.order.currency_rate) / to_bip(
-        trade.order.parent_order.payment_currency_rate[trade.payment_currency])
+    price_trade = to_bip(amount) * to_bip(trade.trade_currency_rate) / to_bip(
+        trade.payment_currency_rate)
 
     trade.price_trade = to_pip(price_trade)
     trade.amount = amount
@@ -76,7 +79,7 @@ def amount_for_trade(cli, m):
     txt = user.get_text(name='trade-confirm_amount_for_trade').format(
         type_operation=type_translate,
         amount=to_bip(amount),
-        payment_currency=trade.order.trade_currency,
+        payment_currency=trade.trade_currency,
         price_trade=price_trade,
         trade_currency=trade.payment_currency
     )
@@ -127,7 +130,7 @@ def select_type_order(cli, cb):
         txt_for_user = user.get_text(name='trade-success_trade').format(
             type_operation=type_translate_for_user,
             amount=round(to_bip(trade.amount), 6),
-            trade_currency=trade.order.trade_currency,
+            trade_currency=trade.trade_currency,
             price_trade=to_bip(trade.price_trade),
             payment_currency=trade.payment_currency
         )
@@ -135,7 +138,7 @@ def select_type_order(cli, cb):
         txt_for_owner = owner.get_text(name='trade-success_trade').format(
             type_operation=type_translate_for_owner,
             amount=round(to_bip(trade.amount), 6),
-            trade_currency=trade.order.trade_currency,
+            trade_currency=trade.trade_currency,
             price_trade=to_bip(trade.price_trade),
             payment_currency=trade.payment_currency
         )
@@ -227,7 +230,7 @@ def second_payment(cli, cb):
         txt_for_user = user.get_text(name='trade-success_trade').format(
             type_operation=type_translate_for_user,
             amount=round(to_bip(trade.amount), 6),
-            trade_currency=trade.order.trade_currency,
+            trade_currency=trade.trade_currency,
             price_trade=round(to_bip(trade.price_trade), 6),
             payment_currency=trade.payment_currency
         )
@@ -235,7 +238,7 @@ def second_payment(cli, cb):
         txt_for_owner = owner.get_text(name='trade-success_trade').format(
             type_operation=type_translate_for_owner,
             amount=round(to_bip(trade.amount), 6),
-            trade_currency=trade.order.trade_currency,
+            trade_currency=trade.trade_currency,
             price_trade=round(to_bip(trade.price_trade), 6),
             payment_currency=trade.payment_currency
         )
