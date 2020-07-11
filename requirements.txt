@@ -1,9 +1,10 @@
 Django==3.0.5
-django-dotenv
 django-environ==0.4.5
 Pyrogram==0.17.1
 TgCrypto==1.2.0
 psycopg2-binary==2.8.5
 APScheduler==3.6.3
-django-modeltranslation
-web3
+django-modeltranslation==0.15.1
+web3==5.11.1
+minter-sdk==1.0.34
+cachetools==4.1.1
