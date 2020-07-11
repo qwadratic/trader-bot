@@ -46,17 +46,13 @@ def check_refill_eth(cli):
 
                 if len(tx.logs) == 0:
 
-                    try:
-                        tx = ethAPI.w3.eth.getTransactionReceipt(tx_hash)
-                    except TransactionNotFound:
-                        continue
-
                     if tx.to and tx.to.lower() in addresses:
                         to_and_currency = (tx.to.lower(), 'ETH')
                         if to_and_currency in refill_txs:
                             continue
+                        txh = ethAPI.w3.eth.getTransaction(tx_hash)
 
-                        refill_txs[to_and_currency] = tx.value
+                        refill_txs[to_and_currency] = txh.value
                     continue
 
                 if tx.to and tx.to.lower() != usdt_address.lower():
@@ -111,17 +107,14 @@ def check_refill_eth(cli):
 
             if len(tx.logs) == 0:
 
-                try:
-                    tx = ethAPI.w3.eth.getTransaction(tx_hash)
-                except TransactionNotFound:
-                    continue
-
                 if tx.to and tx.to.lower() in addresses:
                     to_and_currency = (tx.to.lower(), 'ETH')
                     if to_and_currency in refill_txs:
                         continue
 
-                    refill_txs[to_and_currency] = tx.value
+                    txh = ethAPI.w3.eth.getTransaction(tx_hash)
+
+                    refill_txs[to_and_currency] = txh.value
 
                 continue
 
