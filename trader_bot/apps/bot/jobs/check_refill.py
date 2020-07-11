@@ -24,8 +24,8 @@ def check_refill_eth(cli):
         return
 
     last_block = service.last_block
-    # if current_block == service.last_block:
-    #     return
+    if current_block == service.last_block:
+        return
 
     block_diff = current_block - last_block
 
