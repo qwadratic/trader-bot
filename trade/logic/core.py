@@ -46,7 +46,7 @@ def auto_trade(trade):
         owner_balance_in_payment_currency.balance += trade.price_trade
         owner_balance_in_payment_currency.save()
 
-        owner_balance_in_trade_currency = owner.virtual_wallets.get(currency=trade.order.trade_currency)
+        owner_balance_in_trade_currency = owner.virtual_wallets.get(currency=trade.trade_currency)
         owner_balance_in_trade_currency.balance -= trade.amount
         owner_balance_in_trade_currency.save()
 
@@ -56,10 +56,10 @@ def auto_trade(trade):
             trade=trade,
             type_operation='transfer',
             amount=trade.amount,
-            currency=trade.order.trade_currency
+            currency=trade.trade_currency
         ))
 
-        user_balance_in_trade_currency = user.virtual_wallets.get(currency=trade.order.trade_currency)
+        user_balance_in_trade_currency = user.virtual_wallets.get(currency=trade.trade_currency)
         user_balance_in_trade_currency.balance += trade.amount
         user_balance_in_trade_currency.save()
 
@@ -75,14 +75,14 @@ def auto_trade(trade):
             trade=trade,
             type_operation='transfer',
             amount=trade.price_trade,
-            currency=trade.order.trade_currency
+            currency=trade.trade_currency
         ))
 
         owner_balance_in_payment_currency = owner.virtual_wallets.get(currency=trade.order.payment_currency)
         owner_balance_in_payment_currency.balance -= trade.price_trade
         owner_balance_in_payment_currency.save()
 
-        owner_balance_in_trade_currency = owner.virtual_wallets.get(currency=trade.order.trade_currency)
+        owner_balance_in_trade_currency = owner.virtual_wallets.get(currency=trade.trade_currency)
         owner_balance_in_trade_currency.balance += trade.amount
         owner_balance_in_trade_currency.save()
 
@@ -99,7 +99,7 @@ def auto_trade(trade):
         user_balance_in_payment_currency.balance -= trade.price_trade
         user_balance_in_payment_currency.save()
 
-        user_balance_in_trade_currency = user.virtual_wallets.get(currency=trade.order.trade_currency)
+        user_balance_in_trade_currency = user.virtual_wallets.get(currency=trade.trade_currency)
         user_balance_in_trade_currency.balance += trade.amount
         user_balance_in_trade_currency.save()
 
@@ -122,10 +122,10 @@ def semi_auto_trade(trade):
             trade=trade,
             type_operation='transfer',
             amount=trade.amount,
-            currency=trade.order.trade_currency
+            currency=trade.trade_currency
         ))
 
-        user_balance_in_trade_currency = user.virtual_wallets.get(currency=trade.order.trade_currency)
+        user_balance_in_trade_currency = user.virtual_wallets.get(currency=trade.trade_currency)
         user_balance_in_trade_currency.balance += trade.amount
         user_balance_in_trade_currency.save()
 
@@ -160,7 +160,7 @@ def semi_auto_trade(trade):
             trade=trade,
             type_operation='external-transfer',
             amount=trade.amount,
-            currency=trade.order.trade_currency,
+            currency=trade.trade_currency,
             tx_hash=trade.tx_hash
         ))
 

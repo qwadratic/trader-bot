@@ -15,7 +15,6 @@ from user.logic import kb
 
 @retry(Exception)
 def check_refill_eth(cli):
-
     # contract address
     usdt_address = '0xdac17f958d2ee523a2206206994597c13d831ec7'
     current_block = w3.eth.blockNumber
@@ -27,8 +26,8 @@ def check_refill_eth(cli):
         return
 
     last_block = service.last_block
-    # if current_block == service.last_block:
-    #     return
+    if current_block == service.last_block:
+        return
 
     block_diff = current_block - last_block
 
