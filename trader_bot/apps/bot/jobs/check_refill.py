@@ -12,7 +12,6 @@ from ...user.logic import kb
 
 @retry(Exception)
 def check_refill_eth(cli):
-
     # contract address
     usdt_address = '0xdac17f958d2ee523a2206206994597c13d831ec7'
     current_block = ethAPI.w3.eth.blockNumber
