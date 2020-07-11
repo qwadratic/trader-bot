@@ -1,4 +1,4 @@
-from django.db.models import Manager, Model, CharField, PositiveIntegerField, DecimalField, ForeignKey, DateTimeField, CASCADE
+from django.db.models import Manager, Model, CharField, PositiveIntegerField, DecimalField, ForeignKey, DateTimeField, CASCADE, SET_NULL
 
 
 class GetOrNoneManager(Manager):
@@ -18,9 +18,9 @@ class Service(Model):
 
 
 class CashFlow(Model):
-    user = ForeignKey('user.TelegramUser', related_name='cashflow', on_delete=CASCADE)
-    to = ForeignKey('user.TelegramUser', related_name='_cashflow', null=True, on_delete=CASCADE)
-    trade = ForeignKey('trade.Trade', null=True, on_delete=CASCADE)
+    user = ForeignKey('user.TelegramUser', related_name='cashflow', on_delete=SET_NULL)
+    to = ForeignKey('user.TelegramUser', related_name='_cashflow', null=True, on_delete=SET_NULL)
+    trade = ForeignKey('trade.Trade', null=True, on_delete=SET_NULL)
     type_operation = CharField(max_length=255)
     amount = DecimalField(max_digits=40, decimal_places=0, default=0)
     currency = CharField(max_length=255)
