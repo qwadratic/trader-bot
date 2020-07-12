@@ -19,11 +19,7 @@ class Command(BaseCommand):
         shed = BackgroundScheduler()
         shed.add_job(check_refill_bip, 'interval', seconds=5, args=[app])
         shed.add_job(check_refill_eth, 'interval', seconds=20, args=[app])
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> 03bfcb9fc4c5c028eca50faf6ec849b5be653275
         shed.start()
 
         app.run()
