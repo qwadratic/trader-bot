@@ -18,12 +18,10 @@ from django.conf.urls import url
 from django.contrib import admin
 from django.urls import path
 from django.urls import include
-import django.conf.urls
-from patterns import patterns
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('silk/', include('silk.urls'))
 ]
 
-#urlpatterns = [url(r'^silk/', include('silk.urls', namespace='silk'))]
+#urlpatterns += [url(r'^silk/', include('silk.urls', namespace='silk'))]
