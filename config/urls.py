@@ -23,6 +23,7 @@ from patterns import patterns
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('silk/', include('silk.urls'))
 ]
 
-urlpatterns = [url(r'^silk/', include('silk.urls', namespace='silk'))]
+#urlpatterns = [url(r'^silk/', include('silk.urls', namespace='silk'))]
