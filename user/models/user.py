@@ -17,6 +17,18 @@ class GetOrNoneManager(Manager):
         except self.model.DoesNotExist:
             return None
 
+def _default_telegramuser_cache():
+        return {
+                'msg': {
+                    'trade_menu': None,
+                    'wallet_menu': None
+                },
+                'clipboard': {
+                    'currency': None,
+                    'requisites': [],
+                    'active_trade': None
+                }
+            }
 
 class TelegramUser(Model):
     objects = GetOrNoneManager()
@@ -27,18 +39,7 @@ class TelegramUser(Model):
     last_name = CharField(_('Last name'), max_length=255, null=True)
     last_activity = DateTimeField(_('Last activity'), null=True)
     created_at = DateTimeField(_('Registration date'), auto_now_add=True)
-    cache = JSONField(
-        default=lambda: {
-            'msg': {
-                'trade_menu': None,
-                'wallet_menu': None
-            },
-            'clipboard': {
-                'currency': None,
-                'requisites': [],
-                'active_trade': None
-            }
-        })
+    cache = JSONField(default=_default_telegramuser_cache)
 
     class Meta:
         verbose_name = 'Telegram User'
