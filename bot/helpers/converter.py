@@ -2,6 +2,8 @@ from requests import Session
 from cachetools.func import ttl_cache
 import json
 
+from bot.helpers.shortcut import get_currency_rate, to_units
+
 url = 'https://pro-api.coinmarketcap.com/v1/tools/price-conversion'
 
 headers = {
@@ -164,37 +166,11 @@ def usdt_in_rub(amount):
 
 
 def currency_in_usd(currency, amount):
-    price = amount
-
-    if currency == 'BIP':
-        price = bip_in_usd(amount)
-
-    elif currency == 'ETH':
-        price = eth_in_usd(amount)
-
-    elif currency == 'USDT':
-        price = usdt_in_usd(amount)
-
-    elif currency == 'UAH':
-        price = uah_in_usd(amount)
-
-    elif currency == 'RUB':
-        price = rub_in_usd(amount)
-
-    return price
+    return to_units(currency, get_currency_rate(currency)) * amount
 
 
 def currency_in_user_currency(currency, user_currency, amount):
+    currency_rate = to_units(currency, get_currency_rate(currency))
+    user_currency_rate = to_units(user_currency, get_currency_rate(user_currency))
 
-    d = {('BIP', 'USD'): bip_in_usd,
-         ('BIP', 'UAH'): bip_in_uah,
-         ('BIP', 'RUB'): bip_in_rub,
-         ('ETH', 'USD'): eth_in_usd,
-         ('ETH', 'UAH'): eth_in_uah,
-         ('ETH', 'RUB'): eth_in_rub,
-         ('USDT', 'USD'): usdt_in_usd,
-         ('USDT', 'UAH'): usdt_in_uah,
-         ('USDT', 'RUB'): usdt_in_rub
-         }
-
-    return d[currency, user_currency](amount)
+    return currency_rate * amount * user_currency_rate

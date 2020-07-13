@@ -61,4 +61,11 @@ def to_units(currency, amount):
 
 
 def get_currency_rate(currency):
+    if currency == 'USD':
+        return to_cents('USD', 1)
     return ExchangeRate.objects.filter(currency=currency).latest('time').value
+
+
+
+
+

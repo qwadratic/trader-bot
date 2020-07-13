@@ -10,7 +10,7 @@ from order.logic.core import get_order_info, create_order, order_info_for_owner
 from order.logic.text_func import choice_payment_currency_text
 from order.models import TempOrder
 from bot.helpers.converter import currency_in_user_currency, currency_in_usd
-from bot.helpers.shortcut import get_user, delete_msg, check_address
+from bot.helpers.shortcut import get_user, delete_msg, check_address, to_cents
 
 
 @Client.on_message(Filters.create(lambda _, m: m.text == get_user(m.from_user.id).get_text(name='user-kb-trade')))
@@ -164,9 +164,8 @@ def select_payment_currency(cli, cb):
         user.cache['clipboard']['requisites'].clear()
         user.save()
 
-        # TODO расширить логику для валют из "таблицы"
         for currency in payment_currency_list:
-            order.payment_currency_rate[currency] = to_pip(currency_in_usd(currency, 1))
+            order.payment_currency_rate[currency] = to_cents(currency, currency_in_usd(currency, 1))
         order.save()
 
         if order.type_operation == 'sale':
@@ -392,7 +391,7 @@ def enter_currency_rate(cli, m):
         msg.delete()
         return
 
-    currency_rate = to_pip(currency_in_usd(user.settings.currency, value))
+    currency_rate = to_cents(user.settings.currency, currency_in_usd(user.settings.currency, value))
 
     order = user.temp_order
     order.currency_rate = currency_rate
