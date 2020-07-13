@@ -1,7 +1,6 @@
 from time import sleep
 from decimal import Decimal, InvalidOperation
 
-from mintersdk.shortcuts import to_bip, to_pip
 from pyrogram import Client, Filters
 
 from user.models import UserPurse
@@ -10,7 +9,7 @@ from order.logic.core import get_order_info, create_order, order_info_for_owner
 from order.logic.text_func import choice_payment_currency_text
 from order.models import TempOrder
 from bot.helpers.converter import currency_in_user_currency, currency_in_usd
-from bot.helpers.shortcut import get_user, delete_msg, check_address, to_cents
+from bot.helpers.shortcut import get_user, delete_msg, check_address, to_cents, to_units
 
 
 @Client.on_message(Filters.create(lambda _, m: m.text == get_user(m.from_user.id).get_text(name='user-kb-trade')))
@@ -404,7 +403,7 @@ def enter_currency_rate(cli, m):
 
     if order.type_operation == 'sale':
         type_operation = user.get_text(name='order-type_operation_translate_sale_1')
-        max_amount = round(to_bip(user.virtual_wallets.get(currency=order.trade_currency).balance), 6)
+        max_amount = round(to_units(order.trade_currency, user.virtual_wallets.get(currency=order.trade_currency).balance), 6)
     else:
         type_operation = user.get_text(name='order-type_operation_translate_buy_1')
         max_amount = '))'
@@ -422,10 +421,10 @@ def amount_for_order(cli, m):
     temp_order = user.temp_order
 
     try:
-        amount = to_pip(Decimal(m.text.replace(',', '.')))
+        amount = Decimal(m.text.replace(',', '.'))
         if temp_order.type_operation == 'sale':
             if amount > user.virtual_wallets.get(currency=temp_order.trade_currency).balance:
-                msg = m.reply(f'Вы не можете продать больше чем {to_bip(user.virtual_wallets.get(currency=temp_order.trade_currency).balance)} {temp_order.trade_currency}')
+                msg = m.reply(f'Вы не можете продать больше чем {to_units(temp_order.trade_currency, user.virtual_wallets.get(currency=temp_order.trade_currency).balance)} {temp_order.trade_currency}')
                 sleep(5)
                 msg.delete()
                 return
@@ -436,7 +435,7 @@ def amount_for_order(cli, m):
         msg.delete()
         return
 
-    temp_order.amount = amount
+    temp_order.amount = to_cents(temp_order.trade_currency, amount)
 
     flags = user.flags
     flags.await_amount_for_order = False
