@@ -1,5 +1,7 @@
 from bot.blockchain import minterAPI, ethAPI
+from bot.models import ExchangeRate
 from user.models import TelegramUser
+from mintersdk.shortcuts import to_pip, to_bip
 
 
 def get_user(tg_id):
@@ -36,3 +38,27 @@ def check_address(address, currency):
     return valid
 
 
+def to_cents(currency, amount):
+    if currency in ['USDT', 'ETH']:
+        return ethAPI.Web3.toWei(amount, 'ether')
+
+    if currency == 'BIP':
+        return to_pip(amount)
+
+    # TODO  допилить логику других валют
+    return to_pip(amount)
+
+
+def to_units(currency, amount):
+    if currency in ['USDT', 'ETH']:
+        return ethAPI.Web3.fromWei(amount, 'ether')
+
+    if currency == 'BIP':
+        return to_bip(amount)
+
+    # TODO  допилить логику других валют
+    return to_bip(amount)
+
+
+def get_currency_rate(currency):
+    return ExchangeRate.objects.filter(currency=currency).latest('time').value
