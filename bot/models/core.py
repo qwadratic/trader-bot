@@ -26,3 +26,13 @@ class CashFlow(Model):
     currency = CharField(max_length=255)
     tx_hash = CharField(max_length=255, null=True)
     created_at = DateTimeField(auto_now_add=True)
+
+
+class ExchangeRate(Model):
+    currency = CharField(max_length=255)
+    value = DecimalField(max_digits=40, decimal_places=0, default=0)
+    source = CharField(max_length=255)
+    time = DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = 'time',
