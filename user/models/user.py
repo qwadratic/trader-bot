@@ -18,17 +18,8 @@ class GetOrNoneManager(Manager):
             return None
 
 
-class TelegramUser(Model):
-    objects = GetOrNoneManager()
-
-    telegram_id = PositiveIntegerField(_('Telegram user ID'), unique=True)
-    username = CharField(_('User name'), max_length=255, null=True)
-    first_name = CharField(_('First name'), max_length=255,null=True)
-    last_name = CharField(_('Last name'), max_length=255, null=True)
-    last_activity = DateTimeField(_('Last activity'), null=True)
-    created_at = DateTimeField(_('Registration date'), auto_now_add=True)
-    cache = JSONField(
-        default=lambda: {
+def _default_telegramuser_cache():
+        return {
             'msg': {
                 'trade_menu': None,
                 'wallet_menu': None
@@ -38,7 +29,19 @@ class TelegramUser(Model):
                 'requisites': [],
                 'active_trade': None
             }
-        })
+        }
+
+
+class TelegramUser(Model):
+    objects = GetOrNoneManager()
+
+    telegram_id = PositiveIntegerField(_('Telegram user ID'), unique=True)
+    username = CharField(_('User name'), max_length=255, null=True)
+    first_name = CharField(_('First name'), max_length=255,null=True)
+    last_name = CharField(_('Last name'), max_length=255, null=True)
+    last_activity = DateTimeField(_('Last activity'), null=True)
+    created_at = DateTimeField(_('Registration date'), auto_now_add=True)
+    cache = JSONField(default=_default_telegramuser_cache)
 
     class Meta:
         verbose_name = 'Telegram User'
