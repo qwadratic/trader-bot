@@ -3,13 +3,14 @@ from decimal import Decimal, InvalidOperation
 
 from pyrogram import Client, Filters
 
+from bot.helpers.settings import get_rate_deviation
 from user.models import UserPurse
 from order.logic import kb
 from order.logic.core import get_order_info, create_order, order_info_for_owner
 from order.logic.text_func import choice_payment_currency_text
 from order.models import TempOrder
 from bot.helpers.converter import currency_in_user_currency, currency_in_usd
-from bot.helpers.shortcut import get_user, delete_msg, check_address, to_cents, to_units
+from bot.helpers.shortcut import get_user, delete_msg, check_address, to_cents, to_units, get_currency_rate
 
 
 @Client.on_message(Filters.create(lambda _, m: m.text == get_user(m.from_user.id).get_text(name='user-kb-trade')))
@@ -118,6 +119,9 @@ def order_info(cli, cb):
 
     elif action == 'share':
         cli.answer_callback_query(cb.id, 'coming soon')
+
+    elif action == 'switch':
+        print(1)
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:14] == 'trade_currency'))
@@ -380,9 +384,28 @@ def requisite_for_order_from_purse(cli, cb):
                                                get_user(m.from_user.id).flags.await_currency_rate))
 def enter_currency_rate(cli, m):
     user = get_user(m.from_user.id)
-
+    order = user.temp_order
     try:
         value = Decimal(m.text.replace(',', '.'))
+        actual_currency_rate = to_units(order.trade_currency, get_currency_rate(order.trade_currency))
+        rate_deviation = get_rate_deviation(order.trade_currency)
+        d = actual_currency_rate / 100 * rate_deviation
+        min_limit = actual_currency_rate / 2
+        max_limit = actual_currency_rate + actual_currency_rate / 2
+
+        if value == 0:
+            msg = m.reply('Недопустимое значение 0')
+            sleep(5)
+            msg.delete()
+            return
+
+        if value < min_limit or value > max_limit:
+            # TODO тут костыль
+            m.reply(f'# TODO:: Недопустимое отклонение от курса\n'
+                    f'Допустимый лимит {min_limit} - {max_limit}')
+
+            return
+
     except InvalidOperation:
 
         msg = m.reply(user.get_text(name='bot-type_error'))
@@ -390,10 +413,7 @@ def enter_currency_rate(cli, m):
         msg.delete()
         return
 
-    currency_rate = to_cents(user.settings.currency, currency_in_usd(user.settings.currency, value))
-
-    order = user.temp_order
-    order.currency_rate = currency_rate
+    order.currency_rate = to_cents(order.trade_currency, value)
     order.save()
 
     flags = user.flags
