@@ -1,2 +1,5 @@
-def get_rate_deviation(currency):
-    return 100
+from _decimal import Decimal
+
+
+def get_max_price_range_factor(currency):
+    return Decimal(1)

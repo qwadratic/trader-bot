@@ -3,7 +3,7 @@ from decimal import Decimal, InvalidOperation
 
 from pyrogram import Client, Filters
 
-from bot.helpers.settings import get_rate_deviation
+from bot.helpers.settings import get_max_price_range_factor
 from user.models import UserPurse
 from order.logic import kb
 from order.logic.core import get_order_info, create_order, order_info_for_owner
@@ -387,11 +387,11 @@ def enter_currency_rate(cli, m):
     order = user.temp_order
     try:
         value = Decimal(m.text.replace(',', '.'))
-        actual_currency_rate = to_units(order.trade_currency, get_currency_rate(order.trade_currency))
-        rate_deviation = get_rate_deviation(order.trade_currency)
-        d = actual_currency_rate / 100 * rate_deviation
-        min_limit = actual_currency_rate / 2
-        max_limit = actual_currency_rate + actual_currency_rate / 2
+        current_price = to_units(order.trade_currency, get_currency_rate(order.trade_currency))
+        max_price_range_factor = get_max_price_range_factor(order.trade_currency)
+
+        min_limit = current_price / (1 + max_price_range_factor)
+        max_limit = current_price * (1 + max_price_range_factor)
 
         if value == 0:
             msg = m.reply('Недопустимое значение 0')
@@ -400,7 +400,7 @@ def enter_currency_rate(cli, m):
             return
 
         if value < min_limit or value > max_limit:
-            # TODO тут костыль
+
             m.reply(f'# TODO:: Недопустимое отклонение от курса\n'
                     f'Допустимый лимит {min_limit} - {max_limit}')
 
