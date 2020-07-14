@@ -3,6 +3,7 @@ from web3 import Web3
 
 from bot.blockchain.ethAPI import w3
 from bot.blockchain.minterAPI import Minter
+from bot.helpers.shortcut import to_units
 from bot.models import CashFlow
 from trade.models import HoldMoney
 
@@ -187,7 +188,7 @@ def check_tx_hash(trade, tx_hash):
             # Проверка эфира
             if trade.payment_currency == 'ETH':
 
-                if round(to_bip(tx_hash['value']), 6) == round(to_bip(trade.price_trade), 6):
+                if round(to_units('ETH', tx_hash['value']), 6) == round(to_units('ETH', trade.price_trade), 6):
                     return True
                 return False
 
@@ -196,7 +197,7 @@ def check_tx_hash(trade, tx_hash):
             for element in tx_receipt.logs:
                 amount = Web3.toWei(int(element['data'], 16) / 1000000, 'ether')
 
-            if round(to_bip(amount), 3) == round(to_bip(trade.price_trade), 3):
+            if round(to_units('USDT', amount), 3) == round(to_units('USDT', trade.price_trade), 3):
                 return True
             return False
         else:
@@ -209,7 +210,7 @@ def check_tx_hash(trade, tx_hash):
             return False
 
         if tx['result']['data']['to'] == trade.order.requisites \
-                and round(to_bip(tx['result']['data']['value']), 2) == round(to_bip(trade.price_trade), 2):
+                and round(to_units('BIP', tx['result']['data']['value']), 2) == round(to_units('BIP', trade.price_trade), 2):
             return True
         return False
 

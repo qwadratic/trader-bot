@@ -1,11 +1,11 @@
 from requests import ReadTimeout
 from web3 import Web3
 from web3.exceptions import TransactionNotFound
-from mintersdk.shortcuts import to_bip
 
 from bot.blockchain.ethAPI import w3
 from bot.blockchain.minterAPI import Minter, get_wallet_balance
 from bot.helpers.misc import retry
+from bot.helpers.shortcut import to_units
 
 from bot.models import CashFlow, Service
 from user.models import Wallet
@@ -187,7 +187,7 @@ def update_eth_balance(cli, refill_txs):
                                      amount=refill,
                                      currency=currency))
 
-            txt_refills += f'\n**{to_bip(refill)} {currency}**'
+            txt_refills += f'\n**{to_units(currency, refill)} {currency}**'
         try:
 
             cli.send_message(user.telegram_id, user.get_text(name='bot-balance_replinished') + txt_refills,
@@ -269,7 +269,7 @@ def update_balance(cli, refills):
 
         virt_wallet.save()
 
-        txt_refills += f'\n**{to_bip(refill_in_pip)} BIP**'
+        txt_refills += f'\n**{to_units("BIP", refill_in_pip)} BIP**'
 
         refills_list.append(dict(user=user,
                                  type_operation='deposit',

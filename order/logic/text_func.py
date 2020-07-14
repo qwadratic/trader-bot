@@ -1,6 +1,5 @@
-from mintersdk.shortcuts import to_bip
-
 from bot.helpers.converter import currency_in_user_currency
+from bot.helpers.shortcut import to_units
 
 
 def choice_payment_currency_text(order):
@@ -24,9 +23,9 @@ def wallet_info(user):
     for w in virt_wallets:
 
         if w.balance > 0:
-            balance_in_user_currency = currency_in_user_currency(w.currency, user_currency, to_bip(w.balance))
+            balance_in_user_currency = currency_in_user_currency(w.currency, user_currency, to_units(w.currency, w.balance))
         else:
             balance_in_user_currency = 0
 
-        txt += f'\n{round(to_bip(w.balance), 4)} {w.currency} ~{round(balance_in_user_currency, 2)} {user_currency}'
+        txt += f'\n{round(to_units(w.currency, w.balance), 4)} {w.currency} ~{round(balance_in_user_currency, 2)} {user_currency}'
     return txt

@@ -1,14 +1,13 @@
 from decimal import Decimal, InvalidOperation
 from time import sleep
 
-from mintersdk.shortcuts import to_bip, to_pip
 from pyrogram import Client, Filters
 
 from order.models import Order
 from trade.logic.core import auto_trade, check_tx_hash, semi_auto_trade
 from trade.logic import kb
 from trade.models import Trade
-from bot.helpers.shortcut import get_user
+from bot.helpers.shortcut import get_user, to_cents, to_units
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:11] == 'start_trade'))
@@ -42,14 +41,14 @@ def start_trade(cli, cb):
 def amount_for_trade(cli, m):
     user = get_user(m.from_user.id)
     trade = Trade.objects.get(id=user.cache['clipboard']['active_trade'])
-
     try:
-        amount = to_pip(Decimal(m.text.replace(',', '.')))
+        # TODO лимит установить
+        amount = Decimal(m.text.replace(',', '.'))
         if amount == 0:
             raise InvalidOperation
 
         if amount > trade.order.amount:
-            msg = m.reply(f'Вы не можете купить больше чем {to_bip(trade.order.amount)} {trade.trade_currency}')
+            msg = m.reply(f'Вы не можете купить больше чем {to_units(trade.trade_currency, trade.order.amount)} {trade.trade_currency}')
             sleep(5)
             msg.delete()
             return
@@ -60,11 +59,11 @@ def amount_for_trade(cli, m):
         msg.delete()
         return
 
-    price_trade = to_bip(amount) * to_bip(trade.trade_currency_rate) / to_bip(
-        trade.payment_currency_rate)
+    price_trade = amount * to_units(trade.trade_currency, trade.trade_currency_rate) / to_units(
+        trade.payment_currency, trade.payment_currency_rate)
 
-    trade.price_trade = to_pip(price_trade)
-    trade.amount = amount
+    trade.price_trade = to_cents(trade.payment_currency, price_trade)
+    trade.amount = to_cents(trade.trade_currency, amount)
     trade.save()
 
     flags = user.flags
@@ -78,7 +77,7 @@ def amount_for_trade(cli, m):
 
     txt = user.get_text(name='trade-confirm_amount_for_trade').format(
         type_operation=type_translate,
-        amount=to_bip(amount),
+        amount=amount,
         payment_currency=trade.trade_currency,
         price_trade=price_trade,
         trade_currency=trade.payment_currency
@@ -129,17 +128,17 @@ def select_type_order(cli, cb):
 
         txt_for_user = user.get_text(name='trade-success_trade').format(
             type_operation=type_translate_for_user,
-            amount=round(to_bip(trade.amount), 6),
+            amount=round(to_units(trade.trade_currency, trade.amount), 6),
             trade_currency=trade.trade_currency,
-            price_trade=to_bip(trade.price_trade),
+            price_trade=to_units(trade.payment_currency, trade.price_trade),
             payment_currency=trade.payment_currency
         )
 
         txt_for_owner = owner.get_text(name='trade-success_trade').format(
             type_operation=type_translate_for_owner,
-            amount=round(to_bip(trade.amount), 6),
+            amount=round(to_units(trade.trade_currency, trade.amount), 6),
             trade_currency=trade.trade_currency,
-            price_trade=to_bip(trade.price_trade),
+            price_trade=to_units(trade.payment_currency, trade.price_trade),
             payment_currency=trade.payment_currency
         )
 
@@ -156,7 +155,7 @@ def select_type_order(cli, cb):
 
         # TODO тут логика с депонированием
         cb.message.reply(user.get_text(name='trade-semi_automatic_start').format(
-            amount=to_bip(trade.price_trade),
+            amount=to_units(trade.trade_currency, trade.price_trade),
             currency=trade.payment_currency,
             address=owner_requisite
         ), reply_markup=kb.cancel_trade(user))
@@ -183,7 +182,7 @@ def await_tx_hash(cli, m):
 
         owner = trade.order.parent_order.user
         cli.send_message(owner.telegram_id, owner.get_text(name='trade-confirm_transaction').format(
-            amount=round(to_bip(trade.price_trade), 6),
+            amount=round(to_units(trade.payment_currency, trade.price_trade), 6),
             currency=trade.payment_currency,
             address=trade.order.requisites,
             tx_hash=tx_hash
@@ -238,17 +237,17 @@ def second_payment(cli, cb):
 
         txt_for_user = user.get_text(name='trade-success_trade').format(
             type_operation=type_translate_for_user,
-            amount=round(to_bip(trade.amount), 6),
+            amount=round(to_units(trade.trade_currency, trade.amount), 6),
             trade_currency=trade.trade_currency,
-            price_trade=round(to_bip(trade.price_trade), 6),
+            price_trade=round(to_units(trade.payment_currency, trade.price_trade), 6),
             payment_currency=trade.payment_currency
         )
 
         txt_for_owner = owner.get_text(name='trade-success_trade').format(
             type_operation=type_translate_for_owner,
-            amount=round(to_bip(trade.amount), 6),
+            amount=round(to_units(trade.trade_currency, trade.amount), 6),
             trade_currency=trade.trade_currency,
-            price_trade=round(to_bip(trade.price_trade), 6),
+            price_trade=round(to_units(trade.payment_currency, trade.price_trade), 6),
             payment_currency=trade.payment_currency
         )
 

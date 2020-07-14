@@ -1,10 +1,10 @@
 import math
 from decimal import Decimal
 
-from mintersdk.shortcuts import to_bip
 from pyrogram import InlineKeyboardMarkup, InlineKeyboardButton
 
 from bot.helpers.converter import currency_in_usd
+from bot.helpers.shortcut import to_units
 from order.models import Order
 
 
@@ -146,9 +146,9 @@ def order_list(user, type_orders, offset):
         kb_list.append([InlineKeyboardButton(user.get_text(name='order-kb-look_at_the_sale'), callback_data=f'order_list-switch-sale')])
 
     for order in orders:
-        payment_currency_in_trade_currency = to_bip(order.currency_rate)/Decimal(currency_in_usd(order.payment_currency, 1))
-        button_name = f'{round(payment_currency_in_trade_currency, 6)} {order.payment_currency} ({round(to_bip(order.currency_rate), 2)} USD): ' \
-            f'{to_bip(order.amount)} {order.trade_currency}'
+        payment_currency_in_trade_currency = to_units(order.trade_currency, order.currency_rate) / Decimal(currency_in_usd(order.payment_currency, 1))
+        button_name = f'{round(payment_currency_in_trade_currency, 6)} {order.payment_currency} ({round(to_units("USD", order.currency_rate), 2)} USD): ' \
+            f'{to_units(order.trade_currency, order.amount)} {order.trade_currency}'
         kb_list.append([InlineKeyboardButton(button_name, callback_data=f'order_list-open-{order.id}-{type_orders}-{offset}')])
 
     if offset == 0 and len(all_orders) <= 7:
