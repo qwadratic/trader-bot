@@ -4,10 +4,11 @@ from time import sleep
 from pyrogram import Client, Filters
 
 from order.models import Order
-from trade.logic.core import auto_trade, check_tx_hash, semi_auto_trade
+from trade.logic.core import auto_trade, semi_auto_trade
 from trade.logic import kb
 from trade.models import Trade
 from bot.helpers.shortcut import get_user, to_cents, to_units
+from bot.blockchain.core import check_tx_hash
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:11] == 'start_trade'))

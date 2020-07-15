@@ -1,9 +1,3 @@
-from mintersdk.shortcuts import to_bip
-from web3 import Web3
-
-from bot.blockchain.ethAPI import w3
-from bot.blockchain.minterAPI import Minter
-from bot.helpers.shortcut import to_units
 from bot.models import CashFlow
 from trade.models import HoldMoney
 
@@ -166,50 +160,3 @@ def semi_auto_trade(trade):
         ))
 
     CashFlow.objects.bulk_create([CashFlow(**q) for q in cashflow_list])
-
-
-# TODO::
-#  - сделать функцию независимой от моделей: вместо (trade, tx_hash) будет (tx_hash, currency, amount, address)
-#  - сделать ее более расширяемой или хотя бы красивой/читабельной (мультивалютность)
-#  - после чего перекинуть в модуль blockchain
-def check_tx_hash(trade, tx_hash):
-
-    if trade.payment_currency in ['ETH', 'USDT']:
-        owner_address = trade.order.requisites
-        try:
-            tx_receipt = w3.eth.getTransactionReceipt(tx_hash)
-        except Exception:
-            return False
-
-        if tx_receipt['status'] == 1 and tx_receipt['to'].lower() == owner_address.lower():
-            tx_hash = w3.eth.getTransaction(tx_hash)
-
-            # Проверка эфира
-            if trade.payment_currency == 'ETH':
-
-                if round(to_units('ETH', tx_hash['value']), 6) == round(to_units('ETH', trade.price_trade), 6):
-                    return True
-                return False
-
-            # Проверка юстд
-            amount = 0
-            for element in tx_receipt.logs:
-                amount = Web3.toWei(int(element['data'], 16) / 1000000, 'ether')
-
-            if round(to_units('USDT', amount), 3) == round(to_units('USDT', trade.price_trade), 3):
-                return True
-            return False
-        else:
-            return False
-
-    if trade.payment_currency == 'BIP':
-        tx = Minter.get_transaction(tx_hash[2:])
-
-        if 'error' in tx:
-            return False
-
-        if tx['result']['data']['to'] == trade.order.requisites \
-                and round(to_units('BIP', tx['result']['data']['value']), 2) == round(to_units('BIP', trade.price_trade), 2):
-            return True
-        return False
-
