@@ -19,17 +19,17 @@ class GetOrNoneManager(Manager):
 
 
 def _default_telegramuser_cache():
-        return {
-            'msg': {
-                'trade_menu': None,
-                'wallet_menu': None
-            },
-            'clipboard': {
-                'currency': None,
-                'requisites': [],
-                'active_trade': None
-            }
+    return {
+        'msg': {
+            'trade_menu': None,
+            'wallet_menu': None
+        },
+        'clipboard': {
+            'currency': None,
+            'requisites': [],
+            'active_trade': None
         }
+    }
 
 
 class TelegramUser(Model):
@@ -37,7 +37,7 @@ class TelegramUser(Model):
 
     telegram_id = PositiveIntegerField(_('Telegram user ID'), unique=True)
     username = CharField(_('User name'), max_length=255, null=True)
-    first_name = CharField(_('First name'), max_length=255,null=True)
+    first_name = CharField(_('First name'), max_length=255, null=True)
     last_name = CharField(_('Last name'), max_length=255, null=True)
     last_activity = DateTimeField(_('Last activity'), null=True)
     created_at = DateTimeField(_('Registration date'), auto_now_add=True)
@@ -121,3 +121,15 @@ class UserPurse(Model):
     currency = CharField(max_length=255)
     address = CharField(max_length=255, null=True)
     status = CharField(max_length=255, default='invalid')
+
+    def get_display_text(self, user):
+        if self.name:
+            return user.get_text(name='purse-requisite_info_with_name').format(
+                name=self.name,
+                address=self.address,
+                currency=self.currency)
+
+        return user.get_text(name='purse-requisite_info').format(
+            address=self.address,
+            currency=self.currency)
+

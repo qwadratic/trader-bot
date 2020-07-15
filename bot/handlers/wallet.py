@@ -51,27 +51,13 @@ def purse_menu(cli, cb):
         return
 
     if action == 'add':
-        purse = user.requisites.filter(status='invalid').delete()
-
+        user.requisites.filter(status='invalid').delete()
         cb.message.edit(user.get_text(name='purse-select_currency'), reply_markup=kb.choice_currency_for_wallet)
         return
 
     requisite = user.requisites.get(id=int(cb.data.split('-')[2]))
 
-    # TODO:: создать в UserPurse функцию get_display_text и заюзать в трех местах этого модуля (1)
-    if requisite.name:
-        txt = user.get_text(name='purse-requisite_info_with_name').format(
-            name=requisite.name,
-            address=requisite.address,
-            currency=requisite.currency
-        )
-
-    else:
-        txt = user.get_text(name='purse-requisite_info').format(
-            address=requisite.address,
-            currency=requisite.currency
-        )
-
+    txt = requisite.get_display_text(user)
     cb.message.edit(txt, reply_markup=kb.requisite(user, requisite.id))
 
 
@@ -112,18 +98,7 @@ def requisites_menu(cli, cb):
         user_flag.await_requisites_address = False
         requisite.status = 'valid'
 
-        # TODO:: создать в UserPurse функцию get_display_text и заюзать в трех местах этого модуля (2)
-        if requisite.name:
-            txt = user.get_text(name='purse-requisite_info_with_name').format(
-                name=requisite.name,
-                address=requisite.address,
-                currency=requisite.currency
-            )
-        else:
-            txt = user.get_text(name='purse-requisite_info').format(
-                address=requisite.address,
-                currency=requisite.currency
-            )
+        txt = requisite.get_display_text(user)
 
         cb.message.edit(txt, reply_markup=kb.requisite(user, requisite.id))
 
@@ -212,18 +187,7 @@ def add_reqiusites_name(cli, m):
 
         delete_msg(cli, user.telegram_id, user_msg.wallet_menu)
 
-        # TODO:: создать в UserPurse функцию get_display_text и заюзать в трех местах этого модуля (3)
-        if requisite.name:
-            txt = user.get_text(name='purse-requisite_info_with_name').format(
-                name=requisite.name,
-                address=requisite.address,
-                currency=requisite.currency
-            )
-        else:
-            txt = user.get_text(name='purse-requisite_info').format(
-                address=requisite.address,
-                currency=requisite.currency
-            )
+        txt = requisite.get_display_text(user)
 
         msg = m.reply(txt, reply_markup=kb.requisite(user, requisite.id))
         user_msg.wallet_menu = msg.message_id
