@@ -172,7 +172,7 @@ def await_tx_hash(cli, m):
     trade = user.trade.get(id=user.cache['clipboard']['active_trade'])
     tx_hash = m.text
 
-    if check_tx_hash(trade, tx_hash):
+    if check_tx_hash(tx_hash, trade.payment_currency, trade.price_trade, trade.order.requisites):
         flags.await_tx_hash = False
         flags.save()
 
