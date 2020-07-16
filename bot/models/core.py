@@ -36,3 +36,7 @@ class ExchangeRate(Model):
 
     class Meta:
         ordering = 'time',
+
+
+class Settings(Model):
+    update_rate_interval = PositiveIntegerField(default=20)

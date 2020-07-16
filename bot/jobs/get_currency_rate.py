@@ -2,7 +2,7 @@ import json
 
 from bot.helpers.shortcut import to_cents
 
-from bot.models import ExchangeRate
+from bot.models import ExchangeRate, Settings
 from requests import Session
 
 
@@ -46,5 +46,10 @@ def update_exchange_rates():
 
 
 def get_update_exchange_rates_interval():
-    #  TODO вытащить эту настройку
-    return 20
+    try:
+        interval = Settings.objects.get().update_rate_interval
+    except Exception:
+        set = Settings.objects.create()
+        interval = set.update_rate_interval
+
+    return interval
