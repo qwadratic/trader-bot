@@ -448,6 +448,13 @@ def amount_for_order(cli, m):
                 sleep(5)
                 msg.delete()
                 return
+
+            if amount == 0:
+                msg = m.reply('Недопустимое значение 0')
+                sleep(5)
+                msg.delete()
+                return
+
     except InvalidOperation:
 
         msg = m.reply(user.get_text(name='bot-type_error'))

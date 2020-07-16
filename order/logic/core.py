@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from bot.helpers.converter import currency_in_usd
 from bot.helpers.shortcut import to_units, to_cents
-from order.models import Order, ParentOrder
+from order.models import Order, ParentOrder, OrderHoldMoney
 
 
 def get_order_info(user, order_id):
@@ -150,8 +150,34 @@ def create_order(temp_order):
 
     Order.objects.bulk_create([Order(**r) for r in order_list])
 
+    hold_money_order(order)
     return order
 
 
+def hold_money_order(order):
 
+    user = order.user
+    hold_list = []
+    if order.type_operation == 'buy':
+        wallet = user.virtual_wallets.get(currency=order.trade_currency)
+        wallet.balance -= order.amount
+        wallet.save()
+        hold_list.append(dict(
+            order=order,
+            currency=order.trade_currency,
+            amount=order.amount
+        ))
 
+    elif order.type_operation == 'sale':
+
+        for currency in order.payment_currency:
+            wallet = user.virtual_wallets.get(currency=currency)
+            wallet.balance -= order.amount
+            wallet.save()
+            hold_list.append(dict(
+                order=order,
+                currency=currency,
+                amount=order.amount
+            ))
+
+    OrderHoldMoney.objects.bulk_create([OrderHoldMoney(**r) for r in hold_list])

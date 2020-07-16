@@ -57,7 +57,7 @@ class ParentOrder(Model):
 class Order(Model):
     objects = GetOrNoneManager()
 
-    parent_order = ForeignKey(ParentOrder, related_name='orders', on_delete=CASCADE)
+    parent_order = ForeignKey('order.ParentOrder', related_name='orders', on_delete=CASCADE)
     type_operation = CharField(max_length=255)
     trade_currency = CharField(max_length=255)
     amount = DecimalField(max_digits=40, decimal_places=0)
@@ -68,3 +68,7 @@ class Order(Model):
     mirror = BooleanField(default=False)
 
 
+class OrderHoldMoney(Model):
+    order = ForeignKey('order.ParentOrder', related_name='holdMoney', on_delete=CASCADE)
+    currency = CharField(max_length=255)
+    amount = DecimalField(max_digits=40, decimal_places=0)
