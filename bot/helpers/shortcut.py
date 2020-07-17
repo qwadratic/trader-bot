@@ -1,5 +1,5 @@
 from bot.blockchain import minterAPI, ethAPI
-from bot.models import ExchangeRate
+from bot.models import ExchangeRate, CashFlow
 from user.models import TelegramUser
 from mintersdk.shortcuts import to_pip, to_bip
 
@@ -66,6 +66,16 @@ def get_currency_rate(currency):
     return ExchangeRate.objects.filter(currency=currency).latest('time').value
 
 
+def create_record_cashflow(user, to, type_operation, amount, currency, trade=None, tx_hash=None):
+    CashFlow.objects.create(
+        user=user,
+        to=to,
+        trade=trade,
+        type_operation=type_operation,
+        amount=amount,
+        currency=currency,
+        tx_hash=tx_hash
+    )
 
 
 

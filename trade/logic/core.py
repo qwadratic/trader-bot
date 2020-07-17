@@ -1,12 +1,5 @@
-from bot.models import CashFlow
-from trade.models import HoldMoney
-
-
-def hold_money(trade):
-    HoldMoney.objects.create(
-        trade=trade,
-        amount=trade.amount
-    )
+from bot.helpers.shortcut import create_record_cashflow
+from user.logic.core import update_wallet_balance
 
 
 def update_order(parent_order, type_update, value):
@@ -25,80 +18,30 @@ def auto_trade(trade):
 
     update_order(parent_order, 'amount', parent_order.amount - trade.amount)
 
-    cashflow_list = []
-
     if trade.order.type_operation == 'sale':
-        cashflow_list.append(dict(
-            user=user,
-            to=owner,
-            trade=trade,
-            type_operation='transfer',
-            amount=trade.price_trade,
-            currency=trade.payment_currency
-        ))
+        create_record_cashflow(user, owner, 'transfer', trade.price_trade, trade.payment_currency, trade)
 
-        owner_balance_in_payment_currency = owner.virtual_wallets.get(currency=trade.payment_currency)
-        owner_balance_in_payment_currency.balance += trade.price_trade
-        owner_balance_in_payment_currency.save()
+        update_wallet_balance(owner, trade.payment_currency, trade.price_trade, 'up')
+        update_wallet_balance(owner, trade.trade_currency, trade.amount, 'down')
 
-        owner_balance_in_trade_currency = owner.virtual_wallets.get(currency=trade.trade_currency)
-        owner_balance_in_trade_currency.balance -= trade.amount
-        owner_balance_in_trade_currency.save()
-
-        cashflow_list.append(dict(
-            user=owner,
-            to=user,
-            trade=trade,
-            type_operation='transfer',
-            amount=trade.amount,
-            currency=trade.trade_currency
-        ))
-
-        user_balance_in_trade_currency = user.virtual_wallets.get(currency=trade.trade_currency)
-        user_balance_in_trade_currency.balance += trade.amount
-        user_balance_in_trade_currency.save()
-
-        user_balance_in_payment_currency = user.virtual_wallets.get(currency=trade.payment_currency)
-        user_balance_in_payment_currency.balance -= trade.price_trade
-        user_balance_in_payment_currency.save()
+        create_record_cashflow(owner, user, 'transfer', trade.amount, trade.trade_currency, trade)
+        update_wallet_balance(user, trade.trade_currency, trade.amount, 'up')
+        update_wallet_balance(user, trade.payment_currency, trade.price_trade, 'down')
 
     # покупка
     else:
-        cashflow_list.append(dict(
-            user=user,
-            to=owner,
-            trade=trade,
-            type_operation='transfer',
-            amount=trade.price_trade,
-            currency=trade.trade_currency
-        ))
 
-        owner_balance_in_payment_currency = owner.virtual_wallets.get(currency=trade.order.payment_currency)
-        owner_balance_in_payment_currency.balance -= trade.price_trade
-        owner_balance_in_payment_currency.save()
+        create_record_cashflow(user, owner, 'transfer', trade.price_trade, trade.payment_currency, trade)
 
-        owner_balance_in_trade_currency = owner.virtual_wallets.get(currency=trade.trade_currency)
-        owner_balance_in_trade_currency.balance += trade.amount
-        owner_balance_in_trade_currency.save()
+        update_wallet_balance(owner, trade.order.payment_currency, trade.price_trade, 'down')
+        update_wallet_balance(owner, trade.trade_currency, trade.amount, 'up')
 
-        cashflow_list.append(dict(
-            user=owner,
-            to=user,
-            trade=trade,
-            type_operation='transfer',
-            amount=trade.amount,
-            currency=trade.payment_currency
-        ))
+        create_record_cashflow(owner, user, 'transfer', trade.amount, trade.trade_currency, trade)
 
-        user_balance_in_payment_currency = user.virtual_wallets.get(currency=trade.payment_currency)
-        user_balance_in_payment_currency.balance -= trade.price_trade
-        user_balance_in_payment_currency.save()
+        update_wallet_balance(user, trade.payment_currency, trade.price_trade, 'down')
+        update_wallet_balance(user, trade.trade_currency, trade.amount, 'up')
 
-        user_balance_in_trade_currency = user.virtual_wallets.get(currency=trade.trade_currency)
-        user_balance_in_trade_currency.balance += trade.amount
-        user_balance_in_trade_currency.save()
-
-    CashFlow.objects.bulk_create([CashFlow(**q) for q in cashflow_list])
+    close_trade(trade)
 
 
 def semi_auto_trade(trade):
@@ -106,57 +49,35 @@ def semi_auto_trade(trade):
     user = trade.user
     parent_order = trade.order.parent_order
 
-    cashflow_list = []
-
     update_order(parent_order, 'amount', parent_order.amount - trade.amount)
 
     if trade.order.type_operation == 'sale':
-        cashflow_list.append(dict(
-            user=owner,
-            to=user,
-            trade=trade,
-            type_operation='transfer',
-            amount=trade.amount,
-            currency=trade.trade_currency
-        ))
+        create_record_cashflow(owner, user, 'transfer', trade.amount, trade.trade_currency, trade)
+        update_wallet_balance(user, trade.trade_currency, trade.amount, 'up')
+        create_record_cashflow(user, owner, 'external-transfer', trade.price_trade, trade.payment_currency, trade, tx_hash=trade.tx_hash)
 
-        user_balance_in_trade_currency = user.virtual_wallets.get(currency=trade.trade_currency)
-        user_balance_in_trade_currency.balance += trade.amount
-        user_balance_in_trade_currency.save()
-
-        cashflow_list.append(dict(
-            user=user,
-            to=owner,
-            trade=trade,
-            type_operation='external-transfer',
-            amount=trade.price_trade,
-            currency=trade.payment_currency,
-            tx_hash=trade.tx_hash
-        ))
 
     else:
 
-        cashflow_list.append(dict(
-            user=owner,
-            to=user,
-            trade=trade,
-            type_operation='transfer',
-            amount=trade.price_trade,
-            currency=trade.payment_currency
-        ))
+        create_record_cashflow(owner, user, 'transfer', trade.price_trade, trade.payment_currency, trade)
+        update_wallet_balance(user, trade.payment_currency, trade.price_trade, 'up')
+        create_record_cashflow(user, owner, 'external-transfer', trade.amount, trade.trade_currency, trade,
+                               tx_hash=trade.tx_hash)
 
-        user_balance_in_payment_currency = user.virtual_wallets.get(currency=trade.payment_currency)
-        user_balance_in_payment_currency.balance += trade.price_trade
-        user_balance_in_payment_currency.save()
+    close_trade(trade)
 
-        cashflow_list.append(dict(
-            user=user,
-            to=owner,
-            trade=trade,
-            type_operation='external-transfer',
-            amount=trade.amount,
-            currency=trade.trade_currency,
-            tx_hash=trade.tx_hash
-        ))
 
-    CashFlow.objects.bulk_create([CashFlow(**q) for q in cashflow_list])
+def close_trade(trade):
+
+    if trade.order.type_operation == 'buy':
+        hm = trade.order.parent_order.holdMoney.get(currency=trade.trade_currency)
+        hm.amount -= trade.amount
+        hm.save()
+
+    if trade.order.type_operation == 'sale':
+        hm = trade.order.parent_order.holdMoney.get(currency=trade.payment_currency)
+        hm.amount -= trade.price_trade
+        hm.save()
+
+    trade.status = 'close'
+    trade.save()
