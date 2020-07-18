@@ -158,7 +158,7 @@ def hold_money_order(order):
 
     user = order.user
     hold_list = []
-    if order.type_operation == 'buy':
+    if order.type_operation == 'sale':
         wallet = user.virtual_wallets.get(currency=order.trade_currency)
         wallet.balance -= order.amount
         wallet.save()
@@ -168,16 +168,18 @@ def hold_money_order(order):
             amount=order.amount
         ))
 
-    elif order.type_operation == 'sale':
+    elif order.type_operation == 'buy':
 
         for currency in order.payment_currency:
             wallet = user.virtual_wallets.get(currency=currency)
             wallet.balance -= order.amount
             wallet.save()
+            currency_rate = Decimal(order.currency_rate / order.payment_currency_rate[currency])
+            amount = currency_rate * to_units(order.trade_currency, order.amount)
             hold_list.append(dict(
                 order=order,
                 currency=currency,
-                amount=order.amount
+                amount=to_cents(currency, amount)
             ))
 
     OrderHoldMoney.objects.bulk_create([OrderHoldMoney(**r) for r in hold_list])
