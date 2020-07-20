@@ -150,7 +150,6 @@ def create_order(temp_order):
 
     Order.objects.bulk_create([Order(**r) for r in order_list])
 
-    hold_money_order(order)
     return order
 
 

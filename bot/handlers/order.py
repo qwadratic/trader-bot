@@ -92,13 +92,15 @@ def order_list(cli, cb):
         elif cours == 'left':
             offset -= 7
 
-        cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list(user, type_operation, offset))
+        cb.message.edit(user.get_text(name='order-orders_menu'),
+                        reply_markup=kb.order_list(user, type_operation, offset))
 
     elif action == 'open':
         order_id = int(cb.data.split('-')[2])
         type_orders = cb.data.split('-')[3]
         offset = int(cb.data.split('-')[4])
-        cb.message.edit(get_order_info(user, order_id), reply_markup=kb.order_for_user(user, order_id, type_orders, offset))
+        cb.message.edit(get_order_info(user, order_id),
+                        reply_markup=kb.order_for_user(user, order_id, type_orders, offset))
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:10] == 'order_info'))
@@ -112,7 +114,8 @@ def order_info(cli, cb):
         if cours == 'order_list':
             type_orders = cb.data.split('-')[3]
             offset = int(cb.data.split('-')[4])
-            cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list(user, type_orders, offset))
+            cb.message.edit(user.get_text(name='order-orders_menu'),
+                            reply_markup=kb.order_list(user, type_orders, offset))
 
         elif cours == 'my_orders':
             cb.message.edit(user.get_text(name='order-my_orders'), reply_markup=kb.owner_order_list(user, 0))
@@ -250,7 +253,8 @@ def select_requisite_for_order(cli, cb):
             cb.message.reply(user.get_text(name='order-enter_currency_rate').format(
                 trade_currency=order.trade_currency,
                 user_currency=user.settings.currency,
-                price=currency_in_user_currency(order.trade_currency, user.settings.currency, 1)))
+                price=currency_in_user_currency(order.trade_currency, user.settings.currency, 1)),
+                reply_markup=kb.cancel_order(user, order.id))
 
             flags.await_currency_rate = True
             flags.save()
@@ -277,7 +281,8 @@ def select_requisite_for_order(cli, cb):
         cb.message.reply(user.get_text(name='order-enter_currency_rate').format(
             trade_currency=order.trade_currency,
             user_currency=user.settings.currency,
-            price=currency_in_user_currency(order.trade_currency, user.settings.currency, 1)))
+            price=currency_in_user_currency(order.trade_currency, user.settings.currency, 1)),
+            reply_markup=kb.cancel_order(user, order.id))
 
         flags.await_currency_rate = True
         flags.save()
@@ -400,7 +405,6 @@ def enter_currency_rate(cli, m):
             return
 
         if value < min_limit or value > max_limit:
-
             m.reply(f'# TODO:: Недопустимое отклонение от курса\n'
                     f'Допустимый лимит {min_limit} - {max_limit}')
 
@@ -423,7 +427,8 @@ def enter_currency_rate(cli, m):
 
     if order.type_operation == 'sale':
         type_operation = user.get_text(name='order-type_operation_translate_sale_1')
-        max_amount = round(to_units(order.trade_currency, user.virtual_wallets.get(currency=order.trade_currency).balance), 6)
+        max_amount = round(
+            to_units(order.trade_currency, user.virtual_wallets.get(currency=order.trade_currency).balance), 6)
     else:
         type_operation = user.get_text(name='order-type_operation_translate_buy_1')
         max_amount = '))'
@@ -431,7 +436,7 @@ def enter_currency_rate(cli, m):
     m.reply(user.get_text(name='order-enter_amount').format(
         type_operation=type_operation,
         currency=order.trade_currency,
-        amount=max_amount))
+        amount=max_amount), reply_markup=kb.cancel_order(user, order.id))
 
 
 @Client.on_message(Filters.create(lambda _, m: get_user(m.from_user.id).flags and
@@ -443,8 +448,11 @@ def amount_for_order(cli, m):
     try:
         amount = Decimal(m.text.replace(',', '.'))
         if temp_order.type_operation == 'sale':
-            if amount > user.virtual_wallets.get(currency=temp_order.trade_currency).balance:
-                msg = m.reply(f'Вы не можете продать больше чем {to_units(temp_order.trade_currency, user.virtual_wallets.get(currency=temp_order.trade_currency).balance)} {temp_order.trade_currency}')
+            if to_units(temp_order.trade_currency, amount) > user.virtual_wallets.get(
+                    currency=temp_order.trade_currency).balance:
+                msg = m.reply(f'Вы не можете продать больше чем '
+                              f'{to_units(temp_order.trade_currency,user.virtual_wallets.get(currency=temp_order.trade_currency).balance)}'
+                              f' {temp_order.trade_currency}')
                 sleep(5)
                 msg.delete()
                 return
@@ -454,6 +462,17 @@ def amount_for_order(cli, m):
                 sleep(5)
                 msg.delete()
                 return
+        else:
+            for currency in temp_order.payment_currency:
+                user_balance = user.virtual_wallets.get(currency=currency).balance
+                price_trade = amount * to_units(temp_order.trade_currency, temp_order.currency_rate) / \
+                              temp_order.payment_currency_rate[currency]
+                max_limit = temp_order.payment_currency_rate[currency] * to_units(currency, user_balance)
+                if to_cents(currency, price_trade) > user_balance:
+                    msg = m.reply(f'Вы не можете купить больше чем {max_limit} {temp_order.trade_currency}')
+                    sleep(5)
+                    msg.delete()
+                    return
 
     except InvalidOperation:
 
@@ -471,3 +490,27 @@ def amount_for_order(cli, m):
     order = create_order(temp_order)
 
     m.reply(order_info_for_owner(order), reply_markup=kb.order_for_owner(order, 1))
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('cancel_order_create')))
+def cancel_order_create(cli, cb):
+    user = get_user(cb.from_user.id)
+    order_id = int(cb.data.split('-')[1])
+    TempOrder.objects.get(id=order_id).delete()
+
+    flags = user.flags
+    flags.await_currency_rate = False
+    flags.await_requisites_for_order = False
+    flags.await_currency_rate = False
+    flags.await_requisite_for_order = False
+    flags.await_amount_for_order = False
+    flags.save()
+
+    cb.message.edit(cb.message.text + '\n\n**Создание объявления отменено**')
+    user_msg = user.msg
+
+    delete_msg(cli, user.telegram_id, user_msg.trade_menu)
+
+    msg = cb.message.reply(user.get_text(name='user-trade_menu'), reply_markup=kb.trade_menu(user))
+    user_msg.trade_menu = msg.message_id
+    user_msg.save()

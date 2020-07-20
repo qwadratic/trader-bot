@@ -160,5 +160,8 @@ class Command(BaseCommand):
                 {'name': 'order-type_operation_translate_buy_3', 'text': 'Покупка {currency}',
                  'text_ru': 'Покупка {currency}'}, {'name': 'order-enter_amount',
                                                     'text': 'Введите сумму {currency}, которую хотите {type_operation}\r\nВсего доступно: {amount} {currency}',
-                                                    'text_ru': 'Введите сумму {currency}, которую хотите {type_operation}\r\nВсего доступно: {amount} {currency}'}]
+                                                    'text_ru': 'Введите сумму {currency}, которую хотите {type_operation}\r\nВсего доступно: {amount} {currency}'},
+                {'name': 'order-kb-cancel_order', 'text': 'Отменить создание объявления',
+                 'text_ru': 'Отменить создание объявления'}
+                ]
         Text.objects.bulk_create([Text(**q) for q in txts])

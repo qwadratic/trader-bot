@@ -245,3 +245,12 @@ def order_for_user(user, order_id, type_orders, offset):
         ]
     )
     return kb
+
+
+def cancel_order(user, order_id):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='order-kb-cancel_order'), callback_data=f'cancel_order_create-{order_id}')]
+        ]
+    )
+    return kb
