@@ -431,7 +431,12 @@ def enter_currency_rate(cli, m):
             to_units(order.trade_currency, user.virtual_wallets.get(currency=order.trade_currency).balance), 6)
     else:
         type_operation = user.get_text(name='order-type_operation_translate_buy_1')
-        max_amount = '))'
+        currency_balance = {}
+        for currency in order.payment_currency:
+            wallet = user.virtual_wallets.get(currency=currency)
+            currency_balance[currency] = to_units(currency, wallet.balance) * to_units(currency, order.payment_currency_rate[currency])
+        min_currency = min(currency_balance, key=lambda currency: currency_balance[currency])
+        max_amount = currency_balance[min_currency] / to_units(order.trade_currency, order.currency_rate)
 
     m.reply(user.get_text(name='order-enter_amount').format(
         type_operation=type_operation,
@@ -465,13 +470,12 @@ def amount_for_order(cli, m):
         else:
             for currency in temp_order.payment_currency:
                 user_balance = user.virtual_wallets.get(currency=currency).balance
-                price_trade = amount * to_units(temp_order.trade_currency, temp_order.currency_rate) / \
-                              temp_order.payment_currency_rate[currency]
+                price_trade = Decimal(amount * to_units(temp_order.trade_currency, to_units(temp_order.trade_currency, temp_order.currency_rate)) / \
+                              to_units(currency, temp_order.payment_currency_rate[currency]))
+
                 max_limit = temp_order.payment_currency_rate[currency] * to_units(currency, user_balance)
-                if to_cents(currency, price_trade) > user_balance:
-                    msg = m.reply(f'Вы не можете купить больше чем {max_limit} {temp_order.trade_currency}')
-                    sleep(5)
-                    msg.delete()
+                if price_trade > to_units(currency, user_balance):
+                    m.reply(f'Вы не можете купить больше чем {max_limit} {temp_order.trade_currency}')
                     return
 
     except InvalidOperation:
