@@ -1,4 +1,5 @@
 from bot.helpers.shortcut import create_record_cashflow
+from trade.models.trade import TradeHoldMoney
 from user.logic.core import update_wallet_balance
 
 
@@ -81,3 +82,14 @@ def close_trade(trade):
 
     trade.status = 'close'
     trade.save()
+
+
+def hold_money_trade(trade):
+    user = trade.user
+    hold_list = []
+    hold_list.append(dict(
+        trader=trade,
+        currency=trade.trade_currency,
+        amount=trade.amount
+    ))
+    TradeHoldMoney.objects.bulk_create([TradeHoldMoney(**r) for r in hold_list])

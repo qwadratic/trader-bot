@@ -18,15 +18,16 @@ def start_trade(cli, cb):
     order_id = int(cb.data.split('-')[1])
 
     order = Order.objects.get(id=order_id)
-   
+
+    payment_currency_rate = to_cents(order.payment_currency, 1) / order.currency_rate
     trade = Trade.objects.create(
-        order=order,
-        user=user,
-        trade_currency=order.trade_currency,
-        payment_currency=order.payment_currency,
-        trade_currency_rate=order.parent_order.currency_rate,
-        payment_currency_rate=order.parent_order.payment_currency_rate[order.payment_currency]
-    )
+            order=order,
+            user=user,
+            trade_currency=order.trade_currency,
+            payment_currency=order.payment_currency,
+            trade_currency_rate=order.currency_rate,
+            payment_currency_rate=payment_currency_rate
+        )
 
     user.cache['clipboard']['active_trade'] = trade.id
     user.save()
@@ -60,8 +61,7 @@ def amount_for_trade(cli, m):
         msg.delete()
         return
 
-    price_trade = amount * to_units(trade.trade_currency, trade.trade_currency_rate) / to_units(
-        trade.payment_currency, trade.payment_currency_rate)
+    price_trade = amount * to_units(trade.trade_currency, trade.trade_currency_rate)
 
     trade.price_trade = to_cents(trade.payment_currency, price_trade)
     trade.amount = to_cents(trade.trade_currency, amount)
@@ -79,9 +79,9 @@ def amount_for_trade(cli, m):
     txt = user.get_text(name='trade-confirm_amount_for_trade').format(
         type_operation=type_translate,
         amount=amount,
-        payment_currency=trade.trade_currency,
+        payment_currency=trade.payment_currency,
         price_trade=price_trade,
-        trade_currency=trade.payment_currency
+        trade_currency=trade.trade_currency
     )
     m.reply(txt, reply_markup=kb.confirm_amount_for_trade(user))
 
@@ -122,6 +122,7 @@ def select_type_order(cli, cb):
             return
 
         trade.type_trade = 'auto'
+        trade.status = 'in processing'
         trade.save()
 
         # проведение автотрейда
@@ -149,6 +150,7 @@ def select_type_order(cli, cb):
     if button == 'third_party_wallet':
         owner_requisite = trade.order.requisites
         trade.type_trade = 'semi-automatic'
+        trade.status = 'in processing'
         trade.save()
 
         flags.await_tx_hash = True
