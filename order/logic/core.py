@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from bot.helpers.converter import currency_in_usd
-from bot.helpers.shortcut import to_units, to_cents
+from bot.helpers.shortcut import to_units, to_cents, round_currency
 from order.models import Order, ParentOrder, OrderHoldMoney
 
 
@@ -17,32 +17,28 @@ def get_order_info(user, order_id):
     payment_currency = order.payment_currency
     if not order.mirror:
         trade_currency_rate_usd = to_units(trade_currency, order.parent_order.currency_rate)
-        payment_currency_rate = round(
-            Decimal(to_units(payment_currency, order.parent_order.payment_currency_rate[payment_currency])
-                    / to_units(trade_currency, order.parent_order.currency_rate)), 6)
+        payment_currency_rate = Decimal(to_units(payment_currency, order.parent_order.payment_currency_rate[payment_currency]) / to_units(trade_currency, order.parent_order.currency_rate))
     else:
         trade_currency_rate_usd = to_units(trade_currency, order.parent_order.payment_currency_rate[trade_currency])
-        payment_currency_rate = round(
-            Decimal(to_units(payment_currency, order.parent_order.currency_rate))
-                    / trade_currency_rate_usd, 6)
+        payment_currency_rate = Decimal(to_units(payment_currency, order.parent_order.currency_rate)) / trade_currency_rate_usd
 
     payment_currency = order.payment_currency
 
     trade_currency_rate = to_units(trade_currency, order.currency_rate)
 
-    amount = round(to_units(trade_currency, order.amount), 6)
-    price_order = round(amount * trade_currency_rate, 6)
+    amount = to_units(trade_currency, order.amount)
+    price_order = amount * trade_currency_rate
 
     txt = user.get_text(name='order-order_info').format(
         order_id=order.id,
         type_operation=trade_direction[type_operation]["type"],
         trade_currency=trade_currency,
-        trade_currency_rate_usd=trade_currency_rate_usd,
+        trade_currency_rate_usd=round_currency(trade_currency, trade_currency_rate_usd),
         payment_currency=payment_currency,
-        rate_1=trade_currency_rate,
-        rate_2=payment_currency_rate,
-        amount=amount,
-        price_order=price_order
+        rate_1=round_currency(payment_currency, trade_currency_rate),
+        rate_2=round_currency(trade_currency, payment_currency_rate),
+        amount=round_currency(trade_currency, amount),
+        price_order=round_currency(payment_currency, price_order)
     )
 
     return txt

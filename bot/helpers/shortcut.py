@@ -80,4 +80,8 @@ def create_record_cashflow(user, to, type_operation, amount, currency, trade=Non
 
 def round_currency(currency_id, amount):
     currency = CurrencyList.objects.get(currency=currency_id)
-    return round(amount, currency.accuracy)
+    amount = round(amount, currency.accuracy)
+    if amount % 1 == 0:
+        return int(amount)
+    else:
+        return amount
