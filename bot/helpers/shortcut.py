@@ -1,5 +1,5 @@
 from bot.blockchain import minterAPI, ethAPI
-from bot.models import ExchangeRate, CashFlow
+from bot.models import ExchangeRate, CashFlow, CurrencyList
 from user.models import TelegramUser
 from mintersdk.shortcuts import to_pip, to_bip
 
@@ -78,4 +78,6 @@ def create_record_cashflow(user, to, type_operation, amount, currency, trade=Non
     )
 
 
-
+def round_currency(currency_id, amount):
+    currency = CurrencyList.objects.get(currency=currency_id)
+    return round(amount, currency.accuracy)
