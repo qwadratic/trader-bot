@@ -40,3 +40,9 @@ class ExchangeRate(Model):
 
 class Settings(Model):
     update_rate_interval = PositiveIntegerField(default=20)
+
+
+class CurrencyList(Model):
+    currency = CharField(max_length=25, primary_key=True)
+    type = CharField(max_length=25)
+    accuracy = PositiveIntegerField()
