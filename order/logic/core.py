@@ -6,40 +6,50 @@ from order.models import Order, ParentOrder, OrderHoldMoney
 
 
 def get_order_info(user, order_id):
-    #  TODO учесть валюту юзера
-
     trade_direction = {'buy': {'type': 'Покупка',
                                'icon': '📈'},
                        'sale': {'type': 'Продажа',
                                 'icon': '📉'}}
 
     order = Order.objects.get(id=order_id)
-    user_currency = user.settings.currency
     type_operation = order.type_operation
     trade_currency = order.trade_currency
-    currency_rate = to_units(trade_currency, order.currency_rate)
-    amount = to_units(trade_currency, order.amount)
+    payment_currency = order.payment_currency
+    if not order.mirror:
+        trade_currency_rate_usd = to_units(trade_currency, order.parent_order.currency_rate)
+        payment_currency_rate = round(
+            Decimal(to_units(payment_currency, order.parent_order.payment_currency_rate[payment_currency])
+                    / to_units(trade_currency, order.parent_order.currency_rate)), 6)
+    else:
+        trade_currency_rate_usd = to_units(trade_currency, order.parent_order.payment_currency_rate[trade_currency])
+        payment_currency_rate = round(
+            Decimal(to_units(payment_currency, order.parent_order.currency_rate))
+                    / trade_currency_rate_usd, 6)
 
     payment_currency = order.payment_currency
+
+    trade_currency_rate = to_units(trade_currency, order.currency_rate)
+
+    amount = round(to_units(trade_currency, order.amount), 6)
+    price_order = round(amount * trade_currency_rate, 6)
 
     txt = user.get_text(name='order-order_info').format(
         order_id=order.id,
         type_operation=trade_direction[type_operation]["type"],
         trade_currency=trade_currency,
-        icon_operation=trade_direction[type_operation]["icon"],
-        cost=currency_rate * amount,
-        user_currency=user_currency,
+        trade_currency_rate_usd=trade_currency_rate_usd,
+        payment_currency=payment_currency,
+        rate_1=trade_currency_rate,
+        rate_2=payment_currency_rate,
         amount=amount,
-        currency_rate=currency_rate
-
+        price_order=price_order
     )
-    txt += f'\n**{payment_currency}**'
 
     return txt
 
 
 def order_info_for_owner(order):
-    #  TODO сделать здесь интернационализацию
+    #  TODO сделать логику
 
     trade_direction = {'buy': {'type': 'Покупка',
                                'icon': '📈'},
@@ -49,30 +59,32 @@ def order_info_for_owner(order):
     status = {'open': '⚪️ Активно',
               'close': '🔴 Отключено'}
 
-    user_currency = order.user.settings.currency
+    user = order.user
     type_operation = order.type_operation
     trade_currency = order.trade_currency
-    currency_rate = to_units(trade_currency, order.currency_rate)
+    payment_currency = order.payment_currency
+    trade_currency_rate_usd = to_units(trade_currency, order.currency_rate)
+    trade_currency_rate = to_units(trade_currency, order.currency_rate)
+    payment_currency_rate = round(
+        Decimal(to_units(payment_currency, order.payment_currency_rate[payment_currency])
+                / to_units(trade_currency, order.currency_rate)), 6)
     amount = to_units(trade_currency, order.amount)
+    price_order = amount * trade_currency_rate
 
-    txt = order.user.get_text(name='order-order_info').format(
+    txt = user.get_text(name='order-order_info').format(
         order_id=order.id,
         type_operation=trade_direction[type_operation]["type"],
         trade_currency=trade_currency,
-        icon_operation=trade_direction[type_operation]["icon"],
-        cost=currency_rate * amount,
-        user_currency=user_currency,
+        trade_currency_rate_usd=trade_currency_rate_usd,
+        payment_currency=payment_currency,
+        rate_1=trade_currency_rate,
+        rate_2=payment_currency_rate,
         amount=amount,
-        currency_rate=currency_rate
-
+        price_order=price_order
     )
 
-    for currency in order.payment_currency:
-        txt += f'\n**{currency}**'
-
-    txt += f'\n\n{status[order.status]}'
-
     return txt
+
 
 
 def create_order(temp_order):

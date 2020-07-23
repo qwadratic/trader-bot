@@ -42,7 +42,7 @@ class TempOrder(Model):
 
 class ParentOrder(Model):
     order_id = UUIDField(default=uuid.uuid4)
-    user = ForeignKey('user.TelegramUser', related_name='parent_orders', on_delete=CASCADE)
+    user = ForeignKey('user.TelegramUser', related_name='parentOrders', on_delete=CASCADE)
     type_operation = CharField(null=True, max_length=255)
     trade_currency = CharField(null=True, max_length=255)
     amount = DecimalField(max_digits=40, decimal_places=0)

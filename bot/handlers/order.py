@@ -8,7 +8,7 @@ from user.models import UserPurse
 from order.logic import kb
 from order.logic.core import get_order_info, create_order, order_info_for_owner
 from order.logic.text_func import choice_payment_currency_text
-from order.models import TempOrder
+from order.models import TempOrder, Order
 from bot.helpers.converter import currency_in_user_currency, currency_in_usd
 from bot.helpers.shortcut import get_user, delete_msg, check_address, to_cents, to_units, get_currency_rate
 
@@ -60,7 +60,7 @@ def trade_menu_controller(cli, cb):
         cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list(user, 'sale', 0))
 
     elif button == 'my_orders':
-        cb.message.edit(user.get_text(name='order-my_orders'), reply_markup=kb.owner_order_list(user, 0))
+        cb.message.edit(user.get_text(name='order-my_orders'), reply_markup=kb.owner_order_list(user, 'sale', 0))
 
     elif button == 'my_trades':
         pass
@@ -99,8 +99,27 @@ def order_list(cli, cb):
         order_id = int(cb.data.split('-')[2])
         type_orders = cb.data.split('-')[3]
         offset = int(cb.data.split('-')[4])
-        cb.message.edit(get_order_info(user, order_id),
-                        reply_markup=kb.order_for_user(user, order_id, type_orders, offset))
+        order = Order.objects.get(id=order_id)
+        if user.id == order.parent_order.user_id:
+            cb.message.edit(get_order_info(user, order_id),
+                            reply_markup=kb.order_for_owner(order.parent_order, 'orders', type_orders, offset))
+        else:
+            cb.message.edit(get_order_info(user, order_id),
+                             reply_markup=kb.order_for_user(user, order_id, type_orders, offset))
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('owner_order')))
+def owner_order_list(cli, cb):
+    user = get_user(cb.from_user.id)
+
+    action = cb.data.split('-')[1]
+
+    if action == 'open':
+        order_id = int(cb.data.split('-')[2])
+        order = user.parentOrders.get(id=order_id)
+
+        cb.message.edit(order_info_for_owner(order),
+                        reply_markup=kb.order_for_owner(order, 'my_orders'))
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:10] == 'order_info'))
@@ -118,7 +137,7 @@ def order_info(cli, cb):
                             reply_markup=kb.order_list(user, type_orders, offset))
 
         elif cours == 'my_orders':
-            cb.message.edit(user.get_text(name='order-my_orders'), reply_markup=kb.owner_order_list(user, 0))
+            cb.message.edit(user.get_text(name='order-my_orders'), reply_markup=kb.owner_order_list(user, 'sale', 0))
 
     elif action == 'share':
         cli.answer_callback_query(cb.id, 'coming soon')
@@ -468,7 +487,10 @@ def amount_for_order(cli, m):
                 msg.delete()
                 return
         else:
+            # TODO момент с фиатом решить иначе
             for currency in temp_order.payment_currency:
+                if currency in ['USD', 'RUB', 'UAH']:
+                    continue
                 user_balance = user.virtual_wallets.get(currency=currency).balance
                 price_trade = Decimal(amount * to_units(temp_order.trade_currency, to_units(temp_order.trade_currency, temp_order.currency_rate)) / \
                               to_units(currency, temp_order.payment_currency_rate[currency]))
@@ -493,7 +515,7 @@ def amount_for_order(cli, m):
 
     order = create_order(temp_order)
 
-    m.reply(order_info_for_owner(order), reply_markup=kb.order_for_owner(order, 1))
+    m.reply(order_info_for_owner(order), reply_markup=kb.order_for_owner(order, 'new_orders'))
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('cancel_order_create')))
