@@ -57,7 +57,6 @@ def semi_auto_trade(trade):
         update_wallet_balance(user, trade.trade_currency, trade.amount, 'up')
         create_record_cashflow(user, owner, 'external-transfer', trade.price_trade, trade.payment_currency, trade, tx_hash=trade.tx_hash)
 
-
     else:
 
         create_record_cashflow(owner, user, 'transfer', trade.price_trade, trade.payment_currency, trade)
@@ -70,14 +69,14 @@ def semi_auto_trade(trade):
 
 def close_trade(trade):
 
-    if trade.order.type_operation == 'buy':
+    if trade.order.type_operation == 'sale':
         hm = trade.order.parent_order.holdMoney.get(currency=trade.trade_currency)
-        hm.amount -= trade.amount
+        hm.amount -= trade.price_trade
         hm.save()
 
-    if trade.order.type_operation == 'sale':
+    if trade.order.type_operation == 'buy':
         hm = trade.order.parent_order.holdMoney.get(currency=trade.payment_currency)
-        hm.amount -= trade.price_trade
+        hm.amount -= trade.amount
         hm.save()
 
     trade.status = 'close'

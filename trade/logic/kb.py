@@ -35,15 +35,12 @@ def select_type_trade(user):
 
 
 def not_enough_money_to_trade(user):
-    # TODO кнопка под вопросом
+
     kb = InlineKeyboardMarkup(
         [
             [InlineKeyboardButton(
-                'Пополнить',
-                callback_data='select_type_order-deposit')],
-            [InlineKeyboardButton(
-                user.get_text(name='trade-kb-use_third_party_wallet'),
-                callback_data='select_type_order-third_party_wallet')]
+                user.get_text(name='wallet-kb-deposite'),
+                callback_data='order-deposit')]
         ]
     )
     return kb

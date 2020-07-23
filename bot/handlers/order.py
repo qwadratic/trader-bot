@@ -4,13 +4,15 @@ from decimal import Decimal, InvalidOperation
 from pyrogram import Client, Filters
 
 from bot.helpers.settings import get_max_price_range_factor
+from bot.models import CurrencyList
 from user.models import UserPurse
 from order.logic import kb
 from order.logic.core import get_order_info, create_order, order_info_for_owner
 from order.logic.text_func import choice_payment_currency_text
 from order.models import TempOrder, Order
 from bot.helpers.converter import currency_in_user_currency, currency_in_usd
-from bot.helpers.shortcut import get_user, delete_msg, check_address, to_cents, to_units, get_currency_rate
+from bot.helpers.shortcut import get_user, delete_msg, check_address, to_cents, to_units, get_currency_rate, \
+    round_currency
 
 
 @Client.on_message(Filters.create(lambda _, m: m.text == get_user(m.from_user.id).get_text(name='user-kb-trade')))
@@ -27,7 +29,7 @@ def trade_menu(cli, m):
     m.delete()
 
 
-@Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:10] == 'trade_menu'))
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('trade_menu')))
 def trade_menu_controller(cli, cb):
     user = get_user(cb.from_user.id)
 
@@ -271,8 +273,7 @@ def select_requisite_for_order(cli, cb):
             cb.message.edit(cb.message.text + txt)
             cb.message.reply(user.get_text(name='order-enter_currency_rate').format(
                 trade_currency=order.trade_currency,
-                user_currency=user.settings.currency,
-                price=currency_in_user_currency(order.trade_currency, user.settings.currency, 1)),
+                price=round_currency(order.trade_currency, to_units(order.trade_currency, get_currency_rate(order.trade_currency)))),
                 reply_markup=kb.cancel_order(user, order.id))
 
             flags.await_currency_rate = True
@@ -299,8 +300,7 @@ def select_requisite_for_order(cli, cb):
         cb.message.edit(cb.message.text + txt)
         cb.message.reply(user.get_text(name='order-enter_currency_rate').format(
             trade_currency=order.trade_currency,
-            user_currency=user.settings.currency,
-            price=currency_in_user_currency(order.trade_currency, user.settings.currency, 1)),
+            price=round_currency(order.trade_currency, get_currency_rate(order.trade_currency))),
             reply_markup=kb.cancel_order(user, order.id))
 
         flags.await_currency_rate = True
@@ -353,8 +353,8 @@ def requisite_for_order(cli, m):
 
         m.reply(user.get_text(name='order-enter_currency_rate').format(
             trade_currency=order.trade_currency,
-            user_currency=user.settings.currency,
-            price=currency_in_user_currency(order.trade_currency, user.settings.currency, 1)))
+            price=round_currency(order.trade_currency, get_currency_rate(order.trade_currency))),
+            reply_markup=kb.cancel_order(user, order.id))
 
         flags.await_currency_rate = True
         flags.save()
@@ -397,8 +397,8 @@ def requisite_for_order_from_purse(cli, cb):
         cb.message.edit(cb.message.text + txt)
         cb.message.reply(user.get_text(name='order-enter_currency_rate').format(
             trade_currency=order.trade_currency,
-            user_currency=user.settings.currency,
-            price=currency_in_user_currency(order.trade_currency, user.settings.currency, 1)))
+            price=round_currency(order.trade_currency, get_currency_rate(order.trade_currency))),
+            reply_markup=kb.cancel_order(user, order.id))
 
         flags.await_currency_rate = True
         flags.save()
@@ -446,8 +446,8 @@ def enter_currency_rate(cli, m):
 
     if order.type_operation == 'sale':
         type_operation = user.get_text(name='order-type_operation_translate_sale_1')
-        max_amount = round(
-            to_units(order.trade_currency, user.virtual_wallets.get(currency=order.trade_currency).balance), 6)
+        max_amount = round_currency(order.trade_currency,
+            to_units(order.trade_currency, user.virtual_wallets.get(currency=order.trade_currency).balance))
     else:
         type_operation = user.get_text(name='order-type_operation_translate_buy_1')
         currency_balance = {}
@@ -455,7 +455,7 @@ def enter_currency_rate(cli, m):
             wallet = user.virtual_wallets.get(currency=currency)
             currency_balance[currency] = to_units(currency, wallet.balance) * to_units(currency, order.payment_currency_rate[currency])
         min_currency = min(currency_balance, key=lambda currency: currency_balance[currency])
-        max_amount = currency_balance[min_currency] / to_units(order.trade_currency, order.currency_rate)
+        max_amount = round_currency(order.trade_currency, currency_balance[min_currency] / to_units(order.trade_currency, order.currency_rate))
 
     m.reply(user.get_text(name='order-enter_amount').format(
         type_operation=type_operation,
@@ -489,13 +489,14 @@ def amount_for_order(cli, m):
         else:
             # TODO момент с фиатом решить иначе
             for currency in temp_order.payment_currency:
-                if currency in ['USD', 'RUB', 'UAH']:
+                inst_currency = CurrencyList.objects.get(currency_id=currency)
+                if inst_currency.type == 'fiat':
                     continue
-                user_balance = user.virtual_wallets.get(currency=currency).balance
-                price_trade = Decimal(amount * to_units(temp_order.trade_currency, to_units(temp_order.trade_currency, temp_order.currency_rate)) / \
-                              to_units(currency, temp_order.payment_currency_rate[currency]))
 
-                max_limit = temp_order.payment_currency_rate[currency] * to_units(currency, user_balance)
+                user_balance = user.virtual_wallets.get(currency=currency).balance
+                price_trade = Decimal(amount * to_units(temp_order.trade_currency, temp_order.currency_rate) / to_units(currency, temp_order.payment_currency_rate[currency]))
+
+                max_limit = round_currency(temp_order.trade_currency, temp_order.payment_currency_rate[currency] * to_units(currency, user_balance))
                 if price_trade > to_units(currency, user_balance):
                     m.reply(f'Вы не можете купить больше чем {max_limit} {temp_order.trade_currency}')
                     return
