@@ -69,15 +69,15 @@ def semi_auto_trade(trade):
 
 def close_trade(trade):
 
-    if trade.order.type_operation == 'sale':
-        hm = trade.order.parent_order.holdMoney.get(currency=trade.trade_currency)
-        hm.amount -= trade.price_trade
-        hm.save()
-
-    if trade.order.type_operation == 'buy':
-        hm = trade.order.parent_order.holdMoney.get(currency=trade.payment_currency)
-        hm.amount -= trade.amount
-        hm.save()
+    # if trade.order.type_operation == 'sale':
+    #     hm = trade.order.parent_order.holdMoney.get(currency=trade.trade_currency)
+    #     hm.amount -= trade.price_trade
+    #     hm.save()
+    #
+    # if trade.order.type_operation == 'buy':
+    #     hm = trade.order.parent_order.holdMoney.get(currency=trade.payment_currency)
+    #     hm.amount -= trade.amount
+    #     hm.save()
 
     trade.status = 'close'
     trade.save()
