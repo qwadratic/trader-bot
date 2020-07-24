@@ -3,6 +3,7 @@ from decimal import Decimal
 from bot.helpers.converter import currency_in_usd
 from bot.helpers.shortcut import to_units, to_cents, round_currency
 from order.models import Order, ParentOrder, OrderHoldMoney
+from trade.logic.core import update_order
 
 
 def get_order_info(user, order_id):
@@ -58,29 +59,37 @@ def order_info_for_owner(order):
     user = order.user
     type_operation = order.type_operation
     trade_currency = order.trade_currency
-    payment_currency = order.payment_currency
     trade_currency_rate_usd = to_units(trade_currency, order.currency_rate)
-    trade_currency_rate = to_units(trade_currency, order.currency_rate)
-    payment_currency_rate = round(
-        Decimal(to_units(payment_currency, order.payment_currency_rate[payment_currency])
-                / to_units(trade_currency, order.currency_rate)), 6)
     amount = to_units(trade_currency, order.amount)
-    price_order = amount * trade_currency_rate
 
-    txt = user.get_text(name='order-order_info').format(
+    currency_pairs = ''
+    max_amounts = ''
+    payment_currency = ''
+    for currency in order.payment_currency:
+
+        trade_currency_rate = round_currency(currency, order.currency_rate / order.payment_currency_rate[currency])
+        payment_currency_rate = round_currency(trade_currency, order.payment_currency_rate[currency] / order.currency_rate)
+
+        currency_pairs += f'1 {trade_currency} – {trade_currency_rate} {currency}\n' \
+                         f'1 {currency} – {payment_currency_rate} {trade_currency}\n'
+
+        price_lot = round_currency(currency, amount * trade_currency_rate)
+        max_amounts += f'{price_lot} {currency}\n'
+
+        payment_currency += f'{currency}\n'
+
+    txt = user.get_text(name='order-parent_order_info').format(
         order_id=order.id,
         type_operation=trade_direction[type_operation]["type"],
         trade_currency=trade_currency,
         trade_currency_rate_usd=trade_currency_rate_usd,
         payment_currency=payment_currency,
-        rate_1=trade_currency_rate,
-        rate_2=payment_currency_rate,
         amount=amount,
-        price_order=price_order
+        currency_pairs=currency_pairs,
+        max_amounts=max_amounts
     )
 
     return txt
-
 
 
 def create_order(temp_order):
@@ -158,6 +167,7 @@ def create_order(temp_order):
 
     Order.objects.bulk_create([Order(**r) for r in order_list])
 
+    hold_money_order(order)
     return order
 
 
@@ -190,3 +200,17 @@ def hold_money_order(order):
             ))
 
     OrderHoldMoney.objects.bulk_create([OrderHoldMoney(**r) for r in hold_list])
+
+
+def close_order(order):
+    user = order.user
+    hold_money = order.holdMoney.all()
+
+    if len(hold_money) > 0:
+
+        for hm in hold_money:
+            wallet = user.virtual_wallets.get(currency=hm.currency)
+            wallet.balance += hm.amount
+            wallet.save()
+
+    update_order(order, 'switch', 'close')

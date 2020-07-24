@@ -1,13 +1,14 @@
 from time import sleep
 from decimal import Decimal, InvalidOperation
 
-from pyrogram import Client, Filters
+from pyrogram import Client, Filters, InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot.helpers.settings import get_max_price_range_factor
 from bot.models import CurrencyList
+from trade.logic.core import update_order
 from user.models import UserPurse
 from order.logic import kb
-from order.logic.core import get_order_info, create_order, order_info_for_owner
+from order.logic.core import get_order_info, create_order, order_info_for_owner, close_order, hold_money_order
 from order.logic.text_func import choice_payment_currency_text
 from order.models import TempOrder, Order
 from bot.helpers.converter import currency_in_user_currency, currency_in_usd
@@ -145,7 +146,40 @@ def order_info(cli, cb):
         cli.answer_callback_query(cb.id, 'coming soon')
 
     elif action == 'switch':
-        print(1)
+        location = cb.data.split('-')[3]
+        order_id = int(cb.data.split('-')[2])
+        order = user.parentOrders.get(id=order_id)
+
+        if order.status == 'close':
+            for currency in order.payment_currency:
+
+                if order.type_operation == 'sale':
+                    amount = order.amount
+
+                    if amount > user.virtual_wallets.get(
+                            currency=order.trade_currency).balance:
+                        cli.answer_callback_query(cb.id, f'Недостаточно {order.trade_currency} для начала торговли')
+                elif order.type_operation == 'buy':
+                    inst_currency = CurrencyList.objects.get(currency=currency)
+                    if inst_currency.type == 'fiat':
+                        continue
+
+                    user_balance = user.virtual_wallets.get(currency=currency).balance
+                    price_trade = Decimal(to_units(order.trade_currency, order.amount) * to_units(order.trade_currency, order.currency_rate) / to_units(currency, order.payment_currency_rate[currency]))
+
+                    if price_trade > to_units(currency, user_balance):
+                        cli.answer_callback_query(cb.id, f'Недостаточно {currency} для начала торговли')
+
+            hold_money_order(order)
+            update_order(order, 'switch', 'open')
+            cb.message.edit(order_info_for_owner(order),
+                            reply_markup=kb.order_for_owner(order, location))
+
+        elif order.status == 'open':
+
+            close_order(order)
+            cb.message.edit(order_info_for_owner(order),
+                            reply_markup=kb.order_for_owner(order, location))
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:14] == 'trade_currency'))
@@ -487,9 +521,8 @@ def amount_for_order(cli, m):
                 msg.delete()
                 return
         else:
-            # TODO момент с фиатом решить иначе
             for currency in temp_order.payment_currency:
-                inst_currency = CurrencyList.objects.get(currency_id=currency)
+                inst_currency = CurrencyList.objects.get(currency=currency)
                 if inst_currency.type == 'fiat':
                     continue
 
@@ -516,7 +549,7 @@ def amount_for_order(cli, m):
 
     order = create_order(temp_order)
 
-    m.reply(order_info_for_owner(order), reply_markup=kb.order_for_owner(order, 'new_orders'))
+    m.reply(order_info_for_owner(order), reply_markup=kb.order_for_owner(order, 'new_order'))
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('cancel_order_create')))

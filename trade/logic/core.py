@@ -11,6 +11,15 @@ def update_order(parent_order, type_update, value):
             order.amount = value
             order.save()
 
+    if type_update == 'switch':
+        orders = parent_order.orders.all()
+        parent_order.status = value
+        parent_order.save()
+
+        for order in orders:
+            order.status = value
+            order.save()
+
 
 def auto_trade(trade):
     owner = trade.order.parent_order.user

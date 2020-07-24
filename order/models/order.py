@@ -50,7 +50,7 @@ class ParentOrder(Model):
     payment_currency = ArrayField(CharField(max_length=50), size=10, default=list)
     payment_currency_rate = JSONField(default=dict)
     requisites = JSONField(default=dict)
-    status = CharField(max_length=255, default='close')
+    status = CharField(max_length=255, default='open')
     created_at = DateTimeField(auto_now_add=True)
 
 
@@ -64,7 +64,7 @@ class Order(Model):
     currency_rate = DecimalField(max_digits=40, decimal_places=0)
     payment_currency = CharField(max_length=255)
     requisites = CharField(max_length=255)
-    status = CharField(max_length=255, default='close')
+    status = CharField(max_length=255, default='open')
     mirror = BooleanField(default=False)
 
 

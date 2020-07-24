@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from bot.blockchain import minterAPI, ethAPI
 from bot.models import ExchangeRate, CashFlow, CurrencyList
 from user.models import TelegramUser
@@ -80,7 +82,7 @@ def create_record_cashflow(user, to, type_operation, amount, currency, trade=Non
 
 def round_currency(currency_id, amount):
     currency = CurrencyList.objects.get(currency=currency_id)
-    amount = round(amount, currency.accuracy)
+    amount = Decimal(round(amount, currency.accuracy)).normalize()
     if amount % 1 == 0:
         return int(amount)
     else:
