@@ -159,6 +159,8 @@ def order_info(cli, cb):
                     if amount > user.virtual_wallets.get(
                             currency=order.trade_currency).balance:
                         cli.answer_callback_query(cb.id, f'Недостаточно {order.trade_currency} для начала торговли')
+                        return
+
                 elif order.type_operation == 'buy':
                     inst_currency = CurrencyList.objects.get(currency=currency)
                     if inst_currency.type == 'fiat':
@@ -169,6 +171,7 @@ def order_info(cli, cb):
 
                     if price_trade > to_units(currency, user_balance):
                         cli.answer_callback_query(cb.id, f'Недостаточно {currency} для начала торговли')
+                        return 
 
             hold_money_order(order)
             update_order(order, 'switch', 'open')
@@ -574,3 +577,5 @@ def cancel_order_create(cli, cb):
     msg = cb.message.reply(user.get_text(name='user-trade_menu'), reply_markup=kb.trade_menu(user))
     user_msg.trade_menu = msg.message_id
     user_msg.save()
+
+
