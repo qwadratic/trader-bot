@@ -82,9 +82,9 @@ def order_info_for_owner(order):
         order_id=order.id,
         type_operation=trade_direction[type_operation]["type"],
         trade_currency=trade_currency,
-        trade_currency_rate_usd=trade_currency_rate_usd,
+        trade_currency_rate_usd=round_currency(trade_currency, trade_currency_rate_usd),
         payment_currency=payment_currency,
-        amount=amount,
+        amount=round_currency(trade_currency, amount),
         currency_pairs=currency_pairs,
         max_amounts=max_amounts
     )

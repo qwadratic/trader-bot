@@ -127,6 +127,25 @@ def requisites_from_purse(user):
     return InlineKeyboardMarkup(kb)
 
 
+def avarage_rate(user):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='order-kb-average_rate'), callback_data=f'order_helper-average_rate')],
+            [InlineKeyboardButton(user.get_text(name='order-kb-cancel_order'), callback_data=f'cancel_order_create')]
+        ]
+    )
+    return kb
+
+
+def max_amount(user):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='order-kb-max_amount'), callback_data=f'order_helper-max_amount1')],
+            [InlineKeyboardButton(user.get_text(name='order-kb-cancel_order'), callback_data=f'cancel_order_create')]
+        ]
+    )
+    return kb
+
 def order_list(user, type_orders, offset):
     if type_orders == 'buy':
         order_by = 'currency_rate'

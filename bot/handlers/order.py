@@ -124,6 +124,81 @@ def owner_order_list(cli, cb):
         cb.message.edit(order_info_for_owner(order),
                         reply_markup=kb.order_for_owner(order, 'my_orders'))
 
+    print(action)
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('order_helper')))
+def order_helper(cli, cb):
+    user = get_user(cb.from_user.id)
+    order = user.temp_order
+    button = cb.data.split('-')[1]
+
+    if button == 'average_rate':
+        current_rate = get_currency_rate(order.trade_currency)
+        order.currency_rate = current_rate
+        order.save()
+
+        cb.message.edit(cb.message.text + '\n\n' + user.get_text(name='order-your_choice') + f'{round_currency(order.trade_currency, to_units(order.trade_currency, current_rate))}')
+
+        flags = user.flags
+        flags.await_currency_rate = False
+        flags.await_amount_for_order = True
+        flags.save()
+
+        if order.type_operation == 'sale':
+            type_operation = user.get_text(name='order-type_operation_translate_sale_1')
+
+            max_amount = round_currency(order.trade_currency, to_units(order.trade_currency, user.virtual_wallets.get(currency=order.trade_currency).balance))
+        # покупка
+        else:
+            type_operation = user.get_text(name='order-type_operation_translate_buy_1')
+            currency_balance = {}
+            for currency in order.payment_currency:
+                inst_currency = CurrencyList.objects.get(currency=currency)
+                if inst_currency.type == 'fiat':
+                    continue
+
+                wallet = user.virtual_wallets.get(currency=currency)
+                currency_balance[currency] = to_units(currency, wallet.balance) * to_units(currency, order.payment_currency_rate[currency])
+
+            min_currency = min(currency_balance, key=lambda currency: currency_balance[currency])
+            max_amount = round_currency(order.trade_currency, currency_balance[min_currency] / to_units(order.trade_currency,
+                                                                                  order.currency_rate))
+
+        cb.message.reply(user.get_text(name='order-enter_amount').format(
+            type_operation=type_operation,
+            currency=order.trade_currency,
+            amount=max_amount), reply_markup=kb.max_amount(user))
+
+    if button == 'max_amount':
+        if order.type_operation == 'sale':
+            max_amount = user.virtual_wallets.get(currency=order.trade_currency).balance
+
+        # покупка
+        else:
+            currency_balance = {}
+
+            for currency in order.payment_currency:
+                inst_currency = CurrencyList.objects.get(currency=currency)
+                if inst_currency.type == 'fiat':
+                    continue
+                wallet = user.virtual_wallets.get(currency=currency)
+                currency_balance[currency] = to_units(currency, wallet.balance) * to_units(currency, order.payment_currency_rate[currency])
+
+            min_currency = min(currency_balance, key=lambda currency: currency_balance[currency])
+            max_amount = to_cents(order.trade_currency, currency_balance[min_currency] / to_units(order.trade_currency, order.currency_rate))
+
+        order.amount = max_amount
+        order.save()
+
+        flags = user.flags
+        flags.await_amount_for_order = False
+        flags.save()
+
+        new_order = create_order(order)
+
+        cb.message.reply(order_info_for_owner(new_order), reply_markup=kb.order_for_owner(new_order, 'new_order'))
+
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:10] == 'order_info'))
 def order_info(cli, cb):
@@ -171,7 +246,7 @@ def order_info(cli, cb):
 
                     if price_trade > to_units(currency, user_balance):
                         cli.answer_callback_query(cb.id, f'Недостаточно {currency} для начала торговли')
-                        return 
+                        return
 
             hold_money_order(order)
             update_order(order, 'switch', 'open')
@@ -311,7 +386,7 @@ def select_requisite_for_order(cli, cb):
             cb.message.reply(user.get_text(name='order-enter_currency_rate').format(
                 trade_currency=order.trade_currency,
                 price=round_currency(order.trade_currency, to_units(order.trade_currency, get_currency_rate(order.trade_currency)))),
-                reply_markup=kb.cancel_order(user, order.id))
+                reply_markup=kb.avarage_rate(user))
 
             flags.await_currency_rate = True
             flags.save()
@@ -338,7 +413,7 @@ def select_requisite_for_order(cli, cb):
         cb.message.reply(user.get_text(name='order-enter_currency_rate').format(
             trade_currency=order.trade_currency,
             price=round_currency(order.trade_currency, get_currency_rate(order.trade_currency))),
-            reply_markup=kb.cancel_order(user, order.id))
+            reply_markup=kb.avarage_rate(user))
 
         flags.await_currency_rate = True
         flags.save()
@@ -391,7 +466,7 @@ def requisite_for_order(cli, m):
         m.reply(user.get_text(name='order-enter_currency_rate').format(
             trade_currency=order.trade_currency,
             price=round_currency(order.trade_currency, get_currency_rate(order.trade_currency))),
-            reply_markup=kb.cancel_order(user, order.id))
+            reply_markup=kb.avarage_rate(user))
 
         flags.await_currency_rate = True
         flags.save()
@@ -435,7 +510,7 @@ def requisite_for_order_from_purse(cli, cb):
         cb.message.reply(user.get_text(name='order-enter_currency_rate').format(
             trade_currency=order.trade_currency,
             price=round_currency(order.trade_currency, get_currency_rate(order.trade_currency))),
-            reply_markup=kb.cancel_order(user, order.id))
+            reply_markup=kb.avarage_rate(user))
 
         flags.await_currency_rate = True
         flags.save()
@@ -489,6 +564,10 @@ def enter_currency_rate(cli, m):
         type_operation = user.get_text(name='order-type_operation_translate_buy_1')
         currency_balance = {}
         for currency in order.payment_currency:
+            inst_currency = CurrencyList.objects.get(currency=currency)
+            if inst_currency.type == 'fiat':
+                continue
+
             wallet = user.virtual_wallets.get(currency=currency)
             currency_balance[currency] = to_units(currency, wallet.balance) * to_units(currency, order.payment_currency_rate[currency])
         min_currency = min(currency_balance, key=lambda currency: currency_balance[currency])
@@ -497,7 +576,7 @@ def enter_currency_rate(cli, m):
     m.reply(user.get_text(name='order-enter_amount').format(
         type_operation=type_operation,
         currency=order.trade_currency,
-        amount=max_amount), reply_markup=kb.cancel_order(user, order.id))
+        amount=max_amount), reply_markup=kb.max_amount(user))
 
 
 @Client.on_message(Filters.create(lambda _, m: get_user(m.from_user.id).flags and
@@ -558,8 +637,7 @@ def amount_for_order(cli, m):
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('cancel_order_create')))
 def cancel_order_create(cli, cb):
     user = get_user(cb.from_user.id)
-    order_id = int(cb.data.split('-')[1])
-    TempOrder.objects.get(id=order_id).delete()
+    user.temp_order.delete()
 
     flags = user.flags
     flags.await_currency_rate = False
