@@ -213,4 +213,5 @@ def close_order(order):
             wallet.balance += hm.amount
             wallet.save()
 
+    hold_money.delete()
     update_order(order, 'switch', 'close')
