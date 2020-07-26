@@ -106,6 +106,11 @@ def choice_requisite_for_order(order, currency):
         user.get_text(name='order-kb-add_new_requisite'),
         callback_data='requisite_for_order-add_new')])
 
+    kb.append([InlineKeyboardButton(
+        user.get_text(name='order-kb-cancel_order'),
+        callback_data='cancel_order_create')]
+    )
+
     return InlineKeyboardMarkup(kb)
 
 
@@ -145,6 +150,7 @@ def max_amount(user):
         ]
     )
     return kb
+
 
 def order_list(user, type_orders, offset):
     if type_orders == 'buy':
