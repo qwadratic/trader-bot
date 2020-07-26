@@ -67,11 +67,11 @@ def order_info_for_owner(order):
     payment_currency = ''
     for currency in order.payment_currency:
 
-        trade_currency_rate = round_currency(currency, order.currency_rate / order.payment_currency_rate[currency])
+        trade_currency_rate = order.currency_rate / order.payment_currency_rate[currency]
         payment_currency_rate = round_currency(trade_currency, order.payment_currency_rate[currency] / order.currency_rate)
 
-        currency_pairs += f'1 {trade_currency} – {trade_currency_rate} {currency}\n' \
-                         f'1 {currency} – {payment_currency_rate} {trade_currency}\n'
+        currency_pairs += f'1 {trade_currency} – {round_currency(currency, trade_currency_rate)} {currency}\n' \
+                          f'1 {currency} – {payment_currency_rate} {trade_currency}\n'
 
         price_lot = round_currency(currency, amount * trade_currency_rate)
         max_amounts += f'{price_lot} {currency}\n'
