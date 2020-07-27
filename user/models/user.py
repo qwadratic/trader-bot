@@ -57,6 +57,27 @@ class TelegramUser(Model):
         UserRef.objects.update_or_create(user=self, defaults={'referrer': invited_by})
         return True
 
+    def get_balance(self, currency, cent2unit=False, round=False):
+        from bot.helpers.shortcut import to_units, round_currency
+
+        wallet = self.virtual_wallets.get(currency=currency)
+        balance = wallet.balance
+
+        hold_money = self.holdMoney.filter(currency=currency)
+
+        if hold_money.count() > 0:
+
+            for hm in hold_money:
+                balance -= hm.amount
+
+        if cent2unit:
+            balance = to_units(currency, balance)
+
+        if round:
+            balance = round_currency(currency, balance)
+
+        return balance
+
 
 class UserFlag(Model):
     objects = GetOrNoneManager()

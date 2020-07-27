@@ -70,5 +70,6 @@ class Order(Model):
 
 class OrderHoldMoney(Model):
     order = ForeignKey('order.ParentOrder', related_name='holdMoney', on_delete=CASCADE)
+    user = ForeignKey('user.TelegramUser', related_name='holdMoney', on_delete=CASCADE)
     currency = CharField(max_length=255)
     amount = DecimalField(max_digits=40, decimal_places=0)
