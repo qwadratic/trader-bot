@@ -4,6 +4,7 @@ from user.logic.core import update_wallet_balance
 
 
 def update_order(parent_order, type_update, value):
+    # todo баг
     if type_update == 'amount':
         orders = parent_order.orders.all()
 
@@ -25,9 +26,11 @@ def auto_trade(trade):
     owner = trade.order.parent_order.user
     user = trade.user
     parent_order = trade.order.parent_order
-
+    parent_order.amount -= trade.amount
+    parent_order.save()
     update_order(parent_order, 'amount', parent_order.amount - trade.amount)
 
+    # TODO добавить кешфлоу в апдейтваллет
     if trade.order.type_operation == 'sale':
         create_record_cashflow(user, owner, 'transfer', trade.price_trade, trade.payment_currency, trade)
 
@@ -78,21 +81,22 @@ def semi_auto_trade(trade):
 
 def close_trade(trade):
 
-    # if trade.order.type_operation == 'sale':
-    #     hm = trade.order.parent_order.holdMoney.get(currency=trade.trade_currency)
-    #     hm.amount -= trade.price_trade
-    #     hm.save()
-    #
-    # if trade.order.type_operation == 'buy':
-    #     hm = trade.order.parent_order.holdMoney.get(currency=trade.payment_currency)
-    #     hm.amount -= trade.amount
-    #     hm.save()
+    if trade.order.type_operation == 'sale':
+        hm = trade.order.parent_order.holdMoney.get(currency=trade.trade_currency)
+        hm.amount -= trade.amount
+        hm.save()
+
+    if trade.order.type_operation == 'buy':
+        hm = trade.order.parent_order.holdMoney.get(currency=trade.payment_currency)
+        hm.amount -= trade.price_trade
+        hm.save()
 
     trade.status = 'close'
     trade.save()
 
 
 def hold_money_trade(trade):
+    # TODO Надо сделать трейхолдмани
     user = trade.user
     hold_list = []
     hold_list.append(dict(

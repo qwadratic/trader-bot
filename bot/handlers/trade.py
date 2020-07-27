@@ -37,9 +37,9 @@ def start_trade(cli, cb):
     flags.await_amount_for_trade = True
     flags.save()
     order_amount = to_units(trade.order.trade_currency, trade.order.amount)
+
     if trade.order.type_operation == 'sale':
-        balance = to_units(trade.payment_currency, user.virtual_wallets.get(currency=trade.payment_currency).balance)
-        print(balance)
+        balance = user.get_balance(trade.payment_currency, cent2unit=True)
 
         max_amount = round_currency(trade.payment_currency, balance / to_units(trade.trade_currency, trade.trade_currency_rate))
 
@@ -47,7 +47,8 @@ def start_trade(cli, cb):
             max_amount = round_currency(trade.trade_currency, order_amount)
 
     else:
-        balance = to_units(trade.trade_currency, user.virtual_wallets.get(currency=trade.trade_currency).balance)
+        balance = user.get_balance(trade.trade_currency, cent2unit=True)
+
         if balance > order_amount:
             max_amount = round_currency(trade.trade_currency, order_amount)
         else:
@@ -99,7 +100,6 @@ def amount_for_trade(cli, m):
 
     if trade.order.type_operation == 'sale':
         type_translate = user.get_text(name='order-type_operation_translate_buy_1')
-        #price_usd = price_trade * to_units(trade.order.parent_order.trade_currency, trade.order.parent_order.currency_rate)
     else:
         type_translate = user.get_text(name='order-type_operation_translate_sale_1')
 
@@ -129,7 +129,7 @@ def confirm_amount_for_trade(cli, cb):
         inst_payment_currency = CurrencyList.objects.get(currency=trade.payment_currency)
 
         if inst_trade_currency.type == 'crypto' and inst_payment_currency.type == 'crypto':
-            virtual_wallet = user.virtual_wallets.get(currency=trade.payment_currency)
+            balance = user.get_balance(trade.payment_currency)
 
             if trade.order.type_operation == 'sale':
                 type_translate_for_user = user.get_text(name='order-type_operation_translate_buy_2')
@@ -138,7 +138,7 @@ def confirm_amount_for_trade(cli, cb):
                 type_translate_for_user = user.get_text(name='order-type_operation_translate_sale_2')
                 type_translate_for_owner = owner.get_text(name='order-type_operation_translate_buy_2')
 
-            if trade.price_trade > virtual_wallet.balance:
+            if trade.price_trade > balance:
                 cb.message.edit(user.get_text(name='trade-not_enough_money_to_trade'),
                                 reply_markup=kb.not_enough_money_to_trade(user))
                 return

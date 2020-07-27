@@ -34,7 +34,7 @@ def get_order_info(user, order_id):
         order_id=order.id,
         type_operation=trade_direction[type_operation]["type"],
         trade_currency=trade_currency,
-        trade_currency_rate_usd=round_currency(trade_currency, trade_currency_rate_usd),
+        trade_currency_rate_usd=trade_currency_rate_usd,
         payment_currency=payment_currency,
         rate_1=round_currency(payment_currency, trade_currency_rate),
         rate_2=round_currency(trade_currency, payment_currency_rate),
@@ -198,9 +198,13 @@ def hold_money_order(order):
     OrderHoldMoney.objects.bulk_create([OrderHoldMoney(**r) for r in hold_list])
 
 
-def close_order(order):
-    user = order.user
+def switch_order_status(order):
     hold_money = order.holdMoney.all()
-
     hold_money.delete()
     update_order(order, 'switch', 'close')
+
+
+def close_order(order):
+    hold_money = order.holdMoney.all()
+    hold_money.delete()
+    update_order(order, 'switch', 'completed')

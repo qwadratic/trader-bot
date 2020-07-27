@@ -1,17 +1,17 @@
 from time import sleep
 from decimal import Decimal, InvalidOperation
 
-from pyrogram import Client, Filters, InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram import Client, Filters
 
 from bot.helpers.settings import get_max_price_range_factor
 from bot.models import CurrencyList
 from trade.logic.core import update_order
 from user.models import UserPurse
 from order.logic import kb
-from order.logic.core import get_order_info, create_order, order_info_for_owner, close_order, hold_money_order
+from order.logic.core import get_order_info, create_order, order_info_for_owner, switch_order_status, hold_money_order
 from order.logic.text_func import choice_payment_currency_text
 from order.models import TempOrder, Order
-from bot.helpers.converter import currency_in_user_currency, currency_in_usd
+from bot.helpers.converter import currency_in_usd
 from bot.helpers.shortcut import get_user, delete_msg, check_address, to_cents, to_units, get_currency_rate, \
     round_currency
 
@@ -147,8 +147,9 @@ def order_helper(cli, cb):
 
         if order.type_operation == 'sale':
             type_operation = user.get_text(name='order-type_operation_translate_sale_1')
+            balance = user.get_balance(order.trade_currency, cent2unit=True)
+            max_amount = round_currency(order.trade_currency, balance)
 
-            max_amount = round_currency(order.trade_currency, to_units(order.trade_currency, user.virtual_wallets.get(currency=order.trade_currency).balance))
         # покупка
         else:
             type_operation = user.get_text(name='order-type_operation_translate_buy_1')
@@ -158,8 +159,8 @@ def order_helper(cli, cb):
                 if inst_currency.type == 'fiat':
                     continue
 
-                wallet = user.virtual_wallets.get(currency=currency)
-                currency_balance[currency] = to_units(currency, wallet.balance) * to_units(currency, order.payment_currency_rate[currency])
+                balance = user.get_balance(currency, cent2unit=True)
+                currency_balance[currency] = balance * to_units(currency, order.payment_currency_rate[currency])
 
             min_currency = min(currency_balance, key=lambda currency: currency_balance[currency])
             max_amount = round_currency(order.trade_currency, currency_balance[min_currency] / to_units(order.trade_currency,
@@ -172,7 +173,7 @@ def order_helper(cli, cb):
 
     if button == 'max_amount':
         if order.type_operation == 'sale':
-            max_amount = user.virtual_wallets.get(currency=order.trade_currency).balance
+            max_amount = user.get_balance(order.trade_currency)
 
         # покупка
         else:
@@ -182,8 +183,9 @@ def order_helper(cli, cb):
                 inst_currency = CurrencyList.objects.get(currency=currency)
                 if inst_currency.type == 'fiat':
                     continue
-                wallet = user.virtual_wallets.get(currency=currency)
-                currency_balance[currency] = to_units(currency, wallet.balance) * to_units(currency, order.payment_currency_rate[currency])
+
+                balance = user.get_balance(currency, cent2unit=True)
+                currency_balance[currency] = balance * to_units(currency, order.payment_currency_rate[currency])
 
             min_currency = min(currency_balance, key=lambda currency: currency_balance[currency])
             max_amount = to_cents(order.trade_currency, currency_balance[min_currency] / to_units(order.trade_currency, order.currency_rate))
@@ -230,9 +232,8 @@ def order_info(cli, cb):
 
                 if order.type_operation == 'sale':
                     amount = order.amount
-
-                    if amount > user.virtual_wallets.get(
-                            currency=order.trade_currency).balance:
+                    balance = user.get_balance(order.trade_currency)
+                    if amount > balance:
                         cli.answer_callback_query(cb.id, f'Недостаточно {order.trade_currency} для начала торговли')
                         return
 
@@ -241,10 +242,10 @@ def order_info(cli, cb):
                     if inst_currency.type == 'fiat':
                         continue
 
-                    user_balance = user.virtual_wallets.get(currency=currency).balance
                     price_trade = Decimal(to_units(order.trade_currency, order.amount) * to_units(order.trade_currency, order.currency_rate) / to_units(currency, order.payment_currency_rate[currency]))
 
-                    if price_trade > to_units(currency, user_balance):
+                    user_balance = user.get_balance(currency, cent2bip=True)
+                    if price_trade > user_balance:
                         cli.answer_callback_query(cb.id, f'Недостаточно {currency} для начала торговли')
                         return
 
@@ -255,7 +256,7 @@ def order_info(cli, cb):
 
         elif order.status == 'open':
 
-            close_order(order)
+            switch_order_status(order)
             cb.message.edit(order_info_for_owner(order),
                             reply_markup=kb.order_for_owner(order, location))
 
@@ -558,8 +559,8 @@ def enter_currency_rate(cli, m):
 
     if order.type_operation == 'sale':
         type_operation = user.get_text(name='order-type_operation_translate_sale_1')
-        max_amount = round_currency(order.trade_currency,
-            to_units(order.trade_currency, user.virtual_wallets.get(currency=order.trade_currency).balance))
+        balance = user.get_balance(order.trade_currency, cent2unit=True)
+        max_amount = round_currency(order.trade_currency, balance)
     else:
         type_operation = user.get_text(name='order-type_operation_translate_buy_1')
         currency_balance = {}
@@ -568,8 +569,9 @@ def enter_currency_rate(cli, m):
             if inst_currency.type == 'fiat':
                 continue
 
-            wallet = user.virtual_wallets.get(currency=currency)
-            currency_balance[currency] = to_units(currency, wallet.balance) * to_units(currency, order.payment_currency_rate[currency])
+            balance = user.get_balance(currency, cent2unit=True)
+            currency_balance[currency] = balance * to_units(currency, order.payment_currency_rate[currency])
+
         min_currency = min(currency_balance, key=lambda currency: currency_balance[currency])
         max_amount = round_currency(order.trade_currency, currency_balance[min_currency] / to_units(order.trade_currency, order.currency_rate))
 
@@ -588,10 +590,10 @@ def amount_for_order(cli, m):
     try:
         amount = Decimal(m.text.replace(',', '.'))
         if temp_order.type_operation == 'sale':
-            if to_units(temp_order.trade_currency, amount) > user.virtual_wallets.get(
-                    currency=temp_order.trade_currency).balance:
+            balance = user.get_balance(temp_order.trade_currency, cent2unit=True)
+            if to_units(temp_order.trade_currency, amount) > balance:
                 msg = m.reply(f'Вы не можете продать больше чем '
-                              f'{to_units(temp_order.trade_currency,user.virtual_wallets.get(currency=temp_order.trade_currency).balance)}'
+                              f'{balance}'
                               f' {temp_order.trade_currency}')
                 sleep(5)
                 msg.delete()
@@ -608,11 +610,11 @@ def amount_for_order(cli, m):
                 if inst_currency.type == 'fiat':
                     continue
 
-                user_balance = user.virtual_wallets.get(currency=currency).balance
+                balance = user.get_balance(currency, cent2unit=True)
                 price_trade = Decimal(amount * to_units(temp_order.trade_currency, temp_order.currency_rate) / to_units(currency, temp_order.payment_currency_rate[currency]))
 
-                max_limit = round_currency(temp_order.trade_currency, temp_order.payment_currency_rate[currency] * to_units(currency, user_balance))
-                if price_trade > to_units(currency, user_balance):
+                max_limit = round_currency(temp_order.trade_currency, temp_order.payment_currency_rate[currency] * balance)
+                if price_trade > balance:
                     m.reply(f'Вы не можете купить больше чем {max_limit} {temp_order.trade_currency}')
                     return
 
