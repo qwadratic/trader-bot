@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, ROUND_DOWN
 
 from bot.blockchain import minterAPI, ethAPI
 from bot.models import ExchangeRate, CashFlow, CurrencyList
@@ -80,12 +80,18 @@ def create_record_cashflow(user, to, type_operation, amount, currency, trade=Non
     )
 
 
-def round_currency(currency_id, amount):
+def round_currency(currency_id, number):
 
     currency = CurrencyList.objects.get(currency=currency_id)
-    result = round(Decimal(amount), currency.accuracy)
+    #result = round(Decimal(number), currency.accuracy)
 
-    if result % 1 == 0:
-        return int(result)
-    else:
-        return result
+    if isinstance(number, float):
+        number = Decimal(number)
+    if isinstance(number, Decimal):
+        return number.quantize(Decimal(f'0.{"1" * currency.accuracy}'), rounding=ROUND_DOWN)
+    return number
+
+    # if result % 1 == 0:
+    #     return int(result)
+    # else:
+    #     return result

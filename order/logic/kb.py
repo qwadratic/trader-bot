@@ -4,7 +4,7 @@ from decimal import Decimal
 from pyrogram import InlineKeyboardMarkup, InlineKeyboardButton
 
 from bot.helpers.converter import currency_in_usd
-from bot.helpers.shortcut import to_units
+from bot.helpers.shortcut import to_units, round_currency
 from order.models import Order
 
 
@@ -210,13 +210,18 @@ def owner_order_list(user, type_orders, offset):
     sort_orders = user.parentOrders.all()[offset:offset+7]
     all_orders = user.parentOrders.all()
 
-    kb_list = [[InlineKeyboardButton(user.get_text(name='kb-back'), callback_data='owner_order-back')]]
+    kb_list = [[InlineKeyboardButton(user.get_text(name='kb-back'), callback_data='owner_order-back')],
+               [InlineKeyboardButton(user.get_text(name='order-kb-trade_menu-new_sale'), callback_data='trade_menu-new_sale'),
+                InlineKeyboardButton(user.get_text(name='order-kb-trade_menu-new_buy'), callback_data='trade_menu-new_buy')]]
 
     for order in sort_orders:
-        amount = round(to_units(order.trade_currency, order.amount), 4)
-        currency_rate = round(to_units(order.trade_currency, order.currency_rate), 6)
+        amount = round_currency(order.trade_currency, to_units(order.trade_currency, order.amount))
+        currency_rate = round_currency(order.trade_currency, to_units(order.trade_currency, order.currency_rate))
 
-        button_name = f'{currency_rate} USD/{order.payment_currency} | {amount}'
+        status_marker = '▶️' if order.status == 'open' else '⏸'
+        operation_marker = '🟥' if order.type_operation == 'buy' else '🟩'
+
+        button_name = f'{status_marker} {operation_marker} {order.trade_currency}/{order.payment_currency} | $ {currency_rate} | {amount} {order.trade_currency} |'
         kb_list.append([InlineKeyboardButton(button_name, callback_data=f'owner_order-open-{order.id}-{type_orders}-{offset}')])
 
     if offset == 0 and len(all_orders) <= 7:
