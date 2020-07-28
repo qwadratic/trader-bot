@@ -84,9 +84,12 @@ def round_currency(currency_id, number):
 
     currency = CurrencyList.objects.get(currency=currency_id)
     #result = round(Decimal(number), currency.accuracy)
-
-    if isinstance(number, float):
-        number = Decimal(number)
+    #
+    # if isinstance(number, float):
+    #     number = Decimal(number)
+    #
+    if number % 1 == 0:
+        return int(number)
     if isinstance(number, Decimal):
         return number.quantize(Decimal(f'0.{"1" * currency.accuracy}'), rounding=ROUND_DOWN)
     return number
