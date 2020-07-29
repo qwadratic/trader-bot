@@ -30,12 +30,28 @@ def _default_telegramuser_cache():
                 }
             }
 
+def _default_telegramuser_cache():
+    return {
+        'msg': {
+            'trade_menu': None,
+            'wallet_menu': None,
+            'last_temp_order': None
+        },
+        'clipboard': {
+            'currency': None,
+            'requisites': [],
+            'active_trade': None,
+            'deposit_currency': {}
+        }
+    }
+
+
 class TelegramUser(Model):
     objects = GetOrNoneManager()
 
     telegram_id = PositiveIntegerField(_('Telegram user ID'), unique=True)
     username = CharField(_('User name'), max_length=255, null=True)
-    first_name = CharField(_('First name'), max_length=255,null=True)
+    first_name = CharField(_('First name'), max_length=255, null=True)
     last_name = CharField(_('Last name'), max_length=255, null=True)
     last_activity = DateTimeField(_('Last activity'), null=True)
     created_at = DateTimeField(_('Registration date'), auto_now_add=True)
@@ -55,6 +71,27 @@ class TelegramUser(Model):
         UserRef.objects.update_or_create(user=self, defaults={'referrer': invited_by})
         return True
 
+    def get_balance(self, currency, cent2unit=False, round=False):
+        from bot.helpers.shortcut import to_units, round_currency
+
+        wallet = self.virtual_wallets.get(currency=currency)
+        balance = wallet.balance
+
+        hold_money = self.holdMoney.filter(currency=currency)
+
+        if hold_money.count() > 0:
+
+            for hm in hold_money:
+                balance -= hm.amount
+
+        if cent2unit:
+            balance = to_units(currency, balance)
+
+        if round:
+            balance = round_currency(currency, balance)
+
+        return balance
+
 
 class UserFlag(Model):
     objects = GetOrNoneManager()
@@ -66,15 +103,10 @@ class UserFlag(Model):
     await_amount_for_order = BooleanField(default=False)
     await_amount_for_trade = BooleanField(default=False)
     await_tx_hash = BooleanField(default=False)
-
-    temp_currency = CharField(null=True, max_length=255)
-    requisites_for_trade = BooleanField(default=False)
-    requisites_for_start_deal = BooleanField(default=False)
-    await_currency_value = BooleanField(default=False)
-    await_amount_for_deal = BooleanField(default=False)
     await_requisites_address = BooleanField(default=False)
     await_requisites_name = BooleanField(default=False)
     edit_requisite = BooleanField(default=False)
+    await_replenishment_for_order = BooleanField(default=False)
 
 
 class UserSettings(Model):
@@ -119,3 +151,15 @@ class UserPurse(Model):
     currency = CharField(max_length=255)
     address = CharField(max_length=255, null=True)
     status = CharField(max_length=255, default='invalid')
+
+    def get_display_text(self, user):
+        if self.name:
+            return user.get_text(name='purse-requisite_info_with_name').format(
+                name=self.name,
+                address=self.address,
+                currency=self.currency)
+
+        return user.get_text(name='purse-requisite_info').format(
+            address=self.address,
+            currency=self.currency)
+

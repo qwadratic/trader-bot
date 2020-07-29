@@ -1,46 +1,56 @@
 from decimal import Decimal
 
-from mintersdk.shortcuts import to_pip, to_bip
-
 from bot.helpers.converter import currency_in_usd
-from order.models import Order, ParentOrder
+from bot.helpers.shortcut import to_units, to_cents, round_currency
+from bot.models import CurrencyList
+from order.models import Order, ParentOrder, OrderHoldMoney
+from trade.logic.core import update_order
 
 
 def get_order_info(user, order_id):
-    #  TODO учесть валюту юзера
-
     trade_direction = {'buy': {'type': 'Покупка',
                                'icon': '📈'},
                        'sale': {'type': 'Продажа',
                                 'icon': '📉'}}
 
     order = Order.objects.get(id=order_id)
-    user_currency = user.settings.currency
     type_operation = order.type_operation
     trade_currency = order.trade_currency
-    currency_rate = to_bip(order.currency_rate)
-    amount = to_bip(order.amount)
+    payment_currency = order.payment_currency
+    if not order.mirror:
+        trade_currency_rate_usd = to_units(trade_currency, order.parent_order.currency_rate)
+        payment_currency_rate = Decimal(
+            to_units(payment_currency, order.parent_order.payment_currency_rate[payment_currency]) / to_units(
+                trade_currency, order.parent_order.currency_rate))
+    else:
+        trade_currency_rate_usd = to_units(trade_currency, order.parent_order.payment_currency_rate[trade_currency])
+        payment_currency_rate = Decimal(
+            to_units(payment_currency, order.parent_order.currency_rate)) / trade_currency_rate_usd
 
     payment_currency = order.payment_currency
+
+    trade_currency_rate = to_units(trade_currency, order.currency_rate)
+
+    amount = to_units(trade_currency, order.amount)
+    price_order = amount * trade_currency_rate
 
     txt = user.get_text(name='order-order_info').format(
         order_id=order.id,
         type_operation=trade_direction[type_operation]["type"],
         trade_currency=trade_currency,
-        icon_operation=trade_direction[type_operation]["icon"],
-        cost=currency_rate * amount,
-        user_currency=user_currency,
-        amount=amount,
-        currency_rate=currency_rate
-
+        trade_currency_rate_usd=trade_currency_rate_usd,
+        payment_currency=payment_currency,
+        rate_1=round_currency(payment_currency, trade_currency_rate),
+        rate_2=round_currency(trade_currency, payment_currency_rate),
+        amount=round_currency(trade_currency, amount),
+        price_order=round_currency(payment_currency, price_order)
     )
-    txt += f'\n**{payment_currency}**'
 
     return txt
 
 
 def order_info_for_owner(order):
-    #  TODO сделать здесь интернационализацию
+    #  TODO сделать логику
 
     trade_direction = {'buy': {'type': 'Покупка',
                                'icon': '📈'},
@@ -50,28 +60,38 @@ def order_info_for_owner(order):
     status = {'open': '⚪️ Активно',
               'close': '🔴 Отключено'}
 
-    user_currency = order.user.settings.currency
+    user = order.user
     type_operation = order.type_operation
     trade_currency = order.trade_currency
-    currency_rate = to_bip(order.currency_rate)
-    amount = to_bip(order.amount)
+    trade_currency_rate_usd = to_units(trade_currency, order.currency_rate)
+    amount = to_units(trade_currency, order.amount)
 
-    txt = order.user.get_text(name='order-order_info').format(
+    currency_pairs = ''
+    max_amounts = ''
+    payment_currency = ''
+    for currency in order.payment_currency:
+        trade_currency_rate = order.currency_rate / order.payment_currency_rate[currency]
+        payment_currency_rate = round_currency(trade_currency,
+                                               order.payment_currency_rate[currency] / order.currency_rate)
+
+        currency_pairs += f'1 {trade_currency} – {round_currency(currency, trade_currency_rate)} {currency}\n' \
+            f'1 {currency} – {payment_currency_rate} {trade_currency}\n'
+
+        price_lot = round_currency(currency, amount * trade_currency_rate)
+        max_amounts += f'{price_lot} {currency}\n'
+
+        payment_currency += f'{currency}\n'
+
+    txt = user.get_text(name='order-parent_order_info').format(
         order_id=order.id,
         type_operation=trade_direction[type_operation]["type"],
         trade_currency=trade_currency,
-        icon_operation=trade_direction[type_operation]["icon"],
-        cost=currency_rate * amount,
-        user_currency=user_currency,
-        amount=amount,
-        currency_rate=currency_rate
-
+        trade_currency_rate_usd=round_currency(trade_currency, trade_currency_rate_usd),
+        payment_currency=payment_currency,
+        amount=round_currency(trade_currency, amount),
+        currency_pairs=currency_pairs,
+        max_amounts=max_amounts
     )
-
-    for currency in order.payment_currency:
-        txt += f'\n**{currency}**'
-
-    txt += f'\n\n{status[order.status]}'
 
     return txt
 
@@ -94,56 +114,59 @@ def create_order(temp_order):
 
     if order.type_operation == 'sale':
         for currency in payment_currency_list:
-            currency_rate = to_pip(Decimal(order.currency_rate / order.payment_currency_rate[currency]))
+            currency_rate = Decimal(order.currency_rate / order.payment_currency_rate[currency])
             order_list.append(dict(
                 parent_order=order,
                 type_operation=order.type_operation,
                 trade_currency=order.trade_currency,
                 amount=order.amount,
-                currency_rate=currency_rate,
+                currency_rate=to_cents(currency, currency_rate),
                 payment_currency=currency,
                 requisites=order.requisites[currency]
             ))
 
             type_operation = 'buy' if temp_order.type_operation == 'sale' else 'sale'
 
-            amount = to_bip(order.amount) * to_bip(order.currency_rate) / Decimal(currency_in_usd(currency, 1))
+            amount = to_units(order.trade_currency, order.amount) * to_units(order.trade_currency,
+                                                                             order.currency_rate) / currency_in_usd(
+                currency, 1)
 
-            currency_rate_mirror = to_pip(Decimal(order.payment_currency_rate[currency] / order.currency_rate))
+            currency_rate_mirror = Decimal(order.payment_currency_rate[currency] / order.currency_rate)
             order_list.append(dict(
                 parent_order=order,
                 type_operation=type_operation,
                 trade_currency=currency,
-                amount=to_pip(amount),
-                currency_rate=currency_rate_mirror,
+                amount=to_cents(currency, amount),
+                currency_rate=to_cents(order.trade_currency, currency_rate_mirror),
                 payment_currency=order.trade_currency,
                 requisites=order.requisites[currency],
                 mirror=True
             ))
     else:
         for currency in payment_currency_list:
-            currency_rate = to_pip(Decimal(order.currency_rate / order.payment_currency_rate[currency]))
+            currency_rate = Decimal(order.currency_rate / order.payment_currency_rate[currency])
 
             order_list.append(dict(
                 parent_order=order,
                 type_operation=order.type_operation,
                 trade_currency=order.trade_currency,
                 amount=order.amount,
-                currency_rate=currency_rate,
+                currency_rate=to_cents(currency, currency_rate),
                 payment_currency=currency,
                 requisites=order.requisites[order.trade_currency]
             ))
 
             type_operation = 'buy' if temp_order.type_operation == 'sale' else 'sale'
 
-            amount = to_bip(order.amount) * to_bip(order.currency_rate) / Decimal(currency_in_usd(currency, 1))
-            currency_rate_mirror = to_pip(Decimal(order.payment_currency_rate[currency] / order.currency_rate))
+            amount = to_units(currency, order.amount) * to_units(currency, order.currency_rate) / currency_in_usd(
+                currency, 1)
+            currency_rate_mirror = Decimal(order.payment_currency_rate[currency] / order.currency_rate)
             order_list.append(dict(
                 parent_order=order,
                 type_operation=type_operation,
                 trade_currency=currency,
-                amount=to_pip(amount),
-                currency_rate=currency_rate_mirror,
+                amount=to_cents(currency, amount),
+                currency_rate=to_cents(order.trade_currency, currency_rate_mirror),
                 payment_currency=order.trade_currency,
                 requisites=order.requisites[order.trade_currency],
                 mirror=True
@@ -151,8 +174,81 @@ def create_order(temp_order):
 
     Order.objects.bulk_create([Order(**r) for r in order_list])
 
+    hold_money_order(order)
     return order
 
 
+def hold_money_order(order):
+    user = order.user
+    hold_list = []
+    if order.type_operation == 'sale':
+        hold_list.append(dict(
+            order=order,
+            user=user,
+            currency=order.trade_currency,
+            amount=order.amount
+        ))
+
+    elif order.type_operation == 'buy':
+
+        for currency in order.payment_currency:
+            currency_rate = Decimal(order.currency_rate / order.payment_currency_rate[currency])
+            amount = currency_rate * to_units(order.trade_currency, order.amount)
+            hold_list.append(dict(
+                order=order,
+                user=user,
+                currency=currency,
+                amount=to_cents(currency, amount)
+            ))
+
+    OrderHoldMoney.objects.bulk_create([OrderHoldMoney(**r) for r in hold_list])
 
 
+def switch_order_status(order):
+    hold_money = order.holdMoney.all()
+    hold_money.delete()
+    update_order(order, 'switch', 'close')
+
+
+def close_order(order):
+    hold_money = order.holdMoney.all()
+    hold_money.delete()
+    update_order(order, 'switch', 'completed')
+
+
+def check_balance_from_order(user, order):
+    is_good_balance = True
+    amount = to_units(order.trade_currency, order.amount)
+
+    deposit_currency = {}
+    for currency in order.payment_currency:
+        inst_currency = CurrencyList.objects.get(currency=currency)
+        if inst_currency.type == 'fiat':
+            continue
+
+        payment_currency_rate = to_units(currency, order.payment_currency_rate[currency])
+        trade_currency_rate = to_units(order.trade_currency, order.currency_rate)
+        price_trade = Decimal(amount * trade_currency_rate / payment_currency_rate)
+        balance = user.get_balance(currency, cent2unit=True)
+
+        if price_trade > balance:
+            is_good_balance = False
+
+            if currency == 'USDT':
+                deposit_address = user.wallets.get(currency='USDT').address
+            else:
+                deposit_address = user.wallets.get(currency=currency).address
+
+            deposit_currency[currency] = dict(
+                address=deposit_address
+            )
+
+    if is_good_balance:
+        return True
+
+    else:
+        user_cache = user.cache
+        user_cache['clipboard']['deposit_currency'] = deposit_currency
+        user.save()
+
+        return False

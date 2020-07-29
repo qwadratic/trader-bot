@@ -197,3 +197,18 @@ def set_currency(user):
         )
 
     return kb
+
+
+def show_tx(user, currency, tx_hash):
+    if currency in ['ETH', 'USDT']:
+        url_link = f'https://etherscan.io/tx/{tx_hash}'
+        button_name = user.get_text(name='trade-kb-view_on').format(name='etherscan.io')
+        kb = [[InlineKeyboardButton(button_name, url=url_link)]]
+
+    elif currency == 'BIP':
+        url_link = f'https://minterscan.net/tx/{tx_hash}'
+        button_name = user.get_text(name='trade-kb-view_on').format(name='minterscan.net')
+
+        kb = [[InlineKeyboardButton(button_name, url=url_link)]]
+
+    return InlineKeyboardMarkup(kb)

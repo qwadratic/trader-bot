@@ -1,20 +1,10 @@
-from mintersdk.shortcuts import to_bip
-from web3 import Web3
-
-from bot.blockchain.ethAPI import w3
-from bot.blockchain.minterAPI import Minter
-from bot.models import CashFlow
-from trade.models import HoldMoney
-
-
-def hold_money(trade):
-    HoldMoney.objects.create(
-        trade=trade,
-        amount=trade.amount
-    )
+from bot.helpers.shortcut import create_record_cashflow
+from trade.models.trade import TradeHoldMoney
+from user.logic.core import update_wallet_balance
 
 
 def update_order(parent_order, type_update, value):
+    # todo баг
     if type_update == 'amount':
         orders = parent_order.orders.all()
 
@@ -22,88 +12,49 @@ def update_order(parent_order, type_update, value):
             order.amount = value
             order.save()
 
+    if type_update == 'switch':
+        orders = parent_order.orders.all()
+        parent_order.status = value
+        parent_order.save()
+
+        for order in orders:
+            order.status = value
+            order.save()
+
 
 def auto_trade(trade):
     owner = trade.order.parent_order.user
     user = trade.user
     parent_order = trade.order.parent_order
-
+    parent_order.amount -= trade.amount
+    parent_order.save()
     update_order(parent_order, 'amount', parent_order.amount - trade.amount)
 
-    cashflow_list = []
-
+    # TODO добавить кешфлоу в апдейтваллет
     if trade.order.type_operation == 'sale':
-        cashflow_list.append(dict(
-            user=user,
-            to=owner,
-            trade=trade,
-            type_operation='transfer',
-            amount=trade.price_trade,
-            currency=trade.payment_currency
-        ))
+        create_record_cashflow(user, owner, 'transfer', trade.price_trade, trade.payment_currency, trade)
 
-        owner_balance_in_payment_currency = owner.virtual_wallets.get(currency=trade.payment_currency)
-        owner_balance_in_payment_currency.balance += trade.price_trade
-        owner_balance_in_payment_currency.save()
+        update_wallet_balance(owner, trade.payment_currency, trade.price_trade, 'up')
+        update_wallet_balance(owner, trade.trade_currency, trade.amount, 'down')
 
-        owner_balance_in_trade_currency = owner.virtual_wallets.get(currency=trade.trade_currency)
-        owner_balance_in_trade_currency.balance -= trade.amount
-        owner_balance_in_trade_currency.save()
-
-        cashflow_list.append(dict(
-            user=owner,
-            to=user,
-            trade=trade,
-            type_operation='transfer',
-            amount=trade.amount,
-            currency=trade.trade_currency
-        ))
-
-        user_balance_in_trade_currency = user.virtual_wallets.get(currency=trade.trade_currency)
-        user_balance_in_trade_currency.balance += trade.amount
-        user_balance_in_trade_currency.save()
-
-        user_balance_in_payment_currency = user.virtual_wallets.get(currency=trade.payment_currency)
-        user_balance_in_payment_currency.balance -= trade.price_trade
-        user_balance_in_payment_currency.save()
+        create_record_cashflow(owner, user, 'transfer', trade.amount, trade.trade_currency, trade)
+        update_wallet_balance(user, trade.trade_currency, trade.amount, 'up')
+        update_wallet_balance(user, trade.payment_currency, trade.price_trade, 'down')
 
     # покупка
     else:
-        cashflow_list.append(dict(
-            user=user,
-            to=owner,
-            trade=trade,
-            type_operation='transfer',
-            amount=trade.price_trade,
-            currency=trade.trade_currency
-        ))
 
-        owner_balance_in_payment_currency = owner.virtual_wallets.get(currency=trade.order.payment_currency)
-        owner_balance_in_payment_currency.balance -= trade.price_trade
-        owner_balance_in_payment_currency.save()
+        create_record_cashflow(user, owner, 'transfer', trade.price_trade, trade.payment_currency, trade)
 
-        owner_balance_in_trade_currency = owner.virtual_wallets.get(currency=trade.trade_currency)
-        owner_balance_in_trade_currency.balance += trade.amount
-        owner_balance_in_trade_currency.save()
+        update_wallet_balance(owner, trade.order.payment_currency, trade.price_trade, 'down')
+        update_wallet_balance(owner, trade.trade_currency, trade.amount, 'up')
 
-        cashflow_list.append(dict(
-            user=owner,
-            to=user,
-            trade=trade,
-            type_operation='transfer',
-            amount=trade.amount,
-            currency=trade.payment_currency
-        ))
+        create_record_cashflow(owner, user, 'transfer', trade.amount, trade.trade_currency, trade)
 
-        user_balance_in_payment_currency = user.virtual_wallets.get(currency=trade.payment_currency)
-        user_balance_in_payment_currency.balance -= trade.price_trade
-        user_balance_in_payment_currency.save()
+        update_wallet_balance(user, trade.payment_currency, trade.price_trade, 'down')
+        update_wallet_balance(user, trade.trade_currency, trade.amount, 'up')
 
-        user_balance_in_trade_currency = user.virtual_wallets.get(currency=trade.trade_currency)
-        user_balance_in_trade_currency.balance += trade.amount
-        user_balance_in_trade_currency.save()
-
-    CashFlow.objects.bulk_create([CashFlow(**q) for q in cashflow_list])
+    close_trade(trade)
 
 
 def semi_auto_trade(trade):
@@ -111,105 +62,46 @@ def semi_auto_trade(trade):
     user = trade.user
     parent_order = trade.order.parent_order
 
-    cashflow_list = []
-
     update_order(parent_order, 'amount', parent_order.amount - trade.amount)
 
     if trade.order.type_operation == 'sale':
-        cashflow_list.append(dict(
-            user=owner,
-            to=user,
-            trade=trade,
-            type_operation='transfer',
-            amount=trade.amount,
-            currency=trade.trade_currency
-        ))
-
-        user_balance_in_trade_currency = user.virtual_wallets.get(currency=trade.trade_currency)
-        user_balance_in_trade_currency.balance += trade.amount
-        user_balance_in_trade_currency.save()
-
-        cashflow_list.append(dict(
-            user=user,
-            to=owner,
-            trade=trade,
-            type_operation='external-transfer',
-            amount=trade.price_trade,
-            currency=trade.payment_currency,
-            tx_hash=trade.tx_hash
-        ))
+        create_record_cashflow(owner, user, 'transfer', trade.amount, trade.trade_currency, trade)
+        update_wallet_balance(user, trade.trade_currency, trade.amount, 'up')
+        create_record_cashflow(user, owner, 'external-transfer', trade.price_trade, trade.payment_currency, trade, tx_hash=trade.tx_hash)
 
     else:
 
-        cashflow_list.append(dict(
-            user=owner,
-            to=user,
-            trade=trade,
-            type_operation='transfer',
-            amount=trade.price_trade,
-            currency=trade.payment_currency
-        ))
+        create_record_cashflow(owner, user, 'transfer', trade.price_trade, trade.payment_currency, trade)
+        update_wallet_balance(user, trade.payment_currency, trade.price_trade, 'up')
+        create_record_cashflow(user, owner, 'external-transfer', trade.amount, trade.trade_currency, trade,
+                               tx_hash=trade.tx_hash)
 
-        user_balance_in_payment_currency = user.virtual_wallets.get(currency=trade.payment_currency)
-        user_balance_in_payment_currency.balance += trade.price_trade
-        user_balance_in_payment_currency.save()
-
-        cashflow_list.append(dict(
-            user=user,
-            to=owner,
-            trade=trade,
-            type_operation='external-transfer',
-            amount=trade.amount,
-            currency=trade.trade_currency,
-            tx_hash=trade.tx_hash
-        ))
-
-    CashFlow.objects.bulk_create([CashFlow(**q) for q in cashflow_list])
+    close_trade(trade)
 
 
-# TODO::
-#  - избавиться от ебаного to_bip.
-#  - сделать функцию независимой от моделей: вместо (trade, tx_hash) будет (tx_hash, currency, amount, address)
-#  - сделать ее более расширяемой или хотя бы красивой/читабельной (мультивалютность)
-#  - после чего перекинуть в модуль blockchain
-def check_tx_hash(trade, tx_hash):
+def close_trade(trade):
 
-    if trade.payment_currency in ['ETH', 'USDT']:
-        owner_address = trade.order.requisites
-        try:
-            tx_receipt = w3.eth.getTransactionReceipt(tx_hash)
-        except Exception:
-            return False
+    if trade.order.type_operation == 'sale':
+        hm = trade.order.parent_order.holdMoney.get(currency=trade.trade_currency)
+        hm.amount -= trade.amount
+        hm.save()
 
-        if tx_receipt['status'] == 1 and tx_receipt['to'].lower() == owner_address.lower():
-            tx_hash = w3.eth.getTransaction(tx_hash)
+    if trade.order.type_operation == 'buy':
+        hm = trade.order.parent_order.holdMoney.get(currency=trade.payment_currency)
+        hm.amount -= trade.price_trade
+        hm.save()
 
-            # Проверка эфира
-            if trade.payment_currency == 'ETH':
+    trade.status = 'close'
+    trade.save()
 
-                if round(to_bip(tx_hash['value']), 6) == round(to_bip(trade.price_trade), 6):
-                    return True
-                return False
 
-            # Проверка юстд
-            amount = 0
-            for element in tx_receipt.logs:
-                amount = Web3.toWei(int(element['data'], 16) / 1000000, 'ether')
-
-            if round(to_bip(amount), 3) == round(to_bip(trade.price_trade), 3):
-                return True
-            return False
-        else:
-            return False
-
-    if trade.payment_currency == 'BIP':
-        tx = Minter.get_transaction(tx_hash[2:])
-
-        if 'error' in tx:
-            return False
-
-        if tx['result']['data']['to'] == trade.order.requisites \
-                and round(to_bip(tx['result']['data']['value']), 2) == round(to_bip(trade.price_trade), 2):
-            return True
-        return False
-
+def hold_money_trade(trade):
+    # TODO Надо сделать трейхолдмани
+    user = trade.user
+    hold_list = []
+    hold_list.append(dict(
+        trader=trade,
+        currency=trade.trade_currency,
+        amount=trade.amount
+    ))
+    TradeHoldMoney.objects.bulk_create([TradeHoldMoney(**r) for r in hold_list])

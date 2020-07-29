@@ -1,4 +1,4 @@
-from .trade import Trade, HoldMoney
+from .trade import Trade, TradeHoldMoney
 
 
-__all__ = ['Trade', 'HoldMoney']
+__all__ = ['Trade', 'TradeHoldMoney']

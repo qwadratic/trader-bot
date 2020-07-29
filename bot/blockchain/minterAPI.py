@@ -8,7 +8,7 @@ from requests import ReadTimeout, ConnectTimeout, HTTPError
 
 from ..helpers.misc import retry
 
-Minter = MinterAPI('https://api.minter.one')
+Minter = MinterAPI('http://195.201.211.234:8841')
 
 to_handle = ReadTimeout, ConnectTimeout, ConnectionError, HTTPError, ValueError, KeyError
 

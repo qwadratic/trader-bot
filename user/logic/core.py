@@ -64,3 +64,13 @@ def create_reflink(user_id, trade_id=None):
         bot_link = f'https://t.me/{env.str("BOT_USERNAME")}?start=t{trade_id}'
 
     return bot_link
+
+
+def update_wallet_balance(user, currency, amount, operation):
+    wallet = user.virtual_wallets.get(currency=currency)
+    if operation == 'up':
+        wallet.balance += amount
+    elif operation == 'down':
+        wallet.balance -= amount
+
+    wallet.save()
