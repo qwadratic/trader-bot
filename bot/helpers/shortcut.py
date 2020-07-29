@@ -17,6 +17,14 @@ def delete_msg(cli, user_id, msg):
         pass
 
 
+def delete_inline_kb(cli, telegram_id, msg_id):
+    try:
+        msg = cli.get_messages(telegram_id, msg_id)
+        msg.edit(msg.text)
+    except:
+        pass
+
+
 def check_address(address, currency):
 
     valid = False

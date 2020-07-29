@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db.models import Sum
 
 from bot.helpers.converter import currency_in_user_currency
@@ -52,3 +54,19 @@ def wallet_info(user):
 
         txt += f'\n{user.get_text(name="wallet-hold_money").format(hold_money=hold_money_txt)}'
     return txt
+
+
+def get_lack_balance_text(order, deposit_currency):
+    user = order.user
+    amount = to_units(order.trade_currency, order.amount)
+    text = ''
+    for currency in deposit_currency:
+        payment_currency_rate = to_units(currency, order.payment_currency_rate[currency])
+        trade_currency_rate = to_units(order.trade_currency, order.currency_rate)
+        balance = user.get_balance(currency, cent2unit=True)
+        price_trade = Decimal(amount * trade_currency_rate / payment_currency_rate)
+        to_deposit = price_trade - balance
+
+        text += f'{currency} {to_deposit}\n'
+
+    return text

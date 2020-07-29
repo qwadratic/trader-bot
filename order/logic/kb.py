@@ -288,3 +288,29 @@ def cancel_order(user, order_id):
         ]
     )
     return kb
+
+
+def deposit_from_order(user):
+    kb_list = [[InlineKeyboardButton(user.get_text(name='order-kb-back_to_select_payment_currency'), callback_data='back_to_select_payment_currency')]]
+
+    order = user.temp_order
+
+    underbalanced_currency = user.cache['clipboard']['deposit_currency']
+    positive_currency = []
+
+    for currency in order.payment_currency:
+        if currency in underbalanced_currency:
+            continue
+        positive_currency.append(currency)
+
+    if len(positive_currency) > 0:
+        kb_list.append([InlineKeyboardButton(user.get_text(name='order-kb-continue_with').format(currency=', '.join(positive_currency)),
+                                             callback_data=f'order_deposit-continue-{", ".join(positive_currency)}')])
+
+    for currency in underbalanced_currency:
+        kb_list.append([InlineKeyboardButton(user.get_text(name='order-kb-show_deposit_address').format(currency=currency),
+                                             callback_data=f'order_deposit-show_adr-{currency}')])
+
+    kb_list.append([InlineKeyboardButton(user.get_text(name='order-kb-cancel_order'),
+                                         callback_data=f'cancel_order_create-{order.id}')])
+    return InlineKeyboardMarkup(kb_list)

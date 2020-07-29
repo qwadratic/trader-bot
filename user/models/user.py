@@ -22,12 +22,14 @@ def _default_telegramuser_cache():
     return {
         'msg': {
             'trade_menu': None,
-            'wallet_menu': None
+            'wallet_menu': None,
+            'last_temp_order': None
         },
         'clipboard': {
             'currency': None,
             'requisites': [],
-            'active_trade': None
+            'active_trade': None,
+            'deposit_currency': {}
         }
     }
 
@@ -92,6 +94,7 @@ class UserFlag(Model):
     await_requisites_address = BooleanField(default=False)
     await_requisites_name = BooleanField(default=False)
     edit_requisite = BooleanField(default=False)
+    await_replenishment_for_order = BooleanField(default=False)
 
 
 class UserSettings(Model):
