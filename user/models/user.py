@@ -17,18 +17,6 @@ class GetOrNoneManager(Manager):
         except self.model.DoesNotExist:
             return None
 
-def _default_telegramuser_cache():
-        return {
-                'msg': {
-                    'trade_menu': None,
-                    'wallet_menu': None
-                },
-                'clipboard': {
-                    'currency': None,
-                    'requisites': [],
-                    'active_trade': None
-                }
-            }
 
 def _default_telegramuser_cache():
     return {
