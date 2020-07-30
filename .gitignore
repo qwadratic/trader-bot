@@ -1,4 +1,5 @@
 *.session
+*.session-journal
 *.idea
 *.xml
 /unknown_errors.txt
