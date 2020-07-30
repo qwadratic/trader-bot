@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/3.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.0/ref/settings/
 """
+import os
 
 from .env import env
 
@@ -130,5 +131,8 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
-STATIC_ROOT = '/Users/Антон/Desktop/Project/trader-bot/silk/'
+_SETTINGS_DIR = os.path.dirname(os.path.abspath(__file__))
+_CONFIG_DIR = os.path.dirname(_SETTINGS_DIR)
+PROJECT_DIR = os.path.dirname(_CONFIG_DIR)
+STATIC_ROOT = os.path.join(PROJECT_DIR, 'static')
 STATIC_URL = '/static/'
