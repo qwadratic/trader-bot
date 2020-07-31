@@ -211,8 +211,8 @@ def owner_order_list(user, type_orders, offset):
     all_orders = user.parentOrders.all()
 
     kb_list = [[InlineKeyboardButton(user.get_text(name='kb-back'), callback_data='owner_order-back')],
-               [InlineKeyboardButton(user.get_text(name='order-kb-trade_menu-new_sale'), callback_data='trade_menu-new_sale'),
-                InlineKeyboardButton(user.get_text(name='order-kb-trade_menu-new_buy'), callback_data='trade_menu-new_buy')]]
+               [InlineKeyboardButton(user.get_text(name='order-kb-trade_menu-new_buy'), callback_data='trade_menu-new_buy'),
+                InlineKeyboardButton(user.get_text(name='order-kb-trade_menu-new_sale'), callback_data='trade_menu-new_sale')]]
 
     for order in sort_orders:
         amount = round_currency(order.trade_currency, to_units(order.trade_currency, order.amount))
@@ -221,7 +221,7 @@ def owner_order_list(user, type_orders, offset):
         status_marker = '▶️' if order.status == 'open' else '⏸'
         operation_marker = '🟥' if order.type_operation == 'buy' else '🟩'
 
-        button_name = f'{status_marker} {operation_marker} {order.trade_currency}/{order.payment_currency} | $ {currency_rate} | {amount} {order.trade_currency} |'
+        button_name = f'{status_marker} {operation_marker} {order.trade_currency}/{", ".join(order.payment_currency)} | $ {currency_rate} | {amount} {order.trade_currency} |'
         kb_list.append([InlineKeyboardButton(button_name, callback_data=f'owner_order-open-{order.id}-{type_orders}-{offset}')])
 
     if offset == 0 and len(all_orders) <= 7:
@@ -291,7 +291,7 @@ def cancel_order(user, order_id):
 
 
 def deposit_from_order(user):
-    kb_list = [[InlineKeyboardButton(user.get_text(name='order-kb-back_to_select_payment_currency'), callback_data='back_to_select_payment_currency')]]
+    kb_list = [[InlineKeyboardButton(user.get_text(name='order-kb-back_to_select_payment_currency'), callback_data='order_deposit-back')]]
 
     order = user.temp_order
 
@@ -309,8 +309,18 @@ def deposit_from_order(user):
 
     for currency in underbalanced_currency:
         kb_list.append([InlineKeyboardButton(user.get_text(name='order-kb-show_deposit_address').format(currency=currency),
-                                             callback_data=f'order_deposit-show_adr-{currency}')])
+                                             callback_data=f'order_deposit-show_address-{currency}')])
 
     kb_list.append([InlineKeyboardButton(user.get_text(name='order-kb-cancel_order'),
                                          callback_data=f'cancel_order_create-{order.id}')])
     return InlineKeyboardMarkup(kb_list)
+
+
+def continue_order_after_deposit(user):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='order-kb-create_order'), callback_data='complete_order_create')],
+            [InlineKeyboardButton(user.get_text(name='order-kb-cancel_order'), callback_data=f'cancel_order_create')]
+        ]
+    )
+    return kb

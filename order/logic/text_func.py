@@ -8,8 +8,13 @@ from bot.helpers.shortcut import to_units, round_currency
 
 def choice_payment_currency_text(order):
     payment_currency_list = order.payment_currency
+    user = order.user
+    if order.type_operation == 'sale':
+        type_op = user.get_text(name="order-type_operation_translate_sale_1")
+    else:
+        type_op = user.get_text(name="order-type_operation_translate_buy_1")
 
-    txt = f'{order.user.get_text(name="order-select_payment_currency").format(currency=order.trade_currency)}\n\n'
+    txt = f'{order.user.get_text(name="order-select_payment_currency").format(type_operation=type_op, currency=order.trade_currency)}\n\n'
     if len(payment_currency_list) > 0:
         txt += f'{order.user.get_text(name="order-your_choice")}\n'
         for currency in payment_currency_list:

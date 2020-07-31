@@ -50,7 +50,8 @@ def _get_usdt_transfer_params_from_tx_logs(tx_logs):
 
 
 def get_eth_refill_txs(addresses, block_height):
-    refill_txs = defaultdict(int)
+    #refill_txs = defaultdict(int)
+    refill_txs = {}
     txs_in_block = w3.eth.getBlock(block_height).transactions
 
     for tx_hash in txs_in_block:
@@ -71,9 +72,12 @@ def get_eth_refill_txs(addresses, block_height):
                 continue
 
             # add tx value to refill_txs dict
-            to_and_currency = (tx.to.lower(), 'ETH')
             refill_tx = w3.eth.getTransaction(tx_hash)
-            refill_txs[to_and_currency] += refill_tx.value
+            try:
+                refill_txs[tx.to.lower()] += [{'tx_hash': tx_hash, 'currency': 'ETH', 'amount': refill_tx.value}]
+            except KeyError:
+                refill_txs[tx.to.lower()] = [{'tx_hash': tx_hash, 'currency': 'ETH', 'amount': refill_tx.value}]
+
             continue
 
         # now handle only USDT transactions
@@ -86,8 +90,10 @@ def get_eth_refill_txs(addresses, block_height):
             continue
         recv_address, amount = token_transfer_params
         if recv_address.lower() in addresses:
-            to_and_currency = (recv_address, 'USDT')
-            refill_txs[to_and_currency] += amount
+            try:
+                refill_txs[recv_address] += [{'tx_hash': tx_hash, 'currency': 'USDT', 'amount': refill_tx.value}]
+            except KeyError:
+                refill_txs[recv_address] = [{'tx_hash': tx_hash, 'currency': 'USDT', 'amount': amount}]
 
     return refill_txs
 
@@ -165,26 +171,34 @@ def check_tx_hash(tx_hash, currency, amount, address):
         return True
 
 
-def order_deposit(cli, user, refills):
+def order_deposit(cli, user, refill_txs):
     order = user.temp_order
     flags = user.flags
     is_good_balance = check_balance_from_order(user, order)
+    user_msg = user.cache['msg']
+    refill_currency = ''
+    for refill in refill_txs:
+        currency = refill['currency']
+        amount = round_currency(currency, to_units(currency, refill['amount']))
+        refill_currency += f'{amount} {currency}\n'
+
     if is_good_balance:
         flags.await_replenishment_for_order = False
         flags.save()
 
-        order = create_order(order)
+        txt = f'Ваш баланс пополнен на:\n' \
+            f'{refill_currency}'
 
-        cli.send_message(user.telegram_id, order_info_for_owner(order), reply_markup=kb.order_for_owner(order, 'new_order'))
+        delete_inline_kb(cli, user.telegram_id, user_msg['last_temp_order'])
+        try:
+            cli.send_message(user.telegram_id, txt)
+            txt = 'Баланса достаточно для завершения создания объявления. Желаете продолжить?'
+            cli.send_message(user.telegram_id, txt, reply_markup=kb.continue_order_after_deposit(user))
+        except Exception as e:
+            print(e)
     else:
         deposit_currency = user.cache['clipboard']['deposit_currency']
         lack_balance_txt = get_lack_balance_text(order, deposit_currency)
-        refill_currency = ''
-
-        for refill in refills:
-            currency = refill['currency']
-            amount = round_currency(currency, to_units(currency, refill['amount']))
-            refill_currency += f'{amount} {currency}\n'
 
         txt = f'Ваш баланс пополнен на:\n' \
               f'{refill_currency}'
@@ -193,13 +207,15 @@ def order_deposit(cli, user, refills):
             f'Если хотите исопльзовать бота как гаранта - надо пополнить\n\n' \
             f'{lack_balance_txt}'
 
-        user_msg = user.cache['msg']
         delete_inline_kb(cli, user.telegram_id, user_msg['last_temp_order'])
 
-        msg = cli.send_message(user.telegram_id, txt, reply_markup=kb.deposit_from_order(user))
+        try:
+            msg = cli.send_message(user.telegram_id, txt, reply_markup=kb.deposit_from_order(user))
 
-        user_msg['last_temp_order'] = msg.message_id
-        user.save()
+            user_msg['last_temp_order'] = msg.message_id
+            user.save()
+        except Exception:
+            pass
 
 
 

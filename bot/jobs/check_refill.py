@@ -7,7 +7,7 @@ from bot.helpers.misc import retry
 from bot.helpers.shortcut import to_units, round_currency
 
 from bot.models import CashFlow, Service
-from user.models import Wallet
+from user.models import Wallet, VirtualWallet
 
 from user.logic import kb
 
@@ -29,7 +29,7 @@ def check_refill_eth(cli):
     addresses = [w.address.lower() for w in Wallet.objects.filter(currency='ETH')]
     for block in range(last_block + 1, last_block + block_diff + 1):
         refill_txs = get_eth_refill_txs(addresses, block)
-        update_eth_balance(cli, refill_txs)
+        update_balance(cli, refill_txs)
         service.last_block = block
         service.save()
 
@@ -51,86 +51,55 @@ def check_refill_bip(cli):
     addresses = [w.address for w in Wallet.objects.filter(currency='BIP')]
     for block in range(last_block + 1, last_block + block_diff + 1):
         refill_txs = get_bip_refill_txs(addresses, block)
-        update_bip_balance(cli, refill_txs)
+        update_balance(cli, refill_txs)
         service.last_block = block
         service.save()
 
 
-def update_eth_balance(cli, refill_txs):
-    address_refills = {}
-    for (address, coin), refill_pip in refill_txs.items():
-        address_refills.setdefault(address, {})
-        address_refills[address][coin] = refill_pip
-
+def update_balance(cli, refill_txs):
     refills_list = []
 
-    for address in address_refills:
+    user_balances = {}
+    for address in refill_txs:
         user = Wallet.objects.get(address=address).user
 
         txt_refills = f''
+        await_deposit_currency = user.cache['clipboard']['deposit_currency']
 
-        for currency in address_refills[address]:
+        for refill in refill_txs[address]:
+            currency = refill['currency']
             virt_wallet = user.virtual_wallets.get(currency=currency)
-            refill = address_refills[address][currency]
-            virt_wallet.balance += refill
-            virt_wallet.save()
+            refill_amount = refill['amount']
+            tx_hash = refill['tx_hash']
+
+            try:
+                user_balances[(user, currency)] += refill_amount
+            except KeyError:
+                user_balances[(user, currency)] = refill_amount
 
             refills_list.append(dict(user=user,
                                      type_operation='deposit',
-                                     amount=refill,
-                                     currency=currency))
+                                     amount=refill_amount,
+                                     currency=currency,
+                                     tx_hash=tx_hash))
 
-            txt_refills += f'\n**{to_units(currency, refill)} {currency}**'
-        try:
-
-            cli.send_message(user.telegram_id, user.get_text(name='bot-balance_replinished') + txt_refills)
-        except Exception as e:
-            print('check_refill, line 65\n', e)
-
-    CashFlow.objects.bulk_create([CashFlow(**q) for q in refills_list])
-
-
-def update_bip_balance(cli, refills):
-    # address_refills = {}
-    # for (address, coin), refill_pip in refills.items():
-    #     address_refills.setdefault(address, {})
-    #     address_refills[address][coin] = refill_pip
-
-    refills_list = []
-
-    for address in refills:
-
-        user = Wallet.objects.get(address=address).user
-        user_balance = get_wallet_balance(address)
-
-        for refill in refills[address]:
-            txt_refills = ''
-            refill_in_pip = refill['amount']
-
-            virt_wallet = user.virtual_wallets.get(currency='BIP')
-
-            virt_wallet.balance += refill_in_pip
-            virt_wallet.save()
-
-            refills_list.append(dict(user=user,
-                                     type_operation='deposit',
-                                     amount=refill_in_pip,
-                                     currency='BIP',
-                                     tx_hash=refill['tx_hash']))
-
-            await_deposite_currency = user.cache['clipboard']['deposit_currency']
-
-            if user.flags.await_replenishment_for_order and 'BIP' in await_deposite_currency:
-                order_deposit(cli, user, refills[address])
+            if user.flags.await_replenishment_for_order and currency in await_deposit_currency:
+                order_deposit(cli, user, refill_txs[address])
             else:
-                txt_refills += f'\n**{round_currency("BIP", to_units("BIP", refill_in_pip))} BIP**'
+                txt_refills += f'\n**{round_currency(currency, to_units(currency, refill_amount))} {currency}**'
 
                 try:
                     cli.send_message(user.telegram_id, user.get_text(name='bot-balance_replinished') + txt_refills,
-                                     reply_markup=kb.show_tx(user, 'BIP', refill['tx_hash']))
+                                     reply_markup=kb.show_tx(user, currency, refill['tx_hash']))
                 except Exception as e:
                     print('check_refill, line 155\n', e)
 
+    instanse_wallet_list = []
+    for (user, amount)in user_balances.items():
+
+        wallet = user[0].virtual_wallets.get(currency=user[1])
+        wallet.balance += amount
+        instanse_wallet_list.append(wallet)
+
+    VirtualWallet.objects.bulk_update(instanse_wallet_list, ['balance'])
     CashFlow.objects.bulk_create([CashFlow(**q) for q in refills_list])
-
-

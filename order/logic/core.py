@@ -245,7 +245,6 @@ def check_balance_from_order(user, order):
 
     if is_good_balance:
         return True
-
     else:
         user_cache = user.cache
         user_cache['clipboard']['deposit_currency'] = deposit_currency
