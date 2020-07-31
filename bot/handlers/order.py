@@ -743,15 +743,3 @@ def create_order_after_deposit(cli, cb):
     order = create_order(user.temp_order)
     cb.message.edit(cb.message.text)
     cb.message.reply(order_info_for_owner(order), reply_markup=kb.order_for_owner(order, 'new_order'))
-
-
-@Client.on_message(Filters.regex(r'rr'))
-def qwe(cli, cb):
-    from bot.models import Text
-    t = Text.objects.all()
-    s = []
-    for tt in t:
-        d = dict(name=tt.name, text=tt.text, text_ru=tt.text_ru, text_en=tt.text_en)
-        s.append(d)
-
-    print(s)
