@@ -1,17 +1,36 @@
-from bot.blockchain.rpc_btc import create_new_wallet, get_wallet_balance, set_transaction_fee, get_wallet_info, \
-    get_all_transactions, get_new_adress, create_transaction, rpc_connection, rpc_user, rpc_password, uri_path_wallet, tx_fee
+from bot.blockchain.rpc_btc import get_block, get_wallet_balance
+
+from bot.models.core import Service
+from user.models import VirtualWallet
 
 
-#new_wallet = create_new_wallet(rpc_connection, wallet_name)
+def check_refill_btc(cli):
+    current_block = get_block()
+    service = Service.objects.get_or_none(currency='BTC')
+    update_wallet_balance()
+    if not service:
+        Service.objects.create(last_block=current_block, currency='BTC')
+        return
 
-wallet_balance = get_wallet_balance(rpc_user, rpc_password, uri_path_wallet)
+    if current_block == service.last_block:
+        pass
+    else:
+        service.last_block = current_block
+        service.save()
 
-#transaction_fee = set_transaction_fee(rpc_user, rpc_password, uri_path_wallet ,tx_fee)
-
-wallet_info = get_wallet_info(rpc_user, rpc_password, uri_path_wallet)
-
-wallet_transactions = get_all_transactions(rpc_user, rpc_password, uri_path_wallet)
-
-#new_adress = get_new_adress(rpc_user, rpc_password, uri_path_wallet, wallet)
-
-#new_transaction = create_transaction(rpc_user, rpc_password, uri_path_wallet, received_adress, sum_btc)
+def update_wallet_balance():
+    user_wallets = VirtualWallet.objects.get(currency='BTC')
+    user_name = []
+    user_name.append(user_wallets.user_id)
+    for name in user_name:
+        update_balance = []
+        wallet_name = name
+        actual_balance = get_wallet_balance(wallet_name)
+        update_balance.append(actual_balance)
+        # костыль
+        try:
+            VirtualWallet.objects.update(balance=update_balance)
+            return
+        except ValueError:
+            VirtualWallet.objects.update(balance=0)
+            return
