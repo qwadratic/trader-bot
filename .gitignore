@@ -8,5 +8,5 @@
 *.venv
 *__pycache__
 *.env
-
+/TODO.txt
 static
