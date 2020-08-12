@@ -28,8 +28,8 @@ def create_wallets_for_user(user):
     Wallet.objects.create(
         user_id=user.id,
         currency='BTC',
-        address=rpc_btc.get_new_adress(btc_wallet),
-        private_key='btc key' #уточнить
+        address=rpc_btc.get_new_address(btc_wallet),
+        private_key=rpc_btc.get_privkey(btc_wallet, address=rpc_btc.get_new_address(btc_wallet))
     )
 
     Wallet.objects.create(
