@@ -2,26 +2,41 @@ from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
 
 rpc_user = 'isheldon'
 rpc_password = 'zAdmkhdRRkSI3XfqWXW9_08wOSaqwfVr_8ZEdGTl_1E='
-uri_path_wallet = '/wallet/garry'
+
 tx_fee = 0.00015
 
-rpc_connection = AuthServiceProxy("http://%s:%s@195.201.211.234:8878%s"%
-                                  (rpc_user, rpc_password, uri_path_wallet))
+rpc_connection = AuthServiceProxy("http://%s:%s@195.201.211.234:8878"%
+                                  (rpc_user, rpc_password))
+
+def get_block():
+    best_block_hash = rpc_connection.getbestblockhash()
+    block = rpc_connection.getblock(best_block_hash)
+    block_height = block['height']
+    return block_height
 
 def create_new_wallet (wallet_name):
     new_wallet = rpc_connection.createwallet(wallet_name)
     return new_wallet
 
-def get_wallet_balance():
-    wallet_balance = rpc_connection.getbalance()
-    return print('wallet_balance:', wallet_balance)
+def get_wallet_balance(wallet_name):
+    uri_path_w = '/wallet/%s' % (wallet_name)
+    rpc_conn = AuthServiceProxy("http://%s:%s@195.201.211.234:8878%s" %
+                                (rpc_user, rpc_password, uri_path_w))
+    wallet_balance = rpc_conn.getbalance()
+    return wallet_balance
 
-def get_wallet_info():
-    wallet_info = rpc_connection.getwalletinfo()
+def get_wallet_info(wallet_name):
+    uri_path_w = '/wallet/%s' % (wallet_name)
+    rpc_conn = AuthServiceProxy("http://%s:%s@195.201.211.234:8878%s" %
+                                (rpc_user, rpc_password, uri_path_w))
+    wallet_info = rpc_conn.getwalletinfo()
     return print('Your wallet information:', wallet_info)
 
-def get_all_transactions():
-    all_transactions = rpc_connection.listtransactions("*", 1000)
+def get_all_transactions(wallet_name):
+    uri_path_w = '/wallet/%s' % (wallet_name)
+    rpc_conn = AuthServiceProxy("http://%s:%s@195.201.211.234:8878%s" %
+                                (rpc_user, rpc_password, uri_path_w))
+    all_transactions = rpc_conn.listtransactions("*", 1000)
     all_tx = []
 
     for key in all_transactions:
@@ -34,10 +49,29 @@ def get_all_transactions():
         all_tx.append(tx)
     return print('Transactions of current wallet:', all_tx)
 
-def get_new_adress(wallet): #TODO logic to identify
+def get_new_address(wallet_name): #TODO logic to identify
+    uri_path_w = '/wallet/%s' % (wallet_name)
+    rpc_conn = AuthServiceProxy("http://%s:%s@195.201.211.234:8878%s" %
+                                (rpc_user, rpc_password, uri_path_w))
     address_type = 'legacy'
-    new_adr = rpc_connection.getnewaddress(wallet, address_type)
+    new_adr = rpc_conn.getnewaddress(wallet_name, address_type)
     return new_adr
+
+def get_privkey(wallet_name, address):
+    uri_path_w = '/wallet/%s' % (wallet_name)
+    rpc_conn = AuthServiceProxy("http://%s:%s@195.201.211.234:8878%s" %
+                                (rpc_user, rpc_password, uri_path_w))
+    privkey = rpc_conn.dumpprivkey(address)
+    return privkey
+
+def get_wallet_list():
+    wallet_dict = rpc_connection.listwalletdir()
+    wallet_list = wallet_dict['wallets']
+    w_names = []
+    for names in wallet_list:
+        w_names.append(names['name'])
+    return w_names
+
 
 def create_transaction():
     received_address = '' #TODO define received_address
