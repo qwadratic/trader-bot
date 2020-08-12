@@ -1,3 +1,4 @@
+from collections import defaultdict
 from decimal import Decimal
 
 from django.db.models import Sum
@@ -42,22 +43,36 @@ def wallet_info(user):
 
     txt = user.get_text(name='wallet-wallet_info').format(balances=balance_txt)
 
-    hold_money = user.holdMoney.all()
+    hold_money = user.holdMoney.exclude(currency__in=['UAH', 'RUB', 'USD'])
 
     if hold_money.count() > 0:
-        hm_dict = {}
+        hm_dict = defaultdict(int)
         for hm in hold_money:
-            try:
-                hm_dict[hm.currency] += hm.amount
-            except KeyError:
-                hm_dict[hm.currency] = hm.amount
+            hm_dict[hm.currency] += hm.amount
 
         hold_money_txt = ''
 
         for currency in hm_dict:
-            hold_money_txt += f'{round_currency(currency, to_units(currency, hm_dict[currency]))} {currency}\n'
+            amount = to_units(currency,  hm_dict[currency], round=True)
+            hold_money_txt += f'{amount} {currency}\n'
 
         txt += f'\n{user.get_text(name="wallet-hold_money").format(hold_money=hold_money_txt)}'
+
+    withdrawal_requests = user.withdrawalRequests.filter(status__in=['pending verification', 'verifed'])
+
+    if withdrawal_requests.count() > 0:
+        wr_dict = defaultdict(int)
+        for wr in withdrawal_requests:
+            wr_dict[wr.currency] += wr.amount
+
+        wr_hold_money_txt = ''
+
+        for currency in wr_dict:
+            amount = to_units(currency, wr_dict[currency], round=True)
+            wr_hold_money_txt += f'{amount} {currency}'
+
+        txt += f'\n{user.get_text(name="wallet-hold_money_for_withdrawal").format(hold_money=wr_hold_money_txt)}'
+
     return txt
 
 

@@ -59,15 +59,20 @@ def to_cents(currency, amount):
     return to_pip(amount)
 
 
-def to_units(currency, amount):
+def to_units(currency, amount, round=False):
     if currency in ['USDT', 'ETH']:
-        return ethAPI.Web3.fromWei(amount, 'ether')
+        amount = ethAPI.Web3.fromWei(amount, 'ether')
 
-    if currency == 'BIP':
-        return to_bip(amount)
+    elif currency == 'BIP':
+        amount = to_bip(amount)
+    else:
+        amount = to_bip(amount)
+
+    if round:
+        return round_currency(currency, amount)
 
     # TODO  допилить логику других валют
-    return to_bip(amount)
+    return amount
 
 
 def get_currency_rate(currency):
@@ -106,3 +111,22 @@ def round_currency(currency_id, number):
     #     return int(result)
     # else:
     #     return result
+
+
+def get_max_amount_withdrawal(user, currency):
+    from bot.helpers.converter import currency_in_usd
+    withdrawal_factor = 1  # TODO перенести в настройки
+    deposit_sum = Decimal(0)
+    withdrawal_sum = Decimal(0)
+
+    for d in user.cashflow.filter(type_operation='deposit', currency=currency):
+        amount = to_units(currency, d.amount)
+        deposit_sum += currency_in_usd(d.currency, amount)
+
+    for w in user.cashflow.filter(type_operation='withdrawal', currency=currency):
+        amount = to_units(currency, w.amount)
+        withdrawal_sum += currency_in_usd(w.currency, amount)
+
+    max_amount = deposit_sum * withdrawal_factor - withdrawal_sum
+
+    return max_amount
