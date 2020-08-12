@@ -51,3 +51,11 @@ def set_setting(cli, cb):
 
     txt = user.get_text(name='user-settings')
     cb.message.edit(txt, reply_markup=kb.settings_menu(user))
+
+
+@Client.on_callback_query(Filters.callback_data('close'))
+def close_info(cli, cb):
+    try:
+        cb.message.delete()
+    except:
+        pass
