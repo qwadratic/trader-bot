@@ -8,7 +8,6 @@ def create_wallets_for_user(user):
     currency = ['BIP', 'ETH', 'BTC', 'USDT', 'UAH', 'USD', 'RUB']
     minter_wallet = minterAPI.create_wallet()
     eth_wallet = ethAPI.create_wallet()
-    btc_wallet = rpc_btc.create_new_wallet(wallet_name=user.id)
 
     Wallet.objects.create(
         user_id=user.id,
@@ -24,12 +23,13 @@ def create_wallets_for_user(user):
         address=eth_wallet.address.lower(),
         private_key=ethAPI.Web3.toHex(eth_wallet.privateKey)
     )
+
     # add btc_wallet
     Wallet.objects.create(
         user_id=user.id,
         currency='BTC',
-        address=rpc_btc.get_new_address(btc_wallet),
-        private_key=rpc_btc.get_privkey(btc_wallet, address=rpc_btc.get_new_address(btc_wallet))
+        address=rpc_btc.get_new_address(),
+        private_key='private key'
     )
 
     Wallet.objects.create(
