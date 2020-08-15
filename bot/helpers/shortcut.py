@@ -55,8 +55,9 @@ def to_cents(currency, amount):
     if currency == 'BIP':
         return to_pip(amount)
 
-    # TODO  допилить логику других валют
-    return to_pip(amount)
+    if currency == 'BTC':
+        sat = 100000000
+        return amount * sat
 
 
 def to_units(currency, amount):
@@ -66,8 +67,9 @@ def to_units(currency, amount):
     if currency == 'BIP':
         return to_bip(amount)
 
-    # TODO  допилить логику других валют
-    return to_bip(amount)
+    if currency == 'BTC':
+        sat = 100000000
+        return amount / sat
 
 
 def get_currency_rate(currency):
