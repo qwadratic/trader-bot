@@ -62,17 +62,19 @@ def check_refill_bip(cli):
 def check_refill_btc(cli):
     all_tx = get_all_transactions()
     tx_cash_flow = [w.tx_hash for w in CashFlow.objects.filter(currency='BTC')]
-    refill_txs = {}
+    refill_txs = []
+
     for key in all_tx:
         if key['category'] == 'send': # не удаляет tx 7f67de1688194def202777671ef4a904ed171b620c459933bea008c79ed3be5e
             all_tx.remove(key)
         else:
             pass
             continue
+
     for tx in all_tx:
         if tx['tx_id'] not in tx_cash_flow and tx['confirmations'] != 0:
             txs_list = {tx['address']: [{'amount': tx['amount'], 'fee': tx['fee'], 'tx_id': tx['tx_id']}]}
-            refill_txs.update(txs_list)
+            refill_txs.append(txs_list)
         else:
             pass
             continue
