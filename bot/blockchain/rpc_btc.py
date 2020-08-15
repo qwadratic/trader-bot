@@ -51,12 +51,13 @@ def get_all_transactions():
     for key in all_transactions:
         try:
             tx = {'address': key['address'], 'category': key['category'],
-                  'amount': key['amount'], 'fee': key['fee'], 'tx_id': key['txid']}
+                  'amount': key['amount'], 'fee': key['fee'], 'confirmations': key['confirmations'], 'tx_id': key['txid']}
         except KeyError:
             tx = {'address': key['address'], 'category': key['category'],
-                  'amount': key['amount'], 'fee': 'not set', 'tx_id': key['txid']}
+                  'amount': key['amount'], 'fee': 'not set', 'confirmations': key['confirmations'], 'tx_id': key['txid']}
         all_tx.append(tx)
-    return print('Transactions of current wallet:', all_tx)
+    return all_tx
+
 
 
 def get_new_address():

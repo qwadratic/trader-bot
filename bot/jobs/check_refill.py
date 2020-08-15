@@ -3,14 +3,16 @@ from requests import ReadTimeout
 from bot.blockchain.core import get_eth_refill_txs, get_bip_refill_txs, order_deposit
 from bot.blockchain.ethAPI import w3
 from bot.blockchain.minterAPI import Minter, get_wallet_balance
+from bot.blockchain.rpc_btc import get_all_transactions
 from bot.helpers.misc import retry
 from bot.helpers.shortcut import to_units, round_currency
+
 
 from bot.models import CashFlow, Service
 from user.models import Wallet, VirtualWallet
 
 from user.logic import kb
-
+from collections import defaultdict
 
 @retry(Exception)
 def check_refill_eth(cli):
@@ -54,6 +56,35 @@ def check_refill_bip(cli):
         update_balance(cli, refill_txs)
         service.last_block = block
         service.save()
+
+
+
+def check_refill_btc(cli):
+    all_tx = get_all_transactions()
+    tx_cash_flow = [w.tx_hash for w in CashFlow.objects.filter(currency='BTC')]
+    refill_txs = {}
+    for key in all_tx:
+        if key['category'] == 'send': # не удаляет tx 7f67de1688194def202777671ef4a904ed171b620c459933bea008c79ed3be5e
+            all_tx.remove(key)
+        else:
+            pass
+            continue
+    for tx in all_tx:
+        if tx['tx_id'] not in tx_cash_flow and tx['confirmations'] != 0:
+            txs_list = {tx['address']: [{'amount': tx['amount'], 'fee': tx['fee'], 'tx_id': tx['tx_id']}]}
+            refill_txs.update(txs_list)
+        else:
+            pass
+            continue
+    update_balance(cli, refill_txs)
+
+
+
+
+
+
+
+
 
 
 def update_balance(cli, refill_txs):
