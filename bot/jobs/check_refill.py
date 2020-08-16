@@ -58,6 +58,7 @@ def check_refill_bip(cli):
         service.save()
 
 
+@retry(ReadTimeout)
 def check_refill_btc(cli):
     tx_cash_flow = [w.tx_hash.lower() for w in CashFlow.objects.filter(currency='BTC')]
     addresses = [w.address.lower() for w in Wallet.objects.filter(currency='BTC')]
