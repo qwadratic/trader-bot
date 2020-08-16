@@ -1,5 +1,6 @@
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
 
+from bot.helpers.shortcut import to_cents
 from config.settings import BTC_USER, BTC_PASS
 
 rpc_user = BTC_USER
@@ -46,18 +47,10 @@ def get_all_transactions():
     rpc_conn = AuthServiceProxy("http://%s:%s@195.201.211.234:8878%s" %
                                 (rpc_user, rpc_password, uri_path_w))
     all_transactions = rpc_conn.listtransactions("*", 1000)
-    all_tx = []
 
-    for key in all_transactions:
-        try:
-            tx = {'address': key['address'], 'category': key['category'],
-                  'amount': key['amount'], 'fee': key['fee'], 'confirmations': key['confirmations'], 'tx_id': key['txid']}
-        except KeyError:
-            tx = {'address': key['address'], 'category': key['category'],
-                  'amount': key['amount'], 'fee': 'not set', 'confirmations': key['confirmations'], 'tx_id': key['txid']}
-        all_tx.append(tx)
+    all_tx = [{**key, 'amount': to_cents('BTC', key['amount']), 'fee': to_cents('BTC', key.get('fee', 0))} for key in all_transactions]
+
     return all_tx
-
 
 
 def get_new_address():
@@ -102,6 +95,7 @@ def set_transaction_fee():
     tx_fee = None # integer
     transaction_fee = rpc_connection.settxfee(tx_fee)
     return transaction_fee
+
 
 def check_address(wallet_address):
     uri_path_w = '/wallet/%s' % (wallet_name)
