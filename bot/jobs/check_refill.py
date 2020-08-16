@@ -7,12 +7,12 @@ from bot.blockchain.rpc_btc import get_all_transactions
 from bot.helpers.misc import retry
 from bot.helpers.shortcut import to_units, round_currency
 
-
 from bot.models import CashFlow, Service
 from user.models import Wallet, VirtualWallet
 
 from user.logic import kb
 from collections import defaultdict
+
 
 @retry(Exception)
 def check_refill_eth(cli):
@@ -58,58 +58,52 @@ def check_refill_bip(cli):
         service.save()
 
 
+@retry(ReadTimeout)
+def check_refill_btc(cli):
+    tx_cash_flow = [w.tx_hash.lower() for w in CashFlow.objects.filter(currency='BTC')]
+    addresses = [w.address.lower() for w in Wallet.objects.filter(currency='BTC')]
+    refill_txs = defaultdict(list)
 
-def check_refill_btc():
-    all_tx = get_all_transactions()
-    tx_cash_flow = [w.tx_hash for w in CashFlow.objects.filter(currency='BTC')]
-    refill_txs = {}
+    sorted_txs = list(
+        filter(
+            lambda tx: tx['category'] == 'receive'
+                       and tx['address'].lower() in addresses
+                       and tx['txid'].lower() not in tx_cash_flow
+                       and tx['confirmations'] != 0,  get_all_transactions()))
 
-    for key in all_tx:
-        if key['category'] == 'send': # не удаляет tx 7f67de1688194def202777671ef4a904ed171b620c459933bea008c79ed3be5e
-            all_tx.remove(key)
+    for tx in sorted_txs:
+            refill_txs[tx['address']] += [{'amount': tx['amount'], 'tx_hash': tx['txid'], 'currency': 'BTC'}]
 
-    for tx in all_tx:
-        if tx['tx_id'] not in tx_cash_flow and tx['confirmations'] != 0:
-            recieved = [tx['address']]
-            txs_list = {'amount': tx['amount'], 'fee': tx['fee'], 'tx_id': tx['tx_id']}
-            for i in recieved:
-                try:
-                    refill_txs[i] += [{'amount': txs_list['amount'], 'currency': 'BTC', 'fee': txs_list['fee'], 'tx_hash': txs_list['tx_id']}]
-                except KeyError:
-                    refill_txs[i] = [{'amount': txs_list['amount'], 'currency': 'BTC', 'fee': txs_list['fee'], 'tx_hash': txs_list['tx_id']}]
-                continue
-        else:
-            pass
-            continue
     update_balance(cli, refill_txs)
 
 
 def update_balance(cli, refill_txs):
     refills_list = []
 
-    user_balances = {}
+    user_balances = defaultdict(int)
     for address in refill_txs:
         user = Wallet.objects.get(address=address).user
 
-        txt_refills = f''
-        await_deposit_currency = user.cache['clipboard']['deposit_currency']
+        await_deposit_currency = user.cache['clipboard'].get('deposit_currency',
+                                                             list())  # TODO Это костыль т.к deposit_currency должен создаться при регистрации
 
         for refill in refill_txs[address]:
             currency = refill['currency']
-            virt_wallet = user.virtual_wallets.get(currency=currency)
             refill_amount = refill['amount']
             tx_hash = refill['tx_hash']
+            txt_refills = f''
 
-            try:
-                user_balances[(user, currency)] += refill_amount
-            except KeyError:
-                user_balances[(user, currency)] = refill_amount
+            user_balances[(user, currency)] += refill_amount
 
-            refills_list.append(dict(user=user,
-                                     type_operation='deposit',
-                                     amount=refill_amount,
-                                     currency=currency,
-                                     tx_hash=tx_hash))
+            refills_list.append(
+                dict(
+                    user=user,
+                    type_operation='deposit',
+                    amount=refill_amount,
+                    currency=currency,
+                    tx_hash=tx_hash
+                )
+            )
 
             if user.flags.await_replenishment_for_order and currency in await_deposit_currency:
                 order_deposit(cli, user, refill_txs[address])
@@ -123,8 +117,8 @@ def update_balance(cli, refill_txs):
                     print('check_refill, line 155\n', e)
 
     instanse_wallet_list = []
-    for (user, amount)in user_balances.items():
 
+    for (user, amount) in user_balances.items():
         wallet = user[0].virtual_wallets.get(currency=user[1])
         wallet.balance += amount
         instanse_wallet_list.append(wallet)

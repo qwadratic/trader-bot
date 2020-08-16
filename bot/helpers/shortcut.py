@@ -50,26 +50,35 @@ def check_address(address, currency):
 
 def to_cents(currency, amount):
     if currency in ['USDT', 'ETH']:
-        return ethAPI.Web3.toWei(amount, 'ether')
+        amount = ethAPI.Web3.toWei(amount, 'ether')
 
-    if currency == 'BIP':
-        return to_pip(amount)
+    elif currency == 'BIP':
+        amount = to_pip(amount)
 
-    if currency == 'BTC':
-        sat = 100000000
-        return amount * sat
+    elif currency == 'BTC':
+        sat = Decimal(100000000)
+        amount = int(amount * sat)
+    else:
+        amount = to_pip(amount)
+
+    return amount
 
 
 def to_units(currency, amount):
     if currency in ['USDT', 'ETH']:
-        return ethAPI.Web3.fromWei(amount, 'ether')
+        amount = ethAPI.Web3.fromWei(amount, 'ether')
 
-    if currency == 'BIP':
-        return to_bip(amount)
+    elif currency == 'BIP':
+        amount = to_bip(amount)
 
-    if currency == 'BTC':
-        sat = 100000000
-        return amount / sat
+    elif currency == 'BTC':
+        sat = Decimal(100000000)
+
+        amount = amount / sat
+    else:
+        amount = to_bip(amount)
+
+    return amount
 
 
 def get_currency_rate(currency):
@@ -108,3 +117,4 @@ def round_currency(currency_id, number):
     #     return int(result)
     # else:
     #     return result
+

@@ -200,15 +200,25 @@ def set_currency(user):
 
 
 def show_tx(user, currency, tx_hash):
-    if currency in ['ETH', 'USDT']:
-        url_link = f'https://etherscan.io/tx/{tx_hash}'
-        button_name = user.get_text(name='trade-kb-view_on').format(name='etherscan.io')
-        kb = [[InlineKeyboardButton(button_name, url=url_link)]]
+    info_dict = dict(
+        ETH=dict(
+            url=f'https://etherscan.io/tx/{tx_hash}',
+            url_name='etherscan.io'),
 
-    elif currency == 'BIP':
-        url_link = f'https://minterscan.net/tx/{tx_hash}'
-        button_name = user.get_text(name='trade-kb-view_on').format(name='minterscan.net')
+        USDT=dict(
+            url=f'https://etherscan.io/tx/{tx_hash}',
+            url_name='etherscan.io'),
 
-        kb = [[InlineKeyboardButton(button_name, url=url_link)]]
+        BIP=dict(
+            url=f'https://minterscan.net/tx/{tx_hash}',
+            url_name='minterscan.net'),
 
-    return InlineKeyboardMarkup(kb)
+        BTC=dict(
+            url=f'https://www.blockchain.com/ru/btc/tx/{tx_hash}',
+            url_name='blockchain.com'
+        )
+    )
+
+    button_name = user.get_text(name='trade-kb-view_on').format(name=info_dict[currency]['url_name'])
+
+    return InlineKeyboardMarkup([[InlineKeyboardButton(button_name, url=info_dict[currency]['url'])]])
