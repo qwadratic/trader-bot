@@ -7,9 +7,8 @@ from web3.exceptions import TransactionNotFound
 from bot.blockchain.ethAPI import w3, USDT_CONTRACT_ADDRESS
 from bot.blockchain.minterAPI import Minter
 from bot.helpers.shortcut import to_units, round_currency, delete_inline_kb
-from bot.models import CurrencyList
 from order.logic import kb
-from order.logic.core import check_balance_from_order, create_order, order_info_for_owner
+from order.logic.core import check_balance_from_order
 from order.logic.text_func import get_lack_balance_text
 
 TOPIC_SEND_TOKENS = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
@@ -191,9 +190,10 @@ def order_deposit(cli, user, refill_txs):
 
         delete_inline_kb(cli, user.telegram_id, user_msg['last_temp_order'])
         try:
-            cli.send_message(user.telegram_id, txt)
-            txt = 'Баланса достаточно для завершения создания объявления. Желаете продолжить?'
-            cli.send_message(user.telegram_id, txt, reply_markup=kb.continue_order_after_deposit(user))
+            with cli:
+                cli.send_message(user.telegram_id, txt)
+                txt = 'Баланса достаточно для завершения создания объявления. Желаете продолжить?'
+                cli.send_message(user.telegram_id, txt, reply_markup=kb.continue_order_after_deposit(user))
         except Exception as e:
             print(e)
     else:
@@ -210,7 +210,8 @@ def order_deposit(cli, user, refill_txs):
         delete_inline_kb(cli, user.telegram_id, user_msg['last_temp_order'])
 
         try:
-            msg = cli.send_message(user.telegram_id, txt, reply_markup=kb.deposit_from_order(user))
+            with cli:
+                msg = cli.send_message(user.telegram_id, txt, reply_markup=kb.deposit_from_order(user))
 
             user_msg['last_temp_order'] = msg.message_id
             user.save()

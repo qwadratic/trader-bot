@@ -38,12 +38,17 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'modeltranslation',
     'django.contrib.admin',
+    'django_apscheduler',
     'bot',
     'user',
     'order',
     'trade',
     'silk',
+
 ]
+
+APSCHEDULER_DATETIME_FORMAT = "N j, Y, f:s a"
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
