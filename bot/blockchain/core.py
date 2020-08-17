@@ -174,7 +174,7 @@ def check_tx_hash(tx_hash, currency, amount, address):
             tx = check_transaction(tx_hash)
             tx_status = tx['confirmations']
             tx_address = [ad['address'] for ad in tx['details']]
-            tx_value = round(to_units('BTC', tx['amount']), 8)
+            tx_value = tx['amount']
 
             if 'error' in tx:
                 return False
@@ -185,7 +185,8 @@ def check_tx_hash(tx_hash, currency, amount, address):
             if tx_address != address:
                 return False
 
-            #TODO: : добавить проверку tx_value/amount
+            if tx_value != round(to_units('BTC', amount), 8):
+                return False
 
         return True
 
