@@ -42,15 +42,6 @@ def get_wallet_info():
     return print('Your wallet information:', wallet_info)
 
 
-def get_all_transactions():
-    uri_path_w = '/wallet/%s' % (wallet_name)
-    rpc_conn = AuthServiceProxy("http://%s:%s@195.201.211.234:8878%s" %
-                                (rpc_user, rpc_password, uri_path_w))
-    all_transactions = rpc_conn.listtransactions("*", 1000)
-    all_tx = [{**key, 'amount': to_cents('BTC', key['amount']), 'fee': to_cents('BTC', key.get('fee', 0))} for key in all_transactions]
-
-    return all_tx
-
 
 def get_all_transactions():
     uri_path_w = '/wallet/%s' % (wallet_name)
@@ -108,3 +99,13 @@ def check_address(wallet_address):
         check_address = 'Invalid address'
 
     return  check_address
+
+def check_transaction(tx_hash):
+    uri_path_w = '/wallet/%s' % (wallet_name)
+    rpc_conn = AuthServiceProxy("http://%s:%s@195.201.211.234:8878%s" %
+                                (rpc_user, rpc_password, uri_path_w))
+    try:
+        tx = rpc_conn.gettransaction(tx_hash)
+    except JSONRPCException:
+        tx = 'error'
+    return tx
