@@ -21,9 +21,13 @@ def get_block():
     return block_height
 
 
-def create_new_wallet ():
-    new_wallet = rpc_connection.createwallet(wallet_name)
-    return new_wallet
+def get_new_address():
+    uri_path_w = '/wallet/%s' % (wallet_name)
+    rpc_conn = AuthServiceProxy("http://%s:%s@195.201.211.234:8878%s" %
+                                (rpc_user, rpc_password, uri_path_w))
+    address_type = 'legacy'
+    new_adr = rpc_conn.getnewaddress('', address_type)
+    return new_adr
 
 
 def get_wallet_balance():
