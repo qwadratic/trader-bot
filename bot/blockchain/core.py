@@ -169,24 +169,26 @@ def check_tx_hash(tx_hash, currency, amount, address):
         if tx_value != round(to_units('BIP', amount), 2):
             return False
 
-        # Проверка бтс
-        if currency == 'BTC':
-            tx = check_transaction(tx_hash)
-            tx_status = tx['confirmations']
-            tx_address = [ad['address'] for ad in tx['details']]
-            tx_value = tx['amount']
+        return True
 
-            if 'error' in tx:
-                return False
+    # Проверка бтс
+    if currency == 'BTC':
+        tx = check_transaction(tx_hash)
+        tx_status = tx['confirmations']
+        tx_address = [ad['address'] for ad in tx['details']]
+        tx_value = tx['amount']
 
-            if tx_status == 0:
-                return False
+        if 'error' in tx:
+            return False
 
-            if tx_address != address:
-                return False
+        if tx_status == 0:
+            return False
 
-            if tx_value != round(to_units('BTC', amount), 8):
-                return False
+        if tx_address != address:
+            return False
+
+        if tx_value != round(to_units('BTC', amount), 8):
+            return False
 
         return True
 
