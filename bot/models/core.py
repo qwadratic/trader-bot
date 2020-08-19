@@ -44,7 +44,7 @@ class Settings(Model):
 
 
 class CurrencyList(Model):
-    currency = CharField(max_length=25, primary_key=True)
+    currency = CharField(max_length=255)
     type = CharField(max_length=25)
     accuracy = PositiveIntegerField()
 
