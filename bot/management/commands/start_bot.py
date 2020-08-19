@@ -79,5 +79,4 @@ class Command(BaseCommand):
             scheduler.shutdown()
             logger.info('Scheduler shut down successfully!')
 
-        scheduler.start()
         app.run()
