@@ -391,7 +391,7 @@ def select_payment_currency(cli, cb):
             for currency in payment_currency_list:
                 currency_m = CurrencyList.objects.get(currency=currency)
                 if currency_m.type == 'fiat':
-                    pass
+                    continue
                     # user.cache['clipboard']['requisites'].append(currency)
                     # user.save()
                 else:
@@ -405,12 +405,9 @@ def select_payment_currency(cli, cb):
                     order.save()
 
             cb.message.edit(cb.message.text)
-            # cb.message.reply(
-            #     user.get_text(name='order-select_requisite_for_order').format(currency=currency),
-            #     reply_markup=kb.choice_requisite_for_order(order, currency))
             cb.message.reply(user.get_text(name='order-enter_currency_rate').format(
                 trade_currency=order.trade_currency,
-                price=round_currency(order.trade_currency,to_units(order.trade_currency, get_currency_rate(order.trade_currency)))),
+                price=round_currency(order.trade_currency, to_units(order.trade_currency, get_currency_rate(order.trade_currency)))),
                 reply_markup=kb.avarage_rate(user))
 
         if order.type_operation == 'buy':
@@ -439,6 +436,10 @@ def select_payment_currency(cli, cb):
                 trade_currency=order.trade_currency,
                 price=round_currency(order.trade_currency, to_units(order.trade_currency, get_currency_rate(order.trade_currency)))),
                 reply_markup=kb.avarage_rate(user))
+
+        flags = user.flags
+        flags.await_currency_rate = True
+        flags.save()
 
     elif payment_currency == 'back':
         order.payment_currency.clear()
@@ -696,7 +697,7 @@ def amount_for_order(cli, m):
 
     if temp_order.type_operation == 'sale':
         balance = user.get_balance(temp_order.trade_currency, cent2unit=True)
-        if to_units(temp_order.trade_currency, amount) > balance:
+        if amount > balance:
             msg = m.reply(f'Вы не можете продать больше чем '
                           f'{balance}'
                           f' {temp_order.trade_currency}')
@@ -715,6 +716,7 @@ def amount_for_order(cli, m):
 
         temp_order.amount = to_cents(temp_order.trade_currency, amount)
         temp_order.save()
+
         order = create_order(temp_order)
         m.reply(order_info_for_owner(order), reply_markup=kb.order_for_owner(order, 'new_order'))
     # покупка
