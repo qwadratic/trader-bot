@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     'order',
     'trade',
     'silk',
+    'constance',
+    'constance.backends.database',
 ]
 
 MIDDLEWARE = [
@@ -85,6 +87,15 @@ DATABASES = {
     'default': env.db('DATABASE_URL')
 }
 
+CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
+
+CONSTANCE_REDIS_CONNECTION = {
+    'host': 'localhost',
+    'port': 6379,
+    'db': 0,
+}
+
+CONSTANCE_CONFIG = {'BOT_NAME', ('Trader', 'Bot name')}
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
