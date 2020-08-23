@@ -130,3 +130,4 @@ def get_max_amount_withdrawal(user, currency):
     max_amount = deposit_sum * withdrawal_factor - withdrawal_sum
 
     return max_amount
+

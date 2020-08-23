@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+from pyrogram import InlineKeyboardButton
+
 from bot.helpers.converter import currency_in_usd
 from bot.helpers.shortcut import to_units, to_cents, round_currency
 from bot.models import CurrencyList
@@ -98,7 +100,6 @@ def order_info_for_owner(order):
 
 def create_order(temp_order):
     payment_currency_list = temp_order.payment_currency
-
     order = ParentOrder.objects.create(
         user=temp_order.user,
         type_operation=temp_order.type_operation,
@@ -251,3 +252,46 @@ def check_balance_from_order(user, order):
         user.save()
 
         return False
+
+
+def get_orders(type_operation, trade_currency, payment_currency, offset, limit, status):
+
+    if type_operation == 'buy':
+        order_by = 'currency_rate'
+    else:
+        order_by = '-currency_rate'
+
+    orders = Order.objects.filter(type_operation=type_operation, status=status, trade_currency=trade_currency, payment_currency=payment_currency).order_by(order_by)[offset:offset + limit]
+
+    return orders
+
+
+def button_orders(user, orders, kb_list, offset):
+
+    for order in orders:
+        type_operation = order.type_operation
+        trade_currency = order.trade_currency
+        payment_currency = order.payment_currency
+
+        if order.mirror:
+            currency_rate_usd = to_units(payment_currency, order.parent_order.payment_currency_rate[order.trade_currency], round=True)
+        else:
+            currency_rate_usd = to_units(trade_currency, order.parent_order.currency_rate, round=True)
+
+        if type_operation == 'sale':
+            icon = '🟥'
+        else:
+            icon = '🟩'
+
+        trade_currency_rate = to_units(trade_currency, order.currency_rate, round=True)
+        payment_currency_rate = round_currency(trade_currency, 1 / trade_currency_rate)
+
+        amount = to_units(order.trade_currency, order.amount, round=True)
+        button_name = f'{icon} {payment_currency_rate} {trade_currency}/{payment_currency} | {currency_rate_usd}$ {trade_currency} | {amount} {order.trade_currency} |'
+
+        if order.parent_order.user_id == user.id:
+            button_name += ' 👤'
+
+        kb_list.append([InlineKeyboardButton('{:ᅠ<100}'.format(button_name), callback_data=f'market_depth-open-{order.id}-{type_operation}-{offset}')])
+
+    return kb_list

@@ -257,7 +257,7 @@ def set_currency(user):
                 [InlineKeyboardButton(user.get_text(name='user-kb-usd'), callback_data=f'userset-currency-USD')],
                 [InlineKeyboardButton(user.get_text(name='user-kb-uah'), callback_data=f'userset-currency-UAH')],
                 [InlineKeyboardButton(user.get_text(name='user-kb-rub'), callback_data=f'userset-currency-RUB')],
-                [InlineKeyboardButton('🔙 Назад', callback_data=f'userset-back-1')]
+                [InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=f'userset-back-1')]
             ]
         )
 
@@ -332,6 +332,19 @@ def confirm_tx_hash_withdrawal(user):
             [InlineKeyboardButton(user.get_text(name='admin-kb-edit_tx_hash'), callback_data=f'confirm_tx_hash_withdrawal-edit')],
             [InlineKeyboardButton(user.get_text(name='kb-cancel'), callback_data=f'confirm_tx_hash_withdrawal-cancel')]
 
+        ]
+    )
+    return kb
+
+
+def select_currency_for_deposit(user):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton('ETH', callback_data=f'currency_for_deposit-ETH'),
+             InlineKeyboardButton('USDT', callback_data=f'currency_for_deposit-USDT'),
+             InlineKeyboardButton('BTC', callback_data=f'currency_for_deposit-BTC'),
+             InlineKeyboardButton('BIP', callback_data=f'currency_for_deposit-BIP')],
+            [InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=f'currency_for_deposit-back')]
         ]
     )
     return kb
