@@ -89,13 +89,7 @@ DATABASES = {
 
 CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
 
-CONSTANCE_REDIS_CONNECTION = {
-    'host': 'localhost',
-    'port': 6379,
-    'db': 0,
-}
-
-CONSTANCE_CONFIG = {'BOT_NAME', ('Trader', 'Bot name')}
+#CONSTANCE_CONFIG =
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
