@@ -30,7 +30,8 @@ def _default_telegramuser_cache():
             'requisites': [],
             'active_trade': None,
             'deposit_currency': {},
-            'withdrawal_request': {}
+            'withdrawal_request': {},
+            'market_depth': {}
         }
     }
 

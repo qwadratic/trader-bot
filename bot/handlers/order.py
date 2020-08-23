@@ -60,7 +60,7 @@ def trade_menu_controller(cli, cb):
             reply_markup=kb.trade_currency(user))
 
     elif button == 'orders':
-        cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list(user, 'sale', 0))
+        cb.message.edit(user.get_text(name='order-market_depth-select_trade_currency'), reply_markup=kb.market_depth_trade_currency(user))
 
     elif button == 'my_orders':
         cb.message.edit(user.get_text(name='order-my_orders'), reply_markup=kb.owner_order_list(user, 'sale', 0))
@@ -71,44 +71,182 @@ def trade_menu_controller(cli, cb):
         pass
 
 
-@Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:10] == 'order_list'))
-def order_list(cli, cb):
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('select_currency_for_market_depth')))
+def select_currency_for_market_depth(cli, cb):
     user = get_user(cb.from_user.id)
+    cb_data = cb.data.split('-')
+    type_currency = cb_data[1]
 
-    action = cb.data.split('-')[1]
+    if type_currency == 'trade_currency':
+        currency = cb_data[2]
 
-    if action == 'back':
+        # TODO костыль
+        try:
+            user.cache['clipboard']['market_depth']['trade_currency'] = currency
+        except KeyError:
+            user.cache['clipboard']['market_depth'] = {}
+            user.cache['clipboard']['market_depth']['trade_currency'] = currency
+
+        user.save()
+
+        cb.message.edit(user.get_text(name='order-market_depth-select_payment_currency'), reply_markup=kb.market_depth_payment_currency(currency, user))
+
+    if type_currency == 'payment_currency':
+        currency = cb_data[2]
+        user.cache['clipboard']['market_depth']['payment_currency'] = currency
+        user.cache['clipboard']['market_depth']['revers'] = False
+        user.save()
+
+        trade_currency = user.cache['clipboard']['market_depth']['trade_currency']
+        payment_currency = user.cache['clipboard']['market_depth']['payment_currency']
+
+        cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.market_depth(user, trade_currency, payment_currency, 0))
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('market_depth')))
+def market_depth(cli, cb):
+    user = get_user(cb.from_user.id)
+    cb_data = cb.data.split('-')
+    button = cb_data[1]
+
+    if button == 'back':
         cb.message.edit(user.get_text(name='user-trade_menu'), reply_markup=kb.trade_menu(user))
 
-    elif action == 'switch':
-        type_orders = cb.data.split('-')[2]
-        cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list(user, type_orders, 0))
+    if button == 'open':
+        cb_data = cb.data.split('-')
+        order_id = int(cb_data[2])
+        type_operation = cb_data[3]
+        offset = int(cb_data[4])
+        order = Order.objects.get(id=order_id)
 
-    elif action == 'move':
+        if user.id == order.parent_order.user_id:
+            cb.message.reply(get_order_info(user, order_id), reply_markup=kb.order_for_owner(order.parent_order, 'orders', type_operation, offset))
+        else:
+            cb.message.reply(get_order_info(user, order_id), reply_markup=kb.order_for_user(user, order_id, type_operation, offset))
+
+    if button == 'reverse':
+
+        revers = cb_data[2]
+        if revers == 'True':
+            trade_currency = user.cache['clipboard']['market_depth']['trade_currency']
+            payment_currency = user.cache['clipboard']['market_depth']['payment_currency']
+            revers = False
+
+        else:
+            trade_currency = user.cache['clipboard']['market_depth']['payment_currency']
+            payment_currency = user.cache['clipboard']['market_depth']['trade_currency']
+            revers = True
+
+        user.cache['clipboard']['market_depth']['revers'] = revers
+        user.save()
+
+        cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.market_depth(user, trade_currency, payment_currency, 0, revers))
+
+    if button == 'look':
+        type_orders = cb_data[2]
+
+        cb.message.edit('Глубина стакана', reply_markup=kb.half_market_depth(user, type_orders, 5))
+
+    if button == 'back_to_market_depth':
+        revers = user.cache['clipboard']['market_depth']['revers']
+
+        if revers:
+            trade_currency = user.cache['clipboard']['market_depth']['payment_currency']
+            payment_currency = user.cache['clipboard']['market_depth']['trade_currency']
+        else:
+            trade_currency = user.cache['clipboard']['market_depth']['trade_currency']
+            payment_currency = user.cache['clipboard']['market_depth']['payment_currency']
+
+        cb.message.edit(user.get_text(name='order-orders_menu'),
+                        reply_markup=kb.market_depth(user, trade_currency, payment_currency, 0, revers))
+
+    if button == 'move':
         cours = cb.data.split('-')[2]
         type_operation = cb.data.split('-')[3]
         offset = int(cb.data.split('-')[4])
 
         if cours == 'right':
-            offset += 7
+            offset += 10
 
         elif cours == 'left':
-            offset -= 7
+            offset -= 10
 
-        cb.message.edit(user.get_text(name='order-orders_menu'),
-                        reply_markup=kb.order_list(user, type_operation, offset))
+        cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.half_market_depth(user, type_operation, offset))
 
-    elif action == 'open':
-        order_id = int(cb.data.split('-')[2])
-        type_orders = cb.data.split('-')[3]
-        offset = int(cb.data.split('-')[4])
-        order = Order.objects.get(id=order_id)
-        if user.id == order.parent_order.user_id:
-            cb.message.edit(get_order_info(user, order_id),
-                            reply_markup=kb.order_for_owner(order.parent_order, 'orders', type_orders, offset))
-        else:
-            cb.message.edit(get_order_info(user, order_id),
-                             reply_markup=kb.order_for_user(user, order_id, type_orders, offset))
+
+
+
+
+
+
+    # elif action == 'switch':
+    #     type_orders = cb.data.split('-')[2]
+    #     cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list(user, type_orders, 0))
+    #
+    # elif action == 'move':
+    #     cours = cb.data.split('-')[2]
+    #     type_operation = cb.data.split('-')[3]
+    #     offset = int(cb.data.split('-')[4])
+    #
+    #     if cours == 'right':
+    #         offset += 7
+    #
+    #     elif cours == 'left':
+    #         offset -= 7
+    #
+    #     cb.message.edit(user.get_text(name='order-orders_menu'),
+    #                     reply_markup=kb.order_list(user, type_operation, offset))
+    #
+    # elif action == 'open':
+    #     order_id = int(cb.data.split('-')[2])
+    #     type_orders = cb.data.split('-')[3]
+    #     offset = int(cb.data.split('-')[4])
+    #     order = Order.objects.get(id=order_id)
+    #     if user.id == order.parent_order.user_id:
+    #         cb.message.edit(get_order_info(user, order_id),
+    #                         reply_markup=kb.order_for_owner(order.parent_order, 'orders', type_orders, offset))
+    #     else:
+    #         cb.message.edit(get_order_info(user, order_id),
+    #                          reply_markup=kb.order_for_user(user, order_id, type_orders, offset))
+
+# @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:10] == 'order_list'))
+# def order_list(cli, cb):
+#     user = get_user(cb.from_user.id)
+#
+#     action = cb.data.split('-')[1]
+#
+#     if action == 'back':
+#         cb.message.edit(user.get_text(name='user-trade_menu'), reply_markup=kb.trade_menu(user))
+#
+#     elif action == 'switch':
+#         type_orders = cb.data.split('-')[2]
+#         cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list(user, type_orders, 0))
+#
+#     elif action == 'move':
+#         cours = cb.data.split('-')[2]
+#         type_operation = cb.data.split('-')[3]
+#         offset = int(cb.data.split('-')[4])
+#
+#         if cours == 'right':
+#             offset += 7
+#
+#         elif cours == 'left':
+#             offset -= 7
+#
+#         cb.message.edit(user.get_text(name='order-orders_menu'),
+#                         reply_markup=kb.order_list(user, type_operation, offset))
+#
+#     elif action == 'open':
+#         order_id = int(cb.data.split('-')[2])
+#         type_orders = cb.data.split('-')[3]
+#         offset = int(cb.data.split('-')[4])
+#         order = Order.objects.get(id=order_id)
+#         if user.id == order.parent_order.user_id:
+#             cb.message.edit(get_order_info(user, order_id),
+#                             reply_markup=kb.order_for_owner(order.parent_order, 'orders', type_orders, offset))
+#         else:
+#             cb.message.edit(get_order_info(user, order_id),
+#                              reply_markup=kb.order_for_user(user, order_id, type_orders, offset))
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('owner_order')))
@@ -152,7 +290,7 @@ def order_info(cli, cb):
             type_orders = cb.data.split('-')[3]
             offset = int(cb.data.split('-')[4])
             cb.message.edit(user.get_text(name='order-orders_menu'),
-                            reply_markup=kb.order_list(user, type_orders, offset))
+                            reply_markup=kb.market_depth(user, ))
 
         elif cours == 'my_orders':
             cb.message.edit(user.get_text(name='order-my_orders'), reply_markup=kb.owner_order_list(user, 'sale', 0))
@@ -572,6 +710,9 @@ def amount_for_order(cli, m):
             sleep(5)
             msg.delete()
             return
+
+        flags = user.flags
+        flags.await_amount_for_order = False
 
         temp_order.amount = to_cents(temp_order.trade_currency, amount)
         temp_order.save()

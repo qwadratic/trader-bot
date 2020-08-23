@@ -4,7 +4,8 @@ from decimal import Decimal
 from pyrogram import InlineKeyboardMarkup, InlineKeyboardButton
 
 from bot.helpers.converter import currency_in_usd
-from bot.helpers.shortcut import to_units, round_currency
+from bot.helpers.shortcut import to_units, round_currency, get_currency_rate
+from order.logic.core import get_orders, button_orders
 from order.models import Order
 
 
@@ -22,6 +23,49 @@ def trade_menu(user):
     )
 
     return kb
+
+
+def market_depth_trade_currency(user):
+    def _makerow(*ccy_list):
+        prefix = 'select_currency_for_market_depth-trade_currency'
+        return [InlineKeyboardButton(ccy, callback_data=f'{prefix}-{ccy}') for ccy in ccy_list]
+
+    back_btn = InlineKeyboardButton(user.get_text(name='kb-back'), callback_data='trade_currency-back')
+
+    return InlineKeyboardMarkup(
+        [
+            _makerow('BIP', 'BTC', 'USDT', 'ETH'),
+            _makerow('USD', 'RUB', 'UAH'),
+            [back_btn]
+        ])
+
+
+def market_depth_payment_currency(trade_currency, user):
+
+    btn_back = InlineKeyboardButton(user.get_text(name='kb-back'), callback_data='trade_currency-back')
+
+    def _makerow(*ccy_list):
+        prefix = 'select_currency_for_market_depth-payment_currency'
+        return [InlineKeyboardButton(ccy, callback_data=f'{prefix}-{ccy}') for ccy in ccy_list]
+
+    crypto = ['BIP', 'BTC', 'USDT', 'ETH']
+    fiat = ['USD', 'RUB', 'UAH']
+
+    if trade_currency in crypto:
+        crypto.remove(trade_currency)
+        kb_rows = [
+            _makerow(*crypto),
+            _makerow(*fiat),
+            [btn_back]
+        ]
+
+    elif trade_currency in fiat:
+        kb_rows = [
+            _makerow(*crypto),
+            [btn_back]
+        ]
+
+    return InlineKeyboardMarkup(kb_rows)
 
 
 def trade_currency(user):
@@ -152,56 +196,124 @@ def max_amount(user):
     return kb
 
 
-def order_list(user, type_orders, offset):
-    if type_orders == 'buy':
-        order_by = 'currency_rate'
+# def order_list(user, type_orders, offset):
+#     if type_orders == 'buy':
+#         order_by = 'currency_rate'
+#
+#     else:
+#         order_by = '-currency_rate'
+#
+#     orders = Order.objects.filter(type_operation=type_orders, status='open').order_by(order_by)[offset:offset+7]
+#     all_orders = Order.objects.filter(type_operation=type_orders, status='open')
+#
+#     kb_list = [[InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=f'order_list-back')]]
+#     if type_orders == 'sale':
+#         kb_list.append([InlineKeyboardButton(user.get_text(name='order-kb-look_at_the_buy'), callback_data=f'order_list-switch-buy')])
+#     else:
+#         kb_list.append([InlineKeyboardButton(user.get_text(name='order-kb-look_at_the_sale'), callback_data=f'order_list-switch-sale')])
+#
+#     for order in orders:
+#
+#         if order.mirror:
+#             currency_rate = round(to_units(order.payment_currency, order.parent_order.payment_currency_rate[order.trade_currency]), 6)
+#         else:
+#             currency_rate = round(to_units(order.trade_currency, order.parent_order.currency_rate), 6)
+#
+#         amount = round(to_units(order.trade_currency, order.amount), 4)
+#
+#         if order.parent_order.user_id == user.id:
+#             button_name = f'{currency_rate} USD/{order.payment_currency} | {amount} 👤'
+#         else:
+#             button_name = f'{currency_rate} USD/{order.payment_currency} | {amount}'
+#
+#         kb_list.append([InlineKeyboardButton(button_name, callback_data=f'order_list-open-{order.id}-{type_orders}-{offset}')])
+#
+#     if offset == 0 and len(all_orders) <= 7:
+#         return InlineKeyboardMarkup(kb_list)
+#
+#     elif offset == 0:
+#         position = f'{int(offset + 2)}/{int(math.ceil(len(all_orders) / 7))}'
+#         kb_list.append([InlineKeyboardButton(f'{position} ⇒', callback_data=f'order_list-move-right-{type_orders}-{offset}')])
+#
+#     elif 0 < offset + 7 >= len(all_orders):
+#         position = f'{int(math.ceil(len(all_orders) / 7)) - 1}/{int(math.ceil(len(all_orders) / 7))}'
+#
+#         kb_list.append([InlineKeyboardButton(f'⇐ {position}', callback_data=f'order_list-move-left-{type_orders}-{offset}')])
+#
+#     else:
+#         position_1 = f'{int((offset + 7) / 7 - 1)}/{int(math.ceil(len(all_orders) / 7))}'
+#         position_2 = f'{int(offset / 7 + 2)}/{int(math.ceil(len(all_orders) / 7))}'
+#
+#         kb_list.append([InlineKeyboardButton(f'⇐ {position_1}', callback_data=f'order_list-move-left-{type_orders}-{offset}'),
+#                         InlineKeyboardButton(f'{position_2} ⇒', callback_data=f'order_list-move-right-{type_orders}-{offset}')])
+#
+#     return InlineKeyboardMarkup(kb_list)
 
+
+def market_depth(user, trade_currency, payment_currency, offset, revers=False):
+
+    sale_orders = get_orders('sale', trade_currency, payment_currency, offset, 5, 'open')
+    buy_orders = get_orders('buy', trade_currency, payment_currency, offset, 5, 'open')
+    all_orders = Order.objects.filter(type_operation=1, status='open')
+
+    trade_currency_rate_usd = to_units(trade_currency, get_currency_rate(trade_currency), round=True)
+    payment_currency_rate_usd = to_units(payment_currency, get_currency_rate(payment_currency), round=True)
+    trade_currency_rate = round_currency(payment_currency, Decimal(trade_currency_rate_usd / payment_currency_rate_usd))
+    payment_currency_rate = round_currency(trade_currency, Decimal(payment_currency_rate_usd / trade_currency_rate_usd))
+
+    kb_list = []
+
+    exchange_rate_button = f'1 {trade_currency} {trade_currency_rate_usd} USD | 1 {trade_currency} {trade_currency_rate} {payment_currency} | 1 {payment_currency} {payment_currency_rate} {trade_currency}'
+
+    kb_list.append([InlineKeyboardButton(' 🔍 Смотреть глубже', callback_data='market_depth-look-sale')])
+    kb_list = button_orders(user, sale_orders, kb_list, offset)
+
+    kb_list.append([InlineKeyboardButton(exchange_rate_button, callback_data=f'wqwq')])
+
+    kb_list = button_orders(user, buy_orders, kb_list, offset)
+    kb_list.append([InlineKeyboardButton(' 🔍 Смотреть глубже', callback_data='market_depth-look-buy')])
+    kb_list.append([InlineKeyboardButton(user.get_text(name='order-kb-trade_menu-new_buy'), callback_data='trade_menu-new_buy'),
+             InlineKeyboardButton(user.get_text(name='order-kb-trade_menu-new_sale'), callback_data='trade_menu-new_sale')])
+
+    kb_list.append([
+        InlineKeyboardButton('☯️ 1\X', callback_data=f'market_depth-reverse-{revers}'),
+        InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=f'market_depth-back')])
+
+    return InlineKeyboardMarkup(kb_list)
+
+
+def half_market_depth(user, type_orders, offset):
+    revers = user.cache['clipboard']['market_depth']['revers']
+
+    if revers:
+        trade_currency = user.cache['clipboard']['market_depth']['payment_currency']
+        payment_currency = user.cache['clipboard']['market_depth']['trade_currency']
     else:
-        order_by = '-currency_rate'
+        trade_currency = user.cache['clipboard']['market_depth']['trade_currency']
+        payment_currency = user.cache['clipboard']['market_depth']['payment_currency']
 
-    orders = Order.objects.filter(type_operation=type_orders, status='open').order_by(order_by)[offset:offset+7]
-    all_orders = Order.objects.filter(type_operation=type_orders, status='open')
+    orders = get_orders(type_orders, trade_currency, payment_currency, offset, 10, 'open')
 
-    kb_list = [[InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=f'order_list-back')]]
-    if type_orders == 'sale':
-        kb_list.append([InlineKeyboardButton(user.get_text(name='order-kb-look_at_the_buy'), callback_data=f'order_list-switch-buy')])
-    else:
-        kb_list.append([InlineKeyboardButton(user.get_text(name='order-kb-look_at_the_sale'), callback_data=f'order_list-switch-sale')])
+    all_orders = Order.objects.filter(type_operation=type_orders, trade_currency=trade_currency, payment_currency=payment_currency, status='open')
 
-    for order in orders:
+    kb_list = button_orders(user, orders, [], offset)
 
-        if order.mirror:
-            currency_rate = round(to_units(order.payment_currency, order.parent_order.payment_currency_rate[order.trade_currency]), 6)
-        else:
-            currency_rate = round(to_units(order.trade_currency, order.parent_order.currency_rate), 6)
-
-        amount = round(to_units(order.trade_currency, order.amount), 4)
-
-        if order.parent_order.user_id == user.id:
-            button_name = f'{currency_rate} USD/{order.payment_currency} | {amount} 👤'
-        else:
-            button_name = f'{currency_rate} USD/{order.payment_currency} | {amount}'
-
-        kb_list.append([InlineKeyboardButton(button_name, callback_data=f'order_list-open-{order.id}-{type_orders}-{offset}')])
-
-    if offset == 0 and len(all_orders) <= 7:
+    if offset == 5 and len(all_orders) <= 15:
+        kb_list.append([InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=f'market_depth-back_to_market_depth')])
         return InlineKeyboardMarkup(kb_list)
 
-    elif offset == 0:
-        position = f'{int(offset + 2)}/{int(math.ceil(len(all_orders) / 7))}'
-        kb_list.append([InlineKeyboardButton(f'{position} ⇒', callback_data=f'order_list-move-right-{type_orders}-{offset}')])
+    elif offset == 5:
 
-    elif 0 < offset + 7 >= len(all_orders):
-        position = f'{int(math.ceil(len(all_orders) / 7)) - 1}/{int(math.ceil(len(all_orders) / 7))}'
+        kb_list.append([InlineKeyboardButton(f'⇒', callback_data=f'market_depth-move-right-{type_orders}-{offset}')])
 
-        kb_list.append([InlineKeyboardButton(f'⇐ {position}', callback_data=f'order_list-move-left-{type_orders}-{offset}')])
+    elif 0 < offset + 15 >= len(all_orders):
 
+        kb_list.append([InlineKeyboardButton(f'⇐', callback_data=f'market_depth-move-left-{type_orders}-{offset}')])
     else:
-        position_1 = f'{int((offset + 7) / 7 - 1)}/{int(math.ceil(len(all_orders) / 7))}'
-        position_2 = f'{int(offset / 7 + 2)}/{int(math.ceil(len(all_orders) / 7))}'
+        kb_list.append([InlineKeyboardButton(f'⇐', callback_data=f'market_depth-move-left-{type_orders}-{offset}'),
+                        InlineKeyboardButton(f'⇒', callback_data=f'market_depth-move-right-{type_orders}-{offset}')])
 
-        kb_list.append([InlineKeyboardButton(f'⇐ {position_1}', callback_data=f'order_list-move-left-{type_orders}-{offset}'),
-                        InlineKeyboardButton(f'{position_2} ⇒', callback_data=f'order_list-move-right-{type_orders}-{offset}')])
+    kb_list.append([InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=f'market_depth-back_to_market_depth')])
 
     return InlineKeyboardMarkup(kb_list)
 
@@ -229,7 +341,7 @@ def owner_order_list(user, type_orders, offset):
 
     elif offset == 0:
         position = f'{int(offset + 2)}/{int(math.ceil(len(all_orders) / 7))}'
-        kb_list.append([InlineKeyboardButton(f'{position} ⇒', callback_data=f'owner_order-move-right-{offset}')])
+        kb_list.append([InlineKeyboardButton(f'{position} ⇒', callback_data=f'market_depth-move-right-{offset}')])
 
     elif 0 < offset + 7 >= len(all_orders):
         position = f'{int(math.ceil(len(all_orders) / 7)) - 1}/{int(math.ceil(len(all_orders) / 7))}'
@@ -273,7 +385,7 @@ def order_for_user(user, order_id, type_orders, offset):
     kb = InlineKeyboardMarkup(
         [
             [InlineKeyboardButton(user.get_text(name='order-kb-share'), callback_data=f'order_info-share-{order_id}')],
-            [InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=f'order_info-back-order_list-{type_orders}-{offset}'),
+            [InlineKeyboardButton(user.get_text(name='kb-close'), callback_data=f'close'),
              InlineKeyboardButton(user.get_text(name='order-kb-start_trade'), callback_data=f'start_trade-{order_id}')]
 
         ]

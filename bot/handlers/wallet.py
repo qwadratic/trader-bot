@@ -35,13 +35,7 @@ def wallet_menu(cli, cb):
         cb.message.edit(user.get_text(name='purse-purse_menu'), reply_markup=kb.purse_menu(user))
 
     if button == 'deposit':
-
-        wallets = user.wallets.exclude(currency__in=['UAH', 'RUB', 'USD', 'BTC'])
-
-        for w in wallets:
-            wal = f'{w.currency}\n' \
-                f'```{w.address}```'
-            cb.message.reply(wal)
+        cb.message.edit(user.get_text(name='wallet-select_currency_for_deposit'), reply_markup=kb.select_currency_for_deposit(user))
 
     if button == 'withdrawal':
         withdrawal_requests = user.withdrawalRequests.filter(status__in=['pending verification', 'verifed'])
@@ -59,6 +53,24 @@ def wallet_menu(cli, cb):
             amount=amount,
             currency=currency
         ), reply_markup=kb.confirm_cancel_withdrawal(user))
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('currency_for_deposit')))
+def currency_for_deposit(cli, cb):
+    user = get_user(cb.from_user.id)
+
+    button = cb.data.split('-')[1]
+
+    if button == 'back':
+        return cb.message.edit(wallet_info(user), reply_markup=kb.wallet_menu(user))
+
+    if button == 'USDT':
+        address = user.wallets.get(currency='ETH').address
+    else:
+        address = user.wallets.get(currency=button).address
+
+    cb.message.reply(user.get_text(name='wallet-address_for_deposit').format(currency=button))
+    cb.message.reply(address)
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:5] == 'purse'))
