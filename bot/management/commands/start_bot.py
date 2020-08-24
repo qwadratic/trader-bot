@@ -16,7 +16,7 @@ from django_apscheduler.models import DjangoJobExecution
 
 from django.core.management import BaseCommand
 
-from bot.jobs import check_refill_bip, check_refill_eth, update_exchange_rates, get_update_exchange_rates_interval
+from bot.jobs import check_refill_bip, check_refill_eth, update_exchange_rates, get_update_exchange_rates_interval, check_refill_btc
 from bot.jobs.withdrawal import verification_withdrawal_requests
 
 
@@ -31,7 +31,7 @@ class Command(BaseCommand):
             'session_main',
             api_id=TG_API_ID, api_hash=TG_API_HASH, bot_token=TG_API_TOKEN,
             plugins={'root': 'bot/handlers'})
-
+        
         scheduler = BackgroundScheduler(timezone=settings.TIME_ZONE)
         scheduler.add_jobstore(DjangoJobStore(), "default")
 
@@ -52,6 +52,15 @@ class Command(BaseCommand):
             replace_existing=True
         )
         logger.info('Added job "check_refill_eth".')
+        
+        scheduler.add_job(
+            check_refill_btc,
+            trigger=CronTrigger(second='*/20'),
+            id='check_refill_btc',
+            max_instances=1,
+            replace_existing=True
+        )
+        logger.info('Added job "check_refill_btc".')
 
         scheduler.add_job(
             update_exchange_rates,

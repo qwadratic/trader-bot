@@ -1,6 +1,7 @@
-from bot.blockchain import minterAPI, ethAPI
+from bot.blockchain import minterAPI, ethAPI, rpc_btc
 from bot.helpers.shortcut import create_record_cashflow
 from bot.models import WithdrawalRequest
+
 from user.models import Wallet, VirtualWallet
 
 from config.settings import env
@@ -26,11 +27,12 @@ def create_wallets_for_user(user):
         private_key=ethAPI.Web3.toHex(eth_wallet.privateKey)
     )
 
+    # add btc_wallet
     Wallet.objects.create(
         user_id=user.id,
         currency='BTC',
-        address='btc address',
-        private_key='btc key'
+        address=rpc_btc.get_new_address(),
+        private_key='private key'
     )
 
     Wallet.objects.create(

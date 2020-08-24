@@ -6,6 +6,7 @@ from web3.exceptions import TransactionNotFound
 
 from bot.blockchain.ethAPI import w3, USDT_CONTRACT_ADDRESS
 from bot.blockchain.minterAPI import Minter
+from bot.blockchain.rpc_btc import check_transaction
 from bot.helpers.shortcut import to_units, round_currency, delete_inline_kb
 from order.logic import kb
 from order.logic.core import check_balance_from_order
@@ -165,6 +166,27 @@ def check_tx_hash(tx_hash, currency, amount, address):
             return False
 
         if tx_value != round(to_units('BIP', amount), 2):
+            return False
+
+        return True
+
+    # Проверка бтс
+    if currency == 'BTC':
+        tx = check_transaction(tx_hash)
+        tx_status = tx['confirmations']
+        tx_address = [ad['address'] for ad in tx['details']]
+        tx_value = tx['amount']
+
+        if 'error' in tx:
+            return False
+
+        if tx_status == 0:
+            return False
+
+        if tx_address != address:
+            return False
+
+        if tx_value != round(to_units('BTC', amount), 8):
             return False
 
         return True

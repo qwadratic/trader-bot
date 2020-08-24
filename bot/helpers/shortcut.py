@@ -50,13 +50,18 @@ def check_address(address, currency):
 
 def to_cents(currency, amount):
     if currency in ['USDT', 'ETH']:
-        return ethAPI.Web3.toWei(amount, 'ether')
+        amount = ethAPI.Web3.toWei(amount, 'ether')
 
-    if currency == 'BIP':
-        return to_pip(amount)
+    elif currency == 'BIP':
+        amount = to_pip(amount)
 
-    # TODO  допилить логику других валют
-    return to_pip(amount)
+    elif currency == 'BTC':
+        sat = Decimal(100000000)
+        amount = int(amount * sat)
+    else:
+        amount = to_pip(amount)
+
+    return amount
 
 
 def to_units(currency, amount, round=False):
@@ -65,13 +70,17 @@ def to_units(currency, amount, round=False):
 
     elif currency == 'BIP':
         amount = to_bip(amount)
+
+
+    elif currency == 'BTC':
+        sat = Decimal(100000000)
+        amount = amount / sat
     else:
         amount = to_bip(amount)
 
     if round:
         return round_currency(currency, amount)
-
-    # TODO  допилить логику других валют
+    
     return amount
 
 
@@ -112,7 +121,7 @@ def round_currency(currency_id, number):
     # else:
     #     return result
 
-
+                                       
 def get_max_amount_withdrawal(user, currency):
     from bot.helpers.converter import currency_in_usd
     withdrawal_factor = 1  # TODO перенести в настройки
@@ -130,4 +139,3 @@ def get_max_amount_withdrawal(user, currency):
     max_amount = deposit_sum * withdrawal_factor - withdrawal_sum
 
     return max_amount
-
