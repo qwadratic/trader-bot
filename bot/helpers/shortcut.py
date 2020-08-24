@@ -64,20 +64,23 @@ def to_cents(currency, amount):
     return amount
 
 
-def to_units(currency, amount):
+def to_units(currency, amount, round=False):
     if currency in ['USDT', 'ETH']:
         amount = ethAPI.Web3.fromWei(amount, 'ether')
 
     elif currency == 'BIP':
         amount = to_bip(amount)
 
+
     elif currency == 'BTC':
         sat = Decimal(100000000)
-
         amount = amount / sat
     else:
         amount = to_bip(amount)
 
+    if round:
+        return round_currency(currency, amount)
+    
     return amount
 
 
@@ -118,3 +121,21 @@ def round_currency(currency_id, number):
     # else:
     #     return result
 
+                                       
+def get_max_amount_withdrawal(user, currency):
+    from bot.helpers.converter import currency_in_usd
+    withdrawal_factor = 1  # TODO перенести в настройки
+    deposit_sum = Decimal(0)
+    withdrawal_sum = Decimal(0)
+
+    for d in user.cashflow.filter(type_operation='deposit', currency=currency):
+        amount = to_units(currency, d.amount)
+        deposit_sum += currency_in_usd(d.currency, amount)
+
+    for w in user.cashflow.filter(type_operation='withdrawal', currency=currency):
+        amount = to_units(currency, w.amount)
+        withdrawal_sum += currency_in_usd(w.currency, amount)
+
+    max_amount = deposit_sum * withdrawal_factor - withdrawal_sum
+
+    return max_amount

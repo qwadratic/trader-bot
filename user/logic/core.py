@@ -1,4 +1,7 @@
 from bot.blockchain import minterAPI, ethAPI, rpc_btc
+from bot.helpers.shortcut import create_record_cashflow
+from bot.models import WithdrawalRequest
+
 from user.models import Wallet, VirtualWallet
 
 from config.settings import env
@@ -75,3 +78,18 @@ def update_wallet_balance(user, currency, amount, operation):
         wallet.balance -= amount
 
     wallet.save()
+
+
+def finish_withdraw(withdrawal_request_id, tx_hash):
+    withdrawal_request = WithdrawalRequest.objects.get(id=withdrawal_request_id)
+    withdrawal_request.tx_hash = tx_hash
+    withdrawal_request.status = 'done'
+    withdrawal_request.save()
+
+    user = withdrawal_request.user
+    amount = withdrawal_request.amount - withdrawal_request.fee
+    currency = withdrawal_request.currency
+
+    update_wallet_balance(user, withdrawal_request.currency, amount, 'down')
+
+    create_record_cashflow(user, None, 'withdrawal', amount, currency, tx_hash=tx_hash)

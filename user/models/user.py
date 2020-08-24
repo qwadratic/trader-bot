@@ -29,7 +29,9 @@ def _default_telegramuser_cache():
             'currency': None,
             'requisites': [],
             'active_trade': None,
-            'deposit_currency': {}
+            'deposit_currency': {},
+            'withdrawal_request': {},
+            'market_depth': {}
         }
     }
 
@@ -72,6 +74,13 @@ class TelegramUser(Model):
             for hm in hold_money:
                 balance -= hm.amount
 
+        withdrawal_query = self.withdrawalRequests.filter(status__in=['pending verification', 'verifed'], currency=currency)
+
+        if withdrawal_query.count() > 0:
+
+            for wq in withdrawal_query:
+                balance -= wq.amount
+
         if cent2unit:
             balance = to_units(currency, balance)
 
@@ -95,6 +104,8 @@ class UserFlag(Model):
     await_requisites_name = BooleanField(default=False)
     edit_requisite = BooleanField(default=False)
     await_replenishment_for_order = BooleanField(default=False)
+    await_amount_for_withdrawal = BooleanField(default=False)
+    await_tx_hash_for_withdrawal = BooleanField(default=False)
 
 
 class UserSettings(Model):

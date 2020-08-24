@@ -1,8 +1,11 @@
+from decimal import Decimal, InvalidOperation
 from time import sleep
 
 from pyrogram import Client, Filters
 
-from bot.helpers.shortcut import get_user, delete_msg, check_address
+from bot.helpers.shortcut import get_user, delete_msg, check_address, get_max_amount_withdrawal, get_currency_rate, \
+    to_units, round_currency, to_cents
+from bot.models import WithdrawalRequest
 from order.logic.text_func import wallet_info
 
 from user.logic import kb
@@ -32,13 +35,42 @@ def wallet_menu(cli, cb):
         cb.message.edit(user.get_text(name='purse-purse_menu'), reply_markup=kb.purse_menu(user))
 
     if button == 'deposit':
+        cb.message.edit(user.get_text(name='wallet-select_currency_for_deposit'), reply_markup=kb.select_currency_for_deposit(user))
 
-        wallets = user.wallets.exclude(currency__in=['UAH', 'RUB', 'USD', 'BTC'])
+    if button == 'withdrawal':
+        withdrawal_requests = user.withdrawalRequests.filter(status__in=['pending verification', 'verifed'])
+        if withdrawal_requests.count() > 0:
+            cli.answer_callback_query(cb.id, 'У вас есть уже активная заявка на вывод')
+            return
 
-        for w in wallets:
-            wal = f'{w.currency}\n' \
-                f'```{w.address}```'
-            cb.message.reply(wal)
+        cb.message.edit(user.get_text(name='wallet-select_currency_withdrawal'), reply_markup=kb.select_currency_for_withdrawal)
+
+    if button == 'cancel_withdrawal':
+        withdrawal_requests = user.withdrawalRequests.filter(status__in=['pending verification', 'verifed'])
+        currency = withdrawal_requests[0].currency
+        amount = to_units(currency, withdrawal_requests[0].amount, round=True)
+        cb.message.reply(user.get_text(name='wallet-confirm_refusal_withdrawal').format(
+            amount=amount,
+            currency=currency
+        ), reply_markup=kb.confirm_cancel_withdrawal(user))
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('currency_for_deposit')))
+def currency_for_deposit(cli, cb):
+    user = get_user(cb.from_user.id)
+
+    button = cb.data.split('-')[1]
+
+    if button == 'back':
+        return cb.message.edit(wallet_info(user), reply_markup=kb.wallet_menu(user))
+
+    if button == 'USDT':
+        address = user.wallets.get(currency='ETH').address
+    else:
+        address = user.wallets.get(currency=button).address
+
+    cb.message.reply(user.get_text(name='wallet-address_for_deposit').format(currency=button))
+    cb.message.reply(address)
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:5] == 'purse'))
@@ -244,3 +276,146 @@ def add_reqiusites_address(cli, m):
     user_msg = user.msg
     user_msg.wallet_menu = msg.message_id
     user_msg.save()
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('withdrawal')))
+def select_currency_for_withdrawal(cli, cb):
+    user = get_user(cb.from_user.id)
+
+    button = cb.data.split('-')[1]
+
+    if button == 'currency':
+        currency = cb.data.split('-')[2]
+        withdrawal_request = user.cache['clipboard']['withdrawal_request'] = {}
+
+        withdrawal_request['currency'] = currency
+        user.save()
+
+        flags = user.flags
+        flags.await_amount_for_withdrawal = True
+        flags.save()
+
+        cb.message.edit(cb.message.text + '\n\n' + user.get_text(name='you_selected').format(foo=currency))
+
+        max_withdrawal_amount = get_max_amount_withdrawal(user, currency) / to_units(currency, get_currency_rate(currency))
+        cb.message.reply(
+            user.get_text(name='wallet-enter_amount_for_withdrawal').format(
+                max_amount=round_currency(currency, max_withdrawal_amount),
+                currency=currency),
+            reply_markup=kb.cancel_withdrawal(user)
+        )
+
+    if button == 'back':
+        cb.message.edit(wallet_info(user), reply_markup=kb.wallet_menu(user))
+
+
+@Client.on_callback_query(Filters.callback_data('cancel_withdrawal'))
+def cancel_withdrawal(cli, cb):
+    user = get_user(cb.from_user.id)
+    flags = user.flags
+    flags.await_amount_for_withdrawal = False
+    flags.save()
+    cb.message.edit(wallet_info(user), reply_markup=kb.wallet_menu(user))
+
+
+@Client.on_message(Filters.create(lambda _, m: get_user(m.from_user.id) and
+                                               get_user(m.from_user.id).flags.await_amount_for_withdrawal))
+def amount_withdrawal(cli, m):
+    user = get_user(m.from_user.id)
+
+    try:
+        amount = Decimal(m.text.replace(',', '.'))
+
+    except InvalidOperation:
+
+        msg = m.reply(user.get_text(name='bot-type_error'))
+        sleep(5)
+        msg.delete()
+        return
+
+    withdrawal_request = user.cache['clipboard']['withdrawal_request']
+    currency = withdrawal_request['currency']
+
+    max_withdrawal_amount = get_max_amount_withdrawal(user, currency) / to_units(currency, get_currency_rate(currency))
+
+    # TODO учесть комсу
+    if amount > max_withdrawal_amount:
+        m.reply(f'Вы не можете вывести больше чем {round_currency(currency, max_withdrawal_amount)} {currency}')
+        return
+
+    withdrawal_request['amount'] = to_cents(currency, amount)
+    user.save()
+
+    flags = user.flags
+    flags.await_amount_for_withdrawal = False
+    flags.save()
+
+    m.reply(user.get_text(name='wallet-select_requisite_for_withdrawal').format(currency=currency), reply_markup=kb.select_requisite_for_withdrawal(user, currency))
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('selectreqwithdrawal')))
+def requisite_for_withdrawal(cli, cb):
+    user = get_user(cb.from_user.id)
+
+    button = cb.data.split('-')[1]
+
+    if button == 'use':
+        user.cache['clipboard']['withdrawal_request']['address'] = user.requisites.get(id=int(cb.data.split('-')[2])).address
+        user.save()
+        currency = user.cache['clipboard']['withdrawal_request']['currency']
+        address = user.cache['clipboard']['withdrawal_request']['address']
+        amount = round_currency(currency, to_units(currency, user.cache['clipboard']['withdrawal_request']['amount']))
+
+        cb.message.edit(
+            user.get_text(name='wallet-confirm_withdrawal').format(
+                amount=amount,
+                currency=currency,
+                address=address),
+            reply_markup=kb.confirm_withdrawal(user))
+
+    if button == 'new':
+        pass
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('confirm_withdrawal')))
+def confirm_withdrawal(cli, cb):
+    user = get_user(cb.from_user.id)
+
+    button = cb.data.split('-')[1]
+    currency = user.cache['clipboard']['withdrawal_request']['currency']
+    address = user.cache['clipboard']['withdrawal_request']['address']
+    amount = user.cache['clipboard']['withdrawal_request']['amount']
+    if button == 'yes':
+
+        # TODO учесть комсу
+        WithdrawalRequest.objects.create(
+            user=user,
+            currency=currency,
+            amount=amount,
+            address=address,
+            fee=0
+        )
+        cb.message.edit(cb.message.text)
+        cb.message.reply('Ваша заявка создана')
+
+    if button == 'no':
+        cb.message.edit(user.get_text(name='wallet-select_requisite_for_withdrawal').format(currency=currency), reply_markup=kb.select_requisite_for_withdrawal(user, currency))
+
+
+@Client.on_callback_query(Filters.callback_data('confirm_cancel_withdrawal'))
+def confirm_cancel_withdrawal(cli, cb):
+    user = get_user(cb.from_user.id)
+
+    withdrawal_request = user.withdrawalRequests.get(status__in=['pending verification', 'verifed'])
+    withdrawal_request.status = 'canceled by user'
+    withdrawal_request.save()
+
+    cb.message.edit('Успешно!')
+
+    msgs = user.msg
+
+    delete_msg(cli, user.telegram_id, msgs.wallet_menu)
+
+    msg = cb.message.reply(wallet_info(user), reply_markup=kb.wallet_menu(user))
+    msgs.wallet_menu = msg.message_id
+    msgs.save()
