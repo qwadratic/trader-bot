@@ -5,7 +5,7 @@ from pyrogram import Client, Filters
 
 from bot.models import CurrencyList
 from order.models import Order
-from trade.logic.core import auto_trade, semi_auto_trade
+from trade.logic.core import auto_trade
 from trade.logic import kb
 from trade.models import Trade
 from bot.helpers.shortcut import get_user, to_cents, to_units, round_currency
@@ -276,59 +276,59 @@ def await_tx_hash(cli, m):
         m.reply('Ошибочка')
 
 
-@Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:15] == 'confirm_payment'))
-def confirm_payment(cli, cb):
-    user = get_user(cb.from_user.id)
-    trade_id = int(cb.data.split('-')[2])
-    trade = Trade.objects.get(id=trade_id)
-
-    answer = cb.data.split('-')[1]
-    if answer == 'yes':
-        cb.message.reply(user.get_text(name='trade-second_confirm_transaction'), reply_markup=kb.second_confirm(user, trade, trade.tx_hash))
-
-    elif answer == 'no':
-        cli.answer_callback_query(cb.id, 'Пожалуйста, не торопитесь. По нашим данным транзакция успешна.', show_alert=True)
-
-
-@Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:22] == 'second_confirm_payment'))
-def second_payment(cli, cb):
-    owner = get_user(cb.from_user.id)
-    trade_id = int(cb.data.split('-')[2])
-    trade = Trade.objects.get(id=trade_id)
-
-    user = trade.user
-
-    answer = cb.data.split('-')[1]
-
-    if trade.order.type_operation == 'sale':
-        type_translate_for_user = user.get_text(name='order-type_operation_translate_buy_2')
-        type_translate_for_owner = owner.get_text(name='order-type_operation_translate_sale_2')
-    else:
-        type_translate_for_user = user.get_text(name='order-type_operation_translate_sale_2')
-        type_translate_for_owner = owner.get_text(name='order-type_operation_translate_buy_2')
-
-    if answer == 'yes':
-        semi_auto_trade(trade)
-
-        txt_for_user = user.get_text(name='trade-success_trade').format(
-            type_operation=type_translate_for_user,
-            amount=round(to_units(trade.trade_currency, trade.amount), 6),
-            trade_currency=trade.trade_currency,
-            price_trade=round(to_units(trade.payment_currency, trade.price_trade), 6),
-            payment_currency=trade.payment_currency
-        )
-
-        txt_for_owner = owner.get_text(name='trade-success_trade').format(
-            type_operation=type_translate_for_owner,
-            amount=round(to_units(trade.trade_currency, trade.amount), 6),
-            trade_currency=trade.trade_currency,
-            price_trade=round(to_units(trade.payment_currency, trade.price_trade), 6),
-            payment_currency=trade.payment_currency
-        )
-
-        cb.message.reply(txt_for_owner)
-        cli.send_message(user.telegram_id, txt_for_user)
-
-    elif answer == 'no':
-        cli.answer_callback_query(cb.id, 'Пожалуйста, не торопитесь. По нашим данным транзакция успешна.',
-                                  show_alert=True)
+# @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:15] == 'confirm_payment'))
+# def confirm_payment(cli, cb):
+#     user = get_user(cb.from_user.id)
+#     trade_id = int(cb.data.split('-')[2])
+#     trade = Trade.objects.get(id=trade_id)
+#
+#     answer = cb.data.split('-')[1]
+#     if answer == 'yes':
+#         cb.message.reply(user.get_text(name='trade-second_confirm_transaction'), reply_markup=kb.second_confirm(user, trade, trade.tx_hash))
+#
+#     elif answer == 'no':
+#         cli.answer_callback_query(cb.id, 'Пожалуйста, не торопитесь. По нашим данным транзакция успешна.', show_alert=True)
+#
+#
+# @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:22] == 'second_confirm_payment'))
+# def second_payment(cli, cb):
+#     owner = get_user(cb.from_user.id)
+#     trade_id = int(cb.data.split('-')[2])
+#     trade = Trade.objects.get(id=trade_id)
+#
+#     user = trade.user
+#
+#     answer = cb.data.split('-')[1]
+#
+#     if trade.order.type_operation == 'sale':
+#         type_translate_for_user = user.get_text(name='order-type_operation_translate_buy_2')
+#         type_translate_for_owner = owner.get_text(name='order-type_operation_translate_sale_2')
+#     else:
+#         type_translate_for_user = user.get_text(name='order-type_operation_translate_sale_2')
+#         type_translate_for_owner = owner.get_text(name='order-type_operation_translate_buy_2')
+#
+#     if answer == 'yes':
+#         semi_auto_trade(trade)
+#
+#         txt_for_user = user.get_text(name='trade-success_trade').format(
+#             type_operation=type_translate_for_user,
+#             amount=round(to_units(trade.trade_currency, trade.amount), 6),
+#             trade_currency=trade.trade_currency,
+#             price_trade=round(to_units(trade.payment_currency, trade.price_trade), 6),
+#             payment_currency=trade.payment_currency
+#         )
+#
+#         txt_for_owner = owner.get_text(name='trade-success_trade').format(
+#             type_operation=type_translate_for_owner,
+#             amount=round(to_units(trade.trade_currency, trade.amount), 6),
+#             trade_currency=trade.trade_currency,
+#             price_trade=round(to_units(trade.payment_currency, trade.price_trade), 6),
+#             payment_currency=trade.payment_currency
+#         )
+#
+#         cb.message.reply(txt_for_owner)
+#         cli.send_message(user.telegram_id, txt_for_user)
+#
+#     elif answer == 'no':
+#         cli.answer_callback_query(cb.id, 'Пожалуйста, не торопитесь. По нашим данным транзакция успешна.',
+#                                   show_alert=True)

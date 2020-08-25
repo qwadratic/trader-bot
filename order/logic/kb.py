@@ -30,7 +30,7 @@ def market_depth_trade_currency(user):
         prefix = 'select_currency_for_market_depth-trade_currency'
         return [InlineKeyboardButton(ccy, callback_data=f'{prefix}-{ccy}') for ccy in ccy_list]
 
-    back_btn = InlineKeyboardButton(user.get_text(name='kb-back'), callback_data='trade_currency-back')
+    back_btn = InlineKeyboardButton(user.get_text(name='kb-back'), callback_data='select_currency_for_market_depth-back_menu')
 
     return InlineKeyboardMarkup(
         [
@@ -42,7 +42,7 @@ def market_depth_trade_currency(user):
 
 def market_depth_payment_currency(trade_currency, user):
 
-    btn_back = InlineKeyboardButton(user.get_text(name='kb-back'), callback_data='trade_currency-back')
+    btn_back = InlineKeyboardButton(user.get_text(name='kb-back'), callback_data='select_currency_for_market_depth-back_trade_currency')
 
     def _makerow(*ccy_list):
         prefix = 'select_currency_for_market_depth-payment_currency'
@@ -319,7 +319,7 @@ def half_market_depth(user, type_orders, offset):
 
 
 def owner_order_list(user, type_orders, offset):
-    sort_orders = user.parentOrders.all()[offset:offset+7]
+    sort_orders = user.parentOrders.exclude(status__in=['completed', 'deleted'])[offset:offset+7]
     all_orders = user.parentOrders.all()
 
     kb_list = [[InlineKeyboardButton(user.get_text(name='kb-back'), callback_data='owner_order-back')],

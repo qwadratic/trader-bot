@@ -6,7 +6,6 @@ from bot.helpers.converter import currency_in_usd
 from bot.helpers.shortcut import to_units, to_cents, round_currency
 from bot.models import CurrencyList
 from order.models import Order, ParentOrder, OrderHoldMoney
-from trade.logic.core import update_order
 
 
 def get_order_info(user, order_id):
@@ -205,16 +204,39 @@ def hold_money_order(order):
     OrderHoldMoney.objects.bulk_create([OrderHoldMoney(**r) for r in hold_list])
 
 
-def switch_order_status(order):
-    hold_money = order.holdMoney.all()
-    hold_money.delete()
-    update_order(order, 'switch', 'close')
+def update_order(parent_order, type_update, value):
+
+    if type_update == 'set amount':
+        parent_order.amount = value
+        parent_order.save()
+
+        orders = parent_order.orders.all()
+
+        for order in orders:
+            order.amount = value
+            order.save()
+
+        return parent_order
+
+    if type_update == 'set status':
+        orders = parent_order.orders.all()
+        parent_order.status = value
+        parent_order.save()
+
+        for order in orders:
+            order.status = value
+            order.save()
 
 
-def close_order(order):
+def check_order(order):
+    if order.amount == 0:
+        close_order(order, 'completed')
+
+
+def close_order(order, status):
     hold_money = order.holdMoney.all()
     hold_money.delete()
-    update_order(order, 'switch', 'completed')
+    update_order(order, 'set status', status)
 
 
 def check_balance_from_order(user, order):
@@ -236,7 +258,7 @@ def check_balance_from_order(user, order):
             is_good_balance = False
 
             if currency == 'USDT':
-                deposit_address = user.wallets.get(currency='USDT').address
+                deposit_address = user.wallets.get(currency='ETH').address
             else:
                 deposit_address = user.wallets.get(currency=currency).address
 

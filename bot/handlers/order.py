@@ -5,10 +5,9 @@ from pyrogram import Client, Filters
 
 from bot.helpers.settings import get_max_price_range_factor
 from bot.models import CurrencyList
-from trade.logic.core import update_order
 from order.logic import kb
-from order.logic.core import get_order_info, create_order, order_info_for_owner, switch_order_status, hold_money_order, \
-    check_balance_from_order
+from order.logic.core import get_order_info, create_order, order_info_for_owner, hold_money_order, \
+    check_balance_from_order, update_order
 from order.logic.text_func import choice_payment_currency_text, get_lack_balance_text
 from order.models import TempOrder, Order
 from bot.helpers.converter import currency_in_usd
@@ -101,6 +100,14 @@ def select_currency_for_market_depth(cli, cb):
         payment_currency = user.cache['clipboard']['market_depth']['payment_currency']
 
         cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.market_depth(user, trade_currency, payment_currency, 0))
+
+    if type_currency == 'back_menu':
+        cb.message.edit(user.get_text(name='user-trade_menu'), reply_markup=kb.trade_menu(user))
+
+    if type_currency == 'back_trade_currency':
+        cb.message.edit(user.get_text(name='order-market_depth-select_trade_currency'),
+                        reply_markup=kb.market_depth_trade_currency(user))
+
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('market_depth')))
@@ -320,19 +327,19 @@ def order_info(cli, cb):
 
                     price_trade = Decimal(to_units(order.trade_currency, order.amount) * to_units(order.trade_currency, order.currency_rate) / to_units(currency, order.payment_currency_rate[currency]))
 
-                    user_balance = user.get_balance(currency, cent2bip=True)
+                    user_balance = user.get_balance(currency, cent2unit=True)
                     if price_trade > user_balance:
                         cli.answer_callback_query(cb.id, f'Недостаточно {currency} для начала торговли')
                         return
 
             hold_money_order(order)
-            update_order(order, 'switch', 'open')
+            update_order(order, 'set status', 'open')
             cb.message.edit(order_info_for_owner(order),
                             reply_markup=kb.order_for_owner(order, location))
 
         elif order.status == 'open':
 
-            switch_order_status(order)
+            update_order(order, 'set status', 'close')
             cb.message.edit(order_info_for_owner(order),
                             reply_markup=kb.order_for_owner(order, location))
 

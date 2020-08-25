@@ -1,34 +1,17 @@
 from bot.helpers.shortcut import create_record_cashflow
+from order.logic.core import update_order, close_order
 from trade.models.trade import TradeHoldMoney
 from user.logic.core import update_wallet_balance
-
-
-def update_order(parent_order, type_update, value):
-    # todo баг
-    if type_update == 'amount':
-        orders = parent_order.orders.all()
-
-        for order in orders:
-            order.amount = value
-            order.save()
-
-    if type_update == 'switch':
-        orders = parent_order.orders.all()
-        parent_order.status = value
-        parent_order.save()
-
-        for order in orders:
-            order.status = value
-            order.save()
 
 
 def auto_trade(trade):
     owner = trade.order.parent_order.user
     user = trade.user
     parent_order = trade.order.parent_order
-    parent_order.amount -= trade.amount
-    parent_order.save()
-    update_order(parent_order, 'amount', parent_order.amount - trade.amount)
+
+    new_amount = parent_order.amount - trade.amount
+
+    new_parent_order = update_order(parent_order, 'set amount', new_amount)
 
     # TODO добавить кешфлоу в апдейтваллет
     if trade.order.type_operation == 'sale':
@@ -57,42 +40,45 @@ def auto_trade(trade):
     close_trade(trade)
 
 
-def semi_auto_trade(trade):
-    owner = trade.order.parent_order.user
-    user = trade.user
-    parent_order = trade.order.parent_order
-
-    update_order(parent_order, 'amount', parent_order.amount - trade.amount)
-
-    if trade.order.type_operation == 'sale':
-        create_record_cashflow(owner, user, 'transfer', trade.amount, trade.trade_currency, trade)
-        update_wallet_balance(user, trade.trade_currency, trade.amount, 'up')
-        create_record_cashflow(user, owner, 'external-transfer', trade.price_trade, trade.payment_currency, trade, tx_hash=trade.tx_hash)
-
-    else:
-
-        create_record_cashflow(owner, user, 'transfer', trade.price_trade, trade.payment_currency, trade)
-        update_wallet_balance(user, trade.payment_currency, trade.price_trade, 'up')
-        create_record_cashflow(user, owner, 'external-transfer', trade.amount, trade.trade_currency, trade,
-                               tx_hash=trade.tx_hash)
-
-    close_trade(trade)
+# def semi_auto_trade(trade):
+#     owner = trade.order.parent_order.user
+#     user = trade.user
+#     parent_order = trade.order.parent_order
+#
+#     update_order(parent_order, 'amount', parent_order.amount - trade.amount)
+#
+#     if trade.order.type_operation == 'sale':
+#         create_record_cashflow(owner, user, 'transfer', trade.amount, trade.trade_currency, trade)
+#         update_wallet_balance(user, trade.trade_currency, trade.amount, 'up')
+#         create_record_cashflow(user, owner, 'external-transfer', trade.price_trade, trade.payment_currency, trade, tx_hash=trade.tx_hash)
+#
+#     else:
+#
+#         create_record_cashflow(owner, user, 'transfer', trade.price_trade, trade.payment_currency, trade)
+#         update_wallet_balance(user, trade.payment_currency, trade.price_trade, 'up')
+#         create_record_cashflow(user, owner, 'external-transfer', trade.amount, trade.trade_currency, trade,
+#                                tx_hash=trade.tx_hash)
+#
+#     close_trade(trade)
 
 
 def close_trade(trade):
-
+    parent_order = trade.order.parent_order
     if trade.order.type_operation == 'sale':
-        hm = trade.order.parent_order.holdMoney.get(currency=trade.trade_currency)
+        hm = parent_order.holdMoney.get(currency=trade.trade_currency)
         hm.amount -= trade.amount
         hm.save()
 
     if trade.order.type_operation == 'buy':
-        hm = trade.order.parent_order.holdMoney.get(currency=trade.payment_currency)
+        hm = parent_order.holdMoney.get(currency=trade.payment_currency)
         hm.amount -= trade.price_trade
         hm.save()
 
     trade.status = 'close'
     trade.save()
+
+    if parent_order.amount == 0:
+        close_order(parent_order, 'completed')
 
 
 def hold_money_trade(trade):
