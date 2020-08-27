@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/3.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.0/ref/settings/
 """
+import logging
 import os
 
 from .env import env
@@ -90,6 +91,7 @@ DATABASES = {
     'default': env.db('DATABASE_URL')
 }
 
+CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
@@ -141,3 +143,33 @@ _CONFIG_DIR = os.path.dirname(_SETTINGS_DIR)
 PROJECT_DIR = os.path.dirname(_CONFIG_DIR)
 STATIC_ROOT = os.path.join(PROJECT_DIR, 'static')
 STATIC_URL = '/static/'
+
+DJANGO_LOG_LEVEL = 'DEBUG'
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{asctime} ({module}.{filename}:{lineno} {thread:d}|{process:d}) {levelname}: {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+      'require_debug_false': {
+          '()': 'django.utils.log.RequireDebugFalse',
+      },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose'
+        },
+    },
+    'loggers': {
+        'UserWallet': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False
+        },
+    },
+}
