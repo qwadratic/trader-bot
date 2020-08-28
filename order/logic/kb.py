@@ -358,21 +358,17 @@ def owner_order_list(user, type_orders, offset):
     return InlineKeyboardMarkup(kb_list)
 
 
-def order_for_owner(order, location, type_orders=None, offset=None):
+def order_for_owner(order):
     user = order.user
     marker_status_button = {'open': user.get_text(name='order-kb-off_order'),
                             'close': user.get_text(name='order-kb-on_order')}
-
-    location_data = {'new_order': {'button': 'kb-close', 'cb_data': f'order_info-close-{order.id}'},
-                     'orders': {'button': 'kb-back', 'cb_data': f'order_info-back-order_list-{type_orders}-{offset}'},
-                     'my_orders': {'button': 'kb-back', 'cb_data': f'order_info-back-my_orders'}}
 
     kb = InlineKeyboardMarkup(
         [
             [InlineKeyboardButton(user.get_text(name='order-kb-share'), callback_data=f'order_info-share-{order.id}')],
             [InlineKeyboardButton(f'{marker_status_button[order.status]}',
-                                  callback_data=f'order_info-switch-{order.id}-{location}')],
-            [InlineKeyboardButton(user.get_text(name=location_data[location]['button']), callback_data=location_data[location]['cb_data']),
+                                  callback_data=f'order_info-switch-{order.id}')],
+            [InlineKeyboardButton(user.get_text(name='kb-close'), callback_data='close'),
              InlineKeyboardButton(user.get_text(name='kb-delete'), callback_data=f'order_info-delete-{order.id}')]
 
         ]
@@ -381,7 +377,7 @@ def order_for_owner(order, location, type_orders=None, offset=None):
     return kb
 
 
-def order_for_user(user, order_id, type_orders, offset):
+def order_for_user(user, order_id):
     kb = InlineKeyboardMarkup(
         [
             [InlineKeyboardButton(user.get_text(name='order-kb-share'), callback_data=f'order_info-share-{order_id}')],

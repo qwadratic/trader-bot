@@ -1,4 +1,4 @@
-from bot.helpers.shortcut import create_record_cashflow
+from bot.helpers.shortcut import create_record_cashflow, to_units, to_cents, round_currency
 from order.logic.core import update_order, close_order
 from trade.models.trade import TradeHoldMoney
 from user.logic.core import update_wallet_balance
@@ -26,7 +26,6 @@ def auto_trade(trade):
 
     # покупка
     else:
-
         create_record_cashflow(user, owner, 'transfer', trade.price_trade, trade.payment_currency, trade)
 
         update_wallet_balance(owner, trade.order.payment_currency, trade.price_trade, 'down')
@@ -34,8 +33,8 @@ def auto_trade(trade):
 
         create_record_cashflow(owner, user, 'transfer', trade.amount, trade.trade_currency, trade)
 
-        update_wallet_balance(user, trade.payment_currency, trade.price_trade, 'down')
-        update_wallet_balance(user, trade.trade_currency, trade.amount, 'up')
+        update_wallet_balance(user, trade.payment_currency, trade.amount, 'down')
+        update_wallet_balance(user, trade.trade_currency, trade.price_trade, 'up')
 
     close_trade(trade)
 
@@ -91,3 +90,12 @@ def hold_money_trade(trade):
         amount=trade.amount
     ))
     TradeHoldMoney.objects.bulk_create([TradeHoldMoney(**r) for r in hold_list])
+
+
+def check_balance_from_trade(currency, price_trade, balance):
+    amount_deposit = price_trade - balance
+
+    if to_cents(currency, balance) >= to_cents(currency, price_trade):
+        return True, price_trade
+    else:
+        return False, currency, round_currency(currency, amount_deposit), price_trade

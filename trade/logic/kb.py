@@ -34,13 +34,24 @@ def select_type_trade(user):
     return kb
 
 
-def not_enough_money_to_trade(user):
+def not_enough_money_to_trade(user, currency):
 
     kb = InlineKeyboardMarkup(
         [
             [InlineKeyboardButton(
-                user.get_text(name='wallet-kb-deposite'),
-                callback_data='order-deposit')]
+                user.get_text(name='order-kb-show_deposit_address').format(currency=currency),
+                callback_data=f'trade_deposit-{currency}')],
+            [InlineKeyboardButton(user.get_text(name='trade-kb-cancel_trade'), callback_data='trade_cancel')]
+        ]
+    )
+    return kb
+
+
+def continue_trade_after_deposit(user):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='trade-kb-continue_trade'), callback_data='confirm_amount_for_trade-yes')],
+            [InlineKeyboardButton(user.get_text(name='trade-kb-cancel_trade'), callback_data=f'trade_cancel')]
         ]
     )
     return kb
