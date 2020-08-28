@@ -4,7 +4,7 @@ from pyrogram import InlineKeyboardButton, InlineKeyboardMarkup
 def cancel_trade(user):
     kb = InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton(user.get_text(name='kb-cancel'), callback_data='trade_cancel')]
+            [InlineKeyboardButton(user.get_text(name='trade-kb-cancel_trade'), callback_data='trade_cancel')]
         ]
     )
     return kb
@@ -14,7 +14,7 @@ def confirm_amount_for_trade(user):
     kb = InlineKeyboardMarkup(
         [
             [InlineKeyboardButton(user.get_text(name='kb-yes'), callback_data='confirm_amount_for_trade-yes'),
-             InlineKeyboardButton(user.get_text(name='kb-no'), callback_data='confirm_amount_for_trade-no')]
+             InlineKeyboardButton(user.get_text(name='kb-no'), callback_data='trade_cancel')]
         ]
     )
     return kb

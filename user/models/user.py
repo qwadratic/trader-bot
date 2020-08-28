@@ -104,6 +104,7 @@ class UserFlag(Model):
     objects = GetOrNoneManager()
 
     user = OneToOneField(TelegramUser, related_name='flags', on_delete=CASCADE)
+    in_trade = BooleanField(default=False)
     await_requisites_for_order = BooleanField(default=False)
     await_currency_rate = BooleanField(default=False)
     await_requisite_for_order = BooleanField(default=False)

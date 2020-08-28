@@ -10,7 +10,8 @@ from order.logic import kb as order_kb
 from trade.logic.core import auto_trade, check_balance_from_trade
 from trade.logic import kb
 from trade.models import Trade
-from bot.helpers.shortcut import get_user, to_cents, to_units, round_currency, update_cache_msg, delete_inline_kb
+from bot.helpers.shortcut import get_user, to_cents, to_units, round_currency, update_cache_msg, delete_inline_kb, \
+    delete_msg
 from bot.blockchain.core import check_tx_hash
 
 
@@ -37,6 +38,7 @@ def start_trade(cli, cb):
 
     flags = user.flags
     flags.await_amount_for_trade = True
+    flags.in_trade = True
     flags.save()
     order_amount = to_units(trade.order.trade_currency, trade.order.amount)
 
@@ -61,6 +63,7 @@ def start_trade(cli, cb):
         currency=trade.trade_currency
     ), reply_markup=kb.cancel_trade(user))
 
+    delete_msg(cli, user.telegram_id, user.cache['msg']['trade_menu'])
     update_cache_msg(user, 'trade_enter_amount', msg.message_id)
 
 
@@ -68,16 +71,21 @@ def start_trade(cli, cb):
 def trade_cancel(cli, cb):
     user = get_user(cb.from_user.id)
     flags = user.flags
+    flags.in_trade = False
     flags.await_amount_for_trade = False
     flags.await_replenishment_for_trade = False
     flags.save()
 
     trade_id = user.cache['clipboard']['active_trade']
-    trade = user.trade.get(id=trade_id)
-    cb.message.edit(cb.message.text + '\n\n' + user.get_text(name='trade-your_canceled_trade'))
-    cb.message.reply(get_order_info(user, trade.order.id), reply_markup=order_kb.order_for_user(user, trade.order.id))
+    try:
+        trade = user.trade.get(id=trade_id)
+        cb.message.edit(cb.message.text + '\n\n' + user.get_text(name='trade-your_canceled_trade'))
+        cb.message.reply(get_order_info(user, trade.order.id),
+                         reply_markup=order_kb.order_for_user(user, trade.order.id))
 
-    trade.delete()
+        trade.delete()
+    except:
+        cb.message.edit(cb.message.text)
 
 
 @Client.on_message(Filters.create(lambda _, m: get_user(m.from_user.id).flags.await_amount_for_trade))
@@ -237,12 +245,6 @@ def confirm_amount_for_trade(cli, cb):
             cb.message.reply(txt_for_user)
             cli.send_message(owner.telegram_id, txt_for_owner)
 
-    if answer == 'no':
-        trade_id = user.cache['clipboard']['active_trade']
-        trade = Trade.objects.get(id=trade_id)
-
-        cb.message.edit(cb.message.text + '\n\n' + user.get_text(name='trade-your_canceled_trade'))
-        cb.message.reply(get_order_info(user, trade.order.id), reply_markup=order_kb.order_for_user(user, trade.order.id))
 
 # @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:17] == 'select_type_order'))
 # def select_type_order(cli, cb):

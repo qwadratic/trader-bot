@@ -13,9 +13,10 @@ from order.models import TempOrder, Order
 from bot.helpers.converter import currency_in_usd
 from bot.helpers.shortcut import get_user, delete_msg, to_cents, to_units, get_currency_rate, \
     round_currency, update_cache_msg, delete_inline_kb
+from trade.logic.trade_filters import in_trade
 
 
-@Client.on_message(Filters.create(lambda _, m: m.text == get_user(m.from_user.id).get_text(name='user-kb-trade')))
+@Client.on_message(Filters.create(lambda _, m: m.text == get_user(m.from_user.id).get_text(name='user-kb-trade')) & in_trade)
 def trade_menu(cli, m):
     user = get_user(m.from_user.id)
 
