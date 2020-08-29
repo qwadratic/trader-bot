@@ -203,8 +203,8 @@ LOGGING = {
             'formatter': 'verbose',
             'filters': ['require_debug_false'],
             'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': 'logging.handlers.TimedRotatingFileHandler',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': 'logs/trade_operations',
             'when': 'midnight',
             'utc': True,
             'backupCount': 7
