@@ -60,6 +60,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'silk.middleware.SilkyMiddleware',
+    'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -143,13 +144,22 @@ PROJECT_DIR = os.path.dirname(_CONFIG_DIR)
 STATIC_ROOT = os.path.join(PROJECT_DIR, 'static')
 STATIC_URL = '/static/'
 
+
+POST_SERVER_ITEM_ACCESS_TOKEN = '4ae1bed48b524ba4b7e1e22315bdbd6f' #'ff446ee4-661d-4bbd-9094-5276955bd39d'
+ROLLBAR = {
+    'access_token': 'POST_SERVER_ITEM_ACCESS_TOKEN',
+    'environment': 'production',
+    'branch': 'log',
+    'root': 'os.path.abspath(os.curdir)',
+}
+
 DJANGO_LOG_LEVEL = 'DEBUG'
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '{asctime} ({module}.{filename}:{lineno} {thread:d}|{process:d}) {levelname}: {message}',
+            'format': '[{asctime}] ({module}.{filename}:{lineno} {thread:d}|{process:d}) [{levelname}]: {message}',
             'style': '{',
         },
     },
@@ -161,14 +171,20 @@ LOGGING = {
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose'
+            'formatter': 'verbose',
+        },
+        'rollbar': {
+            'filters': ['require_debug_false'],
+            'accsess_token': 'POST_SERVER_ITEM_ACCESS_TOKEN',
+            'enviroment': 'production',
+            'class': 'rollbar.logger.RollbarHandler',
         },
         'jobs': {
             'formatter': 'verbose',
             'filters': ['require_debug_false'],
             'level': 'INFO',
             'class': 'logging.handlers.TimedRotatingFileHandler',
-            'filename': 'jobs.log',
+            'filename': 'logs/jobs.log',
             'when': 'midnight',
             'utc': True,
             'backupCount': 7
@@ -176,9 +192,9 @@ LOGGING = {
         'trade_event': {
             'formatter': 'verbose',
             'filters': ['require_debug_false'],
-            'level': 'DEBUG',
+            'level': 'INFO',
             'class': 'logging.handlers.TimedRotatingFileHandler',
-            'filename': 'trade_event.log',
+            'filename': 'logs/trade_event.log',
             'when': 'midnight',
             'utc': True,
             'backupCount': 7
@@ -187,8 +203,8 @@ LOGGING = {
             'formatter': 'verbose',
             'filters': ['require_debug_false'],
             'level': 'DEBUG',
-            'class': 'logging.handlers.TimedRotatingFileHandler',
-            'filename': 'trade_operations.log',
+            'class': 'logging.FileHandler',
+            'filename': 'logging.handlers.TimedRotatingFileHandler',
             'when': 'midnight',
             'utc': True,
             'backupCount': 7
@@ -198,7 +214,7 @@ LOGGING = {
             'filters': ['require_debug_false'],
             'level': 'WARNING',
             'class': 'logging.handlers.TimedRotatingFileHandler',
-            'filename': 'trade_api.log',
+            'filename': 'logs/trade_api.log',
             'when': 'midnight',
             'utc': True,
             'backupCount': 7
@@ -221,24 +237,24 @@ LOGGING = {
             'propagate': False,
         },
         'TradeJobs': {
-            'handlers': ['console', 'jobs'],
+            'handlers': ['console', 'jobs', 'rollbar'],
             'level': 'INFO',
-            'propagate': False
+            'propagate': False,
         },
         'TradeEvent': {
-            'handlers': ['console', 'trade_event'],
+            'handlers': ['console', 'trade_event', 'rollbar'],
             'level': 'INFO',
-            'propagate': False
+            'propagate': False,
         },
         'TradeOperations': {
-            'handlers': ['console', 'trade_operations'],
-            'level': 'INFO',
-            'propagate': False
+            'handlers': ['console', 'trade_operations', 'rollbar'],
+            'level': 'DEBUG',
+            'propagate': False,
         },
         'TradeAPI': {
-            'handlers': ['console', 'trade_api'],
+            'handlers': ['console', 'trade_api', 'rollbar'],
             'level': 'WARNING',
-            'propagate': False
+            'propagate': False,
         },
     },
 }
