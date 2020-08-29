@@ -180,14 +180,8 @@ def send_message(cli, telegram_id, msg, kb):
             return cli.send_message(telegram_id, msg)
     except:
         return False
-    #
-    # try:
-    #     with app:
-    #         if kb:
-    #             msg = app.send_message(telegram_id, msg, reply_markup=kb)
-    #             app.stop()
-    #             return True, msg
-    #         else:
-    #             return True, app.send_message(telegram_id, msg)
-    # except:
-    #     return False
+
+
+def get_fee_amount(factor_fee, amount):
+
+    return amount * Decimal(factor_fee) / Decimal(100)

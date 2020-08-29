@@ -1,6 +1,7 @@
 from decimal import Decimal, InvalidOperation
 from time import sleep
 
+from constance import config
 from pyrogram import Client, Filters
 
 from bot.models import CurrencyList
@@ -11,7 +12,7 @@ from trade.logic.core import auto_trade, check_balance_from_trade
 from trade.logic import kb
 from trade.models import Trade
 from bot.helpers.shortcut import get_user, to_cents, to_units, round_currency, update_cache_msg, delete_inline_kb, \
-    delete_msg
+    delete_msg, get_fee_amount
 from bot.blockchain.core import check_tx_hash
 
 
@@ -118,17 +119,27 @@ def amount_for_trade(cli, m):
         price_trade = amount * to_units(trade.trade_currency, trade.trade_currency_rate)
         trade.price_trade = to_cents(trade.payment_currency, price_trade)
         trade.amount = to_cents(trade.trade_currency, amount)
-        trade.save()
 
         if trade.order.type_operation == 'sale':
             currency = trade.payment_currency
             balance = user.get_balance(currency, cent2unit=True)
-            cost_trade = price_trade
+            fee_amount = get_fee_amount(config.TAKER_FEE, price_trade)
+            cost_trade = price_trade + fee_amount
+
+            maker_fee = to_cents(trade.trade_currency, get_fee_amount(config.MAKER_FEE, to_units(trade.trade_currency, trade.amount)))
         else:
             currency = trade.trade_currency
             balance = user.get_balance(currency, cent2unit=True)
-            cost_trade = amount
+            fee_amount = get_fee_amount(config.TAKER_FEE, amount)
+            cost_trade = amount + fee_amount
 
+            maker_fee = to_cents(currency, get_fee_amount(config.MAKER_FEE, to_units(currency, trade.price_trade)))
+
+        trade.price_trade = to_cents(trade.payment_currency, price_trade)
+        trade.amount = to_cents(trade.trade_currency, amount)
+        trade.taker_fee = to_cents(currency, fee_amount)
+        trade.maker_fee = maker_fee
+        trade.save()
         is_good_balance = check_balance_from_trade(currency, cost_trade, balance)
 
         if not is_good_balance[0]:
@@ -160,7 +171,9 @@ def amount_for_trade(cli, m):
         amount=amount,
         payment_currency=trade.payment_currency,
         price_trade=round_currency(trade.payment_currency, price_trade),
-        trade_currency=trade.trade_currency
+        trade_currency=trade.trade_currency,
+        fee_amount=to_units(currency, trade.taker_fee, round=True),
+        currency=currency
 
     )
     m.reply(txt, reply_markup=kb.confirm_amount_for_trade(user))

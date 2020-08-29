@@ -7,18 +7,19 @@ from bot.models import CurrencyList
 
 from order.logic import kb
 from order.logic.core import get_order_info, create_order, order_info_for_owner, hold_money_order, \
-    check_balance_from_order, update_order
+    check_balance_from_order, update_order, close_order
 from order.logic.text_func import choice_payment_currency_text, get_lack_balance_text
 from order.models import TempOrder, Order
 
 from bot.helpers.converter import currency_in_usd
 from bot.helpers.shortcut import get_user, delete_msg, to_cents, to_units, get_currency_rate, \
-    round_currency, update_cache_msg, delete_inline_kb
+    round_currency, update_cache_msg, delete_inline_kb, get_fee_amount
 from trade.logic.trade_filters import in_trade
 
 from constance import config
 
 
+@Client.on_message(Filters.create(lambda _, m: m.text == get_user(m.from_user.id).get_text(name='user-kb-trade')) & in_trade)
 def trade_menu(cli, m):
     user = get_user(m.from_user.id)
 
@@ -318,9 +319,10 @@ def order_info(cli, cb):
                     if inst_currency.type == 'fiat':
                         continue
 
-                    price_trade = Decimal(to_units(order.trade_currency, order.amount) * to_units(order.trade_currency,
-                                                                                                  order.currency_rate) / to_units(
-                        currency, order.payment_currency_rate[currency]))
+                    price_trade = Decimal(
+                        to_units(order.trade_currency, order.amount)
+                        * to_units(order.trade_currency, order.currency_rate)
+                        / to_units(currency, order.payment_currency_rate[currency]))
 
                     user_balance = user.get_balance(currency, cent2unit=True)
                     if price_trade > user_balance:
@@ -336,10 +338,8 @@ def order_info(cli, cb):
 
         elif order.status == 'open':
 
-            update_order(order, 'set status', 'close')
-            cb.message.edit(order_info_for_owner(order),
-
-                            reply_markup=kb.order_for_owner(order))
+            close_order(order, 'close')
+            cb.message.edit(order_info_for_owner(order), reply_markup=kb.order_for_owner(order))
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:14] == 'trade_currency'))
@@ -712,7 +712,8 @@ def amount_for_order(cli, m):
 
     if temp_order.type_operation == 'sale':
         balance = user.get_balance(temp_order.trade_currency, cent2unit=True)
-        if amount > balance:
+        fee_amount = get_fee_amount(config.MAKER_FEE, amount)
+        if amount + fee_amount > balance:
             m.reply(f'Вы не можете продать больше чем '
                     f'{balance}'
                     f' {temp_order.trade_currency}')
@@ -752,16 +753,15 @@ def amount_for_order(cli, m):
             deposit_currency = user.cache['clipboard']['deposit_currency']
             lack_balance_txt = get_lack_balance_text(temp_order, deposit_currency)
 
-            text = f'Балансы {", ".join(
-                deposit_currency)} недостаточны. Если хотите исопльзовать бота как гаранта - надо пополнить\n\n' \
-                f'{lack_balance_txt}'
+            txt = user.get_text(name='order-not_enough_money').format(balance=' '.join(deposit_currency),
+                                                                      deposit_amount=lack_balance_txt)
 
             flags = user.flags
             flags.await_amount_for_order = False
             flags.await_replenishment_for_order = True
             flags.save()
 
-            msg = m.reply(text, reply_markup=kb.deposit_from_order(user))
+            msg = m.reply(txt, reply_markup=kb.deposit_from_order(user))
 
             update_cache_msg(user, 'last_temp_order', msg.message_id)
 

@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 import os
+from _decimal import Decimal
 from collections import OrderedDict
 
 from .env import env
@@ -102,16 +103,16 @@ CONSTANCE_CONFIG = OrderedDict([
     ('CRON_CHECK_REFILL_BIP_SEC', (5, 'Интервал запуска джобы пополнения BIP')),
     ('CRON_CHECK_REFILL_ETH_SEC', (20, 'Интервал запуска джобы пополнения ETH')),
     ('CRON_CHECK_REFILL_BTC_SEC', (60, 'Интервал запуска джобы пополнения BTC')),
-    ('CRON_UPDATE_EXCHANGE_RATES_SEC', (20, 'Интервал запуска джобы парса курса валют')),
+    ('CRON_UPDATE_EXCHANGE_RATES_MIN', (20, 'Интервал запуска джобы парса курса валют')),
     ('CRON_VERIFICATION_WITHDRAWAL_REQUESTS', (10, 'Интервал запуска джобы проверки заявок на вывод средств')),
     ('ETH_NODE', ('http://isheldon:dfhjgkjnlkdrlRHJYrstdryS346645346ythdfshyfHEr4635763Y4hbfGSDs@116.202.202.230/dsfkhkgdl/', ' ')),
     ('MINTER_NODE', ('http://195.201.211.234:8841', ' ')),
-    ('BTC_NODE', ('http://%s:%s@195.201.211.234:8878', ' ')),
+    ('BTC_NODE', ('http://{user}:{password}@195.201.211.234:8878', ' ')),
     ('BTC_WALLET_NAME', ('garry', 'Имя основного глобального кошелька, по умолчанию установлено имя dev кошелька')),
-    ('GET_MAX_PRICE_RANGE_FACTOR', (1, 'Коэффициент максимального отклонения от курса валют')),
-    ('WITHDRAWAL_FACTOR', (1.2, 'некий коэффициент для вычисления максимальной суммы вывода')),
-    ('', ('', '')),
-    ('', ('', '')),
+    ('GET_MAX_PRICE_RANGE_FACTOR', (Decimal('1'), 'Коэффициент максимального отклонения от курса валют')),
+    ('WITHDRAWAL_FACTOR', (Decimal('1.2'), 'некий коэффициент для вычисления максимальной суммы вывода')),
+    ('TAKER_FEE', (Decimal('0.3'), 'Юзер который отозвался на объявление')),
+    ('MAKER_FEE', (Decimal('0.3'), 'Создатель объявления')),
     ('', ('', '')),
     ('', ('', '')),
     ('', ('', '')),

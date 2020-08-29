@@ -1,4 +1,6 @@
-from bot.helpers.shortcut import create_record_cashflow, to_units, to_cents, round_currency
+from constance import config
+
+from bot.helpers.shortcut import create_record_cashflow, to_units, to_cents, round_currency, get_fee_amount
 from order.logic.core import update_order, close_order
 from trade.models.trade import TradeHoldMoney
 from user.logic.core import update_wallet_balance
@@ -13,28 +15,34 @@ def auto_trade(trade):
 
     new_parent_order = update_order(parent_order, 'set amount', new_amount)
 
+    trade_currency = trade.trade_currency
+    payment_currency = trade.payment_currency
+    maker_fee = trade.maker_fee
+    taker_fee = trade.taker_fee
+
     # TODO добавить кешфлоу в апдейтваллет
     if trade.order.type_operation == 'sale':
-        create_record_cashflow(user, owner, 'transfer', trade.price_trade, trade.payment_currency, trade)
+        create_record_cashflow(owner, user, 'transfer', trade.amount, trade_currency, trade)
+        create_record_cashflow(owner, None, 'trade_fee', maker_fee, trade_currency, trade)
+        update_wallet_balance(owner, payment_currency, trade.price_trade, 'up')
+        update_wallet_balance(owner, trade_currency, trade.amount+maker_fee, 'down')
 
-        update_wallet_balance(owner, trade.payment_currency, trade.price_trade, 'up')
-        update_wallet_balance(owner, trade.trade_currency, trade.amount, 'down')
-
-        create_record_cashflow(owner, user, 'transfer', trade.amount, trade.trade_currency, trade)
-        update_wallet_balance(user, trade.trade_currency, trade.amount, 'up')
-        update_wallet_balance(user, trade.payment_currency, trade.price_trade, 'down')
+        create_record_cashflow(user, owner, 'transfer', trade.price_trade, payment_currency, trade)
+        create_record_cashflow(user, None, 'trade_fee', taker_fee, payment_currency, trade)
+        update_wallet_balance(user, trade_currency, trade.amount, 'up')
+        update_wallet_balance(user, payment_currency, trade.price_trade + taker_fee, 'down')
 
     # покупка
     else:
-        create_record_cashflow(user, owner, 'transfer', trade.price_trade, trade.payment_currency, trade)
+        create_record_cashflow(owner, user, 'transfer', trade.price_trade, payment_currency, trade)
+        create_record_cashflow(owner, None, 'trade_fee', maker_fee, payment_currency, trade)
+        update_wallet_balance(owner, payment_currency, trade.price_trade + maker_fee, 'down')
+        update_wallet_balance(owner, trade_currency, trade.amount, 'up')
 
-        update_wallet_balance(owner, trade.order.payment_currency, trade.price_trade, 'down')
-        update_wallet_balance(owner, trade.trade_currency, trade.amount, 'up')
-
-        create_record_cashflow(owner, user, 'transfer', trade.amount, trade.trade_currency, trade)
-
-        update_wallet_balance(user, trade.payment_currency, trade.amount, 'down')
-        update_wallet_balance(user, trade.trade_currency, trade.price_trade, 'up')
+        create_record_cashflow(user, owner, 'transfer', trade.amount, trade_currency, trade)
+        create_record_cashflow(user, None, 'trade_fee', taker_fee, trade_currency, trade)
+        update_wallet_balance(user, trade_currency, trade.amount + taker_fee, 'down')
+        update_wallet_balance(user, payment_currency, trade.price_trade, 'up')
 
     close_trade(trade)
 
@@ -66,11 +74,13 @@ def close_trade(trade):
     if trade.order.type_operation == 'sale':
         hm = parent_order.holdMoney.get(currency=trade.trade_currency)
         hm.amount -= trade.amount
+        hm.fee -= trade.maker_fee
         hm.save()
 
     if trade.order.type_operation == 'buy':
         hm = parent_order.holdMoney.get(currency=trade.payment_currency)
         hm.amount -= trade.price_trade
+        hm.fee -= trade.maker_fee
         hm.save()
 
     trade.status = 'close'

@@ -1,9 +1,10 @@
 from decimal import Decimal
 
+from constance import config
 from pyrogram import InlineKeyboardButton
 
 from bot.helpers.converter import currency_in_usd
-from bot.helpers.shortcut import to_units, to_cents, round_currency
+from bot.helpers.shortcut import to_units, to_cents, round_currency, get_fee_amount
 from bot.models import CurrencyList
 from order.models import Order, ParentOrder, OrderHoldMoney
 
@@ -181,24 +182,30 @@ def create_order(temp_order):
 def hold_money_order(order):
     user = order.user
     hold_list = []
+
     if order.type_operation == 'sale':
+        fee_amount = to_cents(order.trade_currency, get_fee_amount(config.MAKER_FEE, to_units(order.trade_currency, order.amount)))
         hold_list.append(dict(
             order=order,
             user=user,
             currency=order.trade_currency,
-            amount=order.amount
+            amount=order.amount,
+            fee=fee_amount
         ))
 
     elif order.type_operation == 'buy':
 
         for currency in order.payment_currency:
+
             currency_rate = Decimal(order.currency_rate / order.payment_currency_rate[currency])
             amount = currency_rate * to_units(order.trade_currency, order.amount)
+            fee_amount = to_cents(currency, get_fee_amount(config.MAKER_FEE, to_units(currency, amount)))
             hold_list.append(dict(
                 order=order,
                 user=user,
                 currency=currency,
-                amount=to_cents(currency, amount)
+                amount=to_cents(currency, amount),
+                fee=to_cents(currency, fee_amount)
             ))
 
     OrderHoldMoney.objects.bulk_create([OrderHoldMoney(**r) for r in hold_list])
@@ -254,7 +261,8 @@ def check_balance_from_order(user, order):
         price_trade = Decimal(amount * trade_currency_rate / payment_currency_rate)
         balance = user.get_balance(currency, cent2unit=True)
 
-        if price_trade > balance:
+        fee_amount = get_fee_amount(config.MAKER_FEE, amount)
+        if price_trade + fee_amount > balance:
             is_good_balance = False
 
             if currency == 'USDT':

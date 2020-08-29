@@ -48,7 +48,7 @@ def wallet_info(user):
     if hold_money.count() > 0:
         hm_dict = defaultdict(int)
         for hm in hold_money:
-            hm_dict[hm.currency] += hm.amount
+            hm_dict[hm.currency] += hm.amount + hm.fee
 
         hold_money_txt = ''
 

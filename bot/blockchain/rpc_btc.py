@@ -12,7 +12,7 @@ tx_fee = 0.00015
 
 btc_node = config.BTC_NODE
 
-rpc_connection = AuthServiceProxy(btc_node%(rpc_user, rpc_password))
+rpc_connection = AuthServiceProxy(btc_node.format(user=rpc_user, password=rpc_password))#%(rpc_user, rpc_password))
 
 wallet_name = config.BTC_WALLET_NAME
 
@@ -50,9 +50,10 @@ def get_wallet_info():
 
 
 def get_all_transactions():
-    uri_path_w = '/wallet/%s' % (wallet_name)
-    rpc_conn = AuthServiceProxy(btc_node %
-                                (rpc_user, rpc_password, uri_path_w))
+    uri_path_w = '/wallet/' + wallet_name
+    url = str(btc_node.format(user=rpc_user, password=rpc_password) + uri_path_w)
+    rpc_conn = AuthServiceProxy(url)
+
     all_transactions = rpc_conn.listtransactions("*", 1000)
 
     all_tx = [{**key, 'amount': to_cents('BTC', key['amount']), 'fee': to_cents('BTC', key.get('fee', 0))} for key in all_transactions]

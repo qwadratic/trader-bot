@@ -73,3 +73,4 @@ class OrderHoldMoney(Model):
     user = ForeignKey('user.TelegramUser', related_name='holdMoney', on_delete=CASCADE)
     currency = CharField(max_length=255)
     amount = DecimalField(max_digits=40, decimal_places=0)
+    fee = DecimalField(max_digits=40, decimal_places=0)
