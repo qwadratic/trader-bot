@@ -13,4 +13,4 @@ def verification_withdrawal_requests():
         request_list.append(r)
 
     WithdrawalRequest.objects.bulk_update(request_list, ['status', 'type_withdrawal'])
-    logger.info('Withdrawal is verifed: %s'%s(request_list))
+    logger.info('Withdrawal is verifed: %s'%(request_list))
