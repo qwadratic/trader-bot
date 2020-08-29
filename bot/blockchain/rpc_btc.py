@@ -12,9 +12,9 @@ tx_fee = 0.00015
 
 btc_node = config.BTC_NODE
 
-rpc_connection = AuthServiceProxy(btc_node.format(user=rpc_user, password=rpc_password))#%(rpc_user, rpc_password))
-
 wallet_name = config.BTC_WALLET_NAME
+url = btc_node.format(user=rpc_user, password=rpc_password) + '/wallet/' + wallet_name
+rpc_connection = AuthServiceProxy(url)#btc_node.format(user=rpc_user, password=rpc_password))#%(rpc_user, rpc_password))
 
 
 def get_block():
@@ -25,36 +25,24 @@ def get_block():
 
 
 def get_new_address():
-    uri_path_w = '/wallet/%s' % (wallet_name)
-    rpc_conn = AuthServiceProxy(btc_node %
-                                (rpc_user, rpc_password, uri_path_w))
     address_type = 'legacy'
-    new_adr = rpc_conn.getnewaddress('', address_type)
+    new_adr = rpc_connection.getnewaddress('', address_type)
     return new_adr
 
 
 def get_wallet_balance():
-    uri_path_w = '/wallet/%s' % (wallet_name)
-    rpc_conn = AuthServiceProxy(btc_node %
-                                (rpc_user, rpc_password, uri_path_w))
-    wallet_balance = rpc_conn.getbalance()
+    wallet_balance = rpc_connection.getbalance()
     return wallet_balance
 
 
 def get_wallet_info():
-    uri_path_w = '/wallet/%s' % (wallet_name)
-    rpc_conn = AuthServiceProxy(btc_node %
-                                (rpc_user, rpc_password, uri_path_w))
-    wallet_info = rpc_conn.getwalletinfo()
-    return print('Your wallet information:', wallet_info)
+
+    wallet_info = rpc_connection.getwalletinfo()
+    return wallet_info
 
 
 def get_all_transactions():
-    uri_path_w = '/wallet/' + wallet_name
-    url = str(btc_node.format(user=rpc_user, password=rpc_password) + uri_path_w)
-    rpc_conn = AuthServiceProxy(url)
-
-    all_transactions = rpc_conn.listtransactions("*", 1000)
+    all_transactions = rpc_connection.listtransactions("*", 1000)
 
     all_tx = [{**key, 'amount': to_cents('BTC', key['amount']), 'fee': to_cents('BTC', key.get('fee', 0))} for key in all_transactions]
 
