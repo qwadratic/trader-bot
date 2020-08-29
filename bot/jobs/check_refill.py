@@ -60,7 +60,6 @@ def check_refill_bip():
         service.last_block = block
         service.save()
 
-
 @retry(ReadTimeout)
 def check_refill_btc():
     tx_cash_flow = [w.tx_hash.lower() for w in CashFlow.objects.filter(currency='BTC')]

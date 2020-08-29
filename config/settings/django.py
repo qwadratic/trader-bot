@@ -91,7 +91,6 @@ DATABASES = {
     'default': env.db('DATABASE_URL')
 }
 
-CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
@@ -164,11 +163,81 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose'
         },
+        'jobs': {
+            'formatter': 'verbose',
+            'filters': ['require_debug_false'],
+            'level': 'INFO',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': 'jobs.log',
+            'when': 'midnight',
+            'utc': True,
+            'backupCount': 7
+        },
+        'trade_event': {
+            'formatter': 'verbose',
+            'filters': ['require_debug_false'],
+            'level': 'DEBUG',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': 'trade_event.log',
+            'when': 'midnight',
+            'utc': True,
+            'backupCount': 7
+        },
+        'trade_operations': {
+            'formatter': 'verbose',
+            'filters': ['require_debug_false'],
+            'level': 'DEBUG',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': 'trade_operations.log',
+            'when': 'midnight',
+            'utc': True,
+            'backupCount': 7
+        },
+        'trade_api': {
+            'formatter': 'verbose',
+            'filters': ['require_debug_false'],
+            'level': 'WARNING',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': 'trade_api.log',
+            'when': 'midnight',
+            'utc': True,
+            'backupCount': 7
+        },
     },
     'loggers': {
-        'UserWallet': {
+        'pyrogram.client.ext.syncer': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'pyrogram.session.session': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'pyrogram': {
             'handlers': ['console'],
             'level': 'INFO',
+            'propagate': False,
+        },
+        'TradeJobs': {
+            'handlers': ['console', 'jobs'],
+            'level': 'INFO',
+            'propagate': False
+        },
+        'TradeEvent': {
+            'handlers': ['console', 'trade_event'],
+            'level': 'INFO',
+            'propagate': False
+        },
+        'TradeOperations': {
+            'handlers': ['console', 'trade_operations'],
+            'level': 'INFO',
+            'propagate': False
+        },
+        'TradeAPI': {
+            'handlers': ['console', 'trade_api'],
+            'level': 'WARNING',
             'propagate': False
         },
     },

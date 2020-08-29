@@ -843,6 +843,7 @@ def order_helper(cli, cb):
 
         new_order = create_order(order)
 
+
         cb.message.reply(order_info_for_owner(new_order), reply_markup=kb.order_for_owner(new_order, 'new_order'))
 
 

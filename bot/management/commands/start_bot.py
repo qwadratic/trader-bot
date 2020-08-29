@@ -20,7 +20,7 @@ from bot.jobs import check_refill_bip, check_refill_eth, update_exchange_rates, 
 from bot.jobs.withdrawal import verification_withdrawal_requests
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('TradeJobs')
 
 
 class Command(BaseCommand):

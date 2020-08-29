@@ -2,6 +2,9 @@ from bot.helpers.shortcut import create_record_cashflow
 from order.logic.core import update_order, close_order
 from trade.models.trade import TradeHoldMoney
 from user.logic.core import update_wallet_balance
+import logging
+
+logger = logging.getLogger('TradeOperations')
 
 
 def auto_trade(trade):
@@ -19,10 +22,12 @@ def auto_trade(trade):
 
         update_wallet_balance(owner, trade.payment_currency, trade.price_trade, 'up')
         update_wallet_balance(owner, trade.trade_currency, trade.amount, 'down')
+        logger.info('User`s %s wallet is update: +%s %s; -%s %s'%(owner, trade.payment_currency, trade.price_trade, trade.trade_currency, trade.amount))
 
         create_record_cashflow(owner, user, 'transfer', trade.amount, trade.trade_currency, trade)
         update_wallet_balance(user, trade.trade_currency, trade.amount, 'up')
         update_wallet_balance(user, trade.payment_currency, trade.price_trade, 'down')
+        logger.info('User`s %s wallet is update: +%s %s; -%s %s'%(user, trade.trade_currency, trade.amount, trade.payment_currency, trade.price_trade))
 
     # покупка
     else:
@@ -31,14 +36,16 @@ def auto_trade(trade):
 
         update_wallet_balance(owner, trade.order.payment_currency, trade.price_trade, 'down')
         update_wallet_balance(owner, trade.trade_currency, trade.amount, 'up')
+        logger.info('User`s %s wallet is update: +%s %s; -%s %s'%(owner, trade.trade_currency, trade.amount, trade.order.payment_currency, trade.price_trade))
 
         create_record_cashflow(owner, user, 'transfer', trade.amount, trade.trade_currency, trade)
 
         update_wallet_balance(user, trade.payment_currency, trade.price_trade, 'down')
         update_wallet_balance(user, trade.trade_currency, trade.amount, 'up')
+        logger.info('User`s %s wallet is update: +%s %s; -%s %s'%(user, trade.trade_currency, trade.amount, trade.order.payment_currency, trade.price_trade))
 
     close_trade(trade)
-
+    logger.info('AutoTrade is closed %s'%(trade.id))
 
 # def semi_auto_trade(trade):
 #     owner = trade.order.parent_order.user

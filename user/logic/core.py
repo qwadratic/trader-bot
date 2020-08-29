@@ -7,7 +7,7 @@ from user.models import Wallet, VirtualWallet
 from config.settings import env
 import logging
 
-logger = logging.getLogger('UserWallet')
+logger = logging.getLogger('TradeEvent')
 
 def create_wallets_for_user(user):
     currency = ['BIP', 'ETH', 'BTC', 'USDT', 'UAH', 'USD', 'RUB']
@@ -81,7 +81,6 @@ def update_wallet_balance(user, currency, amount, operation):
         wallet.balance -= amount
 
     wallet.save()
-    logger.info('Update wallet balance is successful')
 
 def finish_withdraw(withdrawal_request_id, tx_hash):
     withdrawal_request = WithdrawalRequest.objects.get(id=withdrawal_request_id)
@@ -96,4 +95,3 @@ def finish_withdraw(withdrawal_request_id, tx_hash):
     update_wallet_balance(user, withdrawal_request.currency, amount, 'down')
 
     create_record_cashflow(user, None, 'withdrawal', amount, currency, tx_hash=tx_hash)
-    logger.info('Withdrawwal of is successful')

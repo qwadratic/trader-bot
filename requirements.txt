@@ -10,4 +10,3 @@ web3==5.11.1
 minter-sdk==1.0.34
 python-bitcoinrpc==1.0
 cachetools==4.1.1
-django-constance[database]==2.7.0
