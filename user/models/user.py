@@ -23,13 +23,17 @@ def _default_telegramuser_cache():
         'msg': {
             'trade_menu': None,
             'wallet_menu': None,
-            'last_temp_order': None
+            'last_temp_order': None,
+            'order_enter_amount': None,
+            'trade_enter_amount': None,
+            'last_trade': None,
         },
         'clipboard': {
             'currency': None,
             'requisites': [],
             'active_trade': None,
             'deposit_currency': {},
+            'trade_deposit_currency': [],
             'withdrawal_request': {},
             'market_depth': {}
         }
@@ -49,6 +53,12 @@ class TelegramUser(Model):
 
     class Meta:
         verbose_name = 'Telegram User'
+
+    def get_address(self, currency):
+        if currency == 'USDT':
+            currency = 'ETH'
+
+        return self.wallets.get(currency=currency).address
 
     def get_text(self, name):
         activate(self.settings.language)
@@ -94,6 +104,7 @@ class UserFlag(Model):
     objects = GetOrNoneManager()
 
     user = OneToOneField(TelegramUser, related_name='flags', on_delete=CASCADE)
+    in_trade = BooleanField(default=False)
     await_requisites_for_order = BooleanField(default=False)
     await_currency_rate = BooleanField(default=False)
     await_requisite_for_order = BooleanField(default=False)
@@ -106,6 +117,7 @@ class UserFlag(Model):
     await_replenishment_for_order = BooleanField(default=False)
     await_amount_for_withdrawal = BooleanField(default=False)
     await_tx_hash_for_withdrawal = BooleanField(default=False)
+    await_replenishment_for_trade = BooleanField(default=False)
 
 
 class UserSettings(Model):
