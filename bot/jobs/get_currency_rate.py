@@ -43,13 +43,3 @@ def update_exchange_rates():
             ))
 
     ExchangeRate.objects.bulk_create([ExchangeRate(**r) for r in rate_list])
-
-
-def get_update_exchange_rates_interval():
-    try:
-        interval = Settings.objects.get().update_rate_interval
-    except Exception:
-        set = Settings.objects.create()
-        interval = set.update_rate_interval
-
-    return interval

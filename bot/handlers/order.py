@@ -3,20 +3,22 @@ from decimal import Decimal, InvalidOperation
 
 from pyrogram import Client, Filters
 
-from bot.helpers.settings import get_max_price_range_factor
 from bot.models import CurrencyList
+
 from order.logic import kb
 from order.logic.core import get_order_info, create_order, order_info_for_owner, hold_money_order, \
     check_balance_from_order, update_order
 from order.logic.text_func import choice_payment_currency_text, get_lack_balance_text
 from order.models import TempOrder, Order
+
 from bot.helpers.converter import currency_in_usd
 from bot.helpers.shortcut import get_user, delete_msg, to_cents, to_units, get_currency_rate, \
     round_currency, update_cache_msg, delete_inline_kb
 from trade.logic.trade_filters import in_trade
 
+from constance import config
 
-@Client.on_message(Filters.create(lambda _, m: m.text == get_user(m.from_user.id).get_text(name='user-kb-trade')) & in_trade)
+
 def trade_menu(cli, m):
     user = get_user(m.from_user.id)
 
@@ -57,6 +59,7 @@ def trade_menu_controller(cli, cb):
             reply_markup=kb.trade_currency(user))
 
     elif button == 'orders':
+
         cb.message.edit(user.get_text(name='order-market_depth-select_trade_currency'),
                         reply_markup=kb.market_depth_trade_currency(user))
 
@@ -122,12 +125,15 @@ def market_depth(cli, cb):
     if button == 'open':
         cb_data = cb.data.split('-')
         order_id = int(cb_data[2])
+
         order = Order.objects.get(id=order_id)
 
         if user.id == order.parent_order.user_id:
+
             cb.message.reply(get_order_info(user, order_id),
                              reply_markup=kb.order_for_owner(order.parent_order))
         else:
+
             cb.message.reply(get_order_info(user, order_id),
                              reply_markup=kb.order_for_user(user, order_id))
 
@@ -264,6 +270,7 @@ def owner_order_list(cli, cb):
         order = user.parentOrders.get(id=order_id)
 
         cb.message.edit(order_info_for_owner(order),
+
                         reply_markup=kb.order_for_owner(order))
 
     if action == 'move':
@@ -292,6 +299,7 @@ def order_info(cli, cb):
         cli.answer_callback_query(cb.id, 'coming soon')
 
     elif action == 'switch':
+
         order_id = int(cb.data.split('-')[2])
         order = user.parentOrders.get(id=order_id)
 
@@ -320,14 +328,17 @@ def order_info(cli, cb):
                         return
 
             hold_money_order(order)
+
             update_order(order, 'set status', 'open')
             cb.message.edit(order_info_for_owner(order),
+
                             reply_markup=kb.order_for_owner(order))
 
         elif order.status == 'open':
 
             update_order(order, 'set status', 'close')
             cb.message.edit(order_info_for_owner(order),
+
                             reply_markup=kb.order_for_owner(order))
 
 
@@ -353,6 +364,7 @@ def select_trade_currency(_, cb):
 
         cb.message.edit(cb.message.text + txt)
         cb.message.reply(
+
             user.get_text('order-select_payment_currency').format(type_operation=type_op,
                                                                   currency=temp_order.trade_currency),
             reply_markup=kb.payment_currency(trade_currency, user))
@@ -402,6 +414,7 @@ def select_payment_currency(cli, cb):
             cb.message.edit(cb.message.text)
             cb.message.reply(user.get_text(name='order-enter_currency_rate').format(
                 trade_currency=order.trade_currency,
+
                 price=round_currency(order.trade_currency,
                                      to_units(order.trade_currency, get_currency_rate(order.trade_currency)))),
                 reply_markup=kb.avarage_rate(user))
@@ -430,6 +443,7 @@ def select_payment_currency(cli, cb):
 
             cb.message.reply(user.get_text(name='order-enter_currency_rate').format(
                 trade_currency=order.trade_currency,
+
                 price=round_currency(order.trade_currency,
                                      to_units(order.trade_currency, get_currency_rate(order.trade_currency)))),
                 reply_markup=kb.avarage_rate(user))
@@ -630,7 +644,8 @@ def enter_currency_rate(cli, m):
     try:
         value = Decimal(m.text.replace(',', '.'))
         current_price = to_units(order.trade_currency, get_currency_rate(order.trade_currency))
-        max_price_range_factor = get_max_price_range_factor(order.trade_currency)
+
+        max_price_range_factor = config.GET_MAX_PRICE_RANGE_FACTOR
 
         min_limit = current_price / (1 + max_price_range_factor)
         max_limit = current_price * (1 + max_price_range_factor)
@@ -672,6 +687,7 @@ def enter_currency_rate(cli, m):
             amount=max_amount), reply_markup=kb.max_amount(user))
 
     else:
+
         msg = m.reply(user.get_text(name='order-enter_amount_for_buy').format(
             currency=order.trade_currency), reply_markup=kb.cancel_order(user, order.id))
 
@@ -716,6 +732,7 @@ def amount_for_order(cli, m):
         temp_order.save()
 
         order = create_order(temp_order)
+
         m.reply(order_info_for_owner(order), reply_markup=kb.order_for_owner(order))
     # покупка
     else:
@@ -735,7 +752,8 @@ def amount_for_order(cli, m):
             deposit_currency = user.cache['clipboard']['deposit_currency']
             lack_balance_txt = get_lack_balance_text(temp_order, deposit_currency)
 
-            text = f'Балансы {", ".join(deposit_currency)} недостаточны. Если хотите исопльзовать бота как гаранта - надо пополнить\n\n' \
+            text = f'Балансы {", ".join(
+                deposit_currency)} недостаточны. Если хотите исопльзовать бота как гаранта - надо пополнить\n\n' \
                 f'{lack_balance_txt}'
 
             flags = user.flags
@@ -772,6 +790,7 @@ def cancel_order_create(cli, cb):
     delete_msg(cli, user.telegram_id, user_msg.trade_menu)
 
     msg = cb.message.reply(user.get_text(name='user-trade_menu'), reply_markup=kb.trade_menu(user))
+
     update_cache_msg(user, 'trade_menu', msg.message_id)
 
 
@@ -788,7 +807,7 @@ def order_helper(cli, cb):
 
         cb.message.edit(
             cb.message.text + '\n\n' + user.get_text(name='order-your_choice') +
-            f'{round_currency(order.trade_currency,to_units(order.trade_currency, current_rate))}'
+            f'{round_currency(order.trade_currency, to_units(order.trade_currency, current_rate))}'
         )
 
         flags = user.flags
@@ -807,6 +826,7 @@ def order_helper(cli, cb):
 
         # покупка
         else:
+
             msg = cb.message.reply(user.get_text(name='order-enter_amount_for_buy').format(
                 currency=order.trade_currency), reply_markup=kb.cancel_order(user, order.id))
 
@@ -829,6 +849,7 @@ def order_helper(cli, cb):
                 currency_balance[currency] = balance * to_units(currency, order.payment_currency_rate[currency])
 
             min_currency = min(currency_balance, key=lambda currency: currency_balance[currency])
+
             max_amount = to_cents(order.trade_currency,
                                   currency_balance[min_currency] / to_units(order.trade_currency, order.currency_rate))
 
@@ -885,6 +906,7 @@ def order_deposit_navigation(cli, cb):
         temp_order.save()
         order = create_order(temp_order)
         cb.message.edit(cb.message.text)
+
         cb.message.reply(order_info_for_owner(order), reply_markup=kb.order_for_owner(order))
 
 
@@ -893,4 +915,5 @@ def create_order_after_deposit(cli, cb):
     user = get_user(cb.from_user.id)
     order = create_order(user.temp_order)
     cb.message.edit(cb.message.text)
+
     cb.message.reply(order_info_for_owner(order), reply_markup=kb.order_for_owner(order))

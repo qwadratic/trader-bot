@@ -8,6 +8,8 @@ from config.settings import TG_API_ID, TG_API_HASH, TG_API_TOKEN
 from user.models import TelegramUser
 from mintersdk.shortcuts import to_pip, to_bip
 
+from constance import config
+
 
 def get_user(tg_id):
     return TelegramUser.objects.get_or_none(telegram_id=tg_id)
@@ -96,7 +98,6 @@ def to_units(currency, amount, round=False):
     elif currency == 'BIP':
         amount = to_bip(amount)
 
-
     elif currency == 'BTC':
         sat = Decimal(100000000)
         amount = amount / sat
@@ -149,7 +150,7 @@ def round_currency(currency_id, number):
                                        
 def get_max_amount_withdrawal(user, currency):
     from bot.helpers.converter import currency_in_usd
-    withdrawal_factor = 1  # TODO перенести в настройки
+    withdrawal_factor = config.WITHDRAWAL_FACTOR
     deposit_sum = Decimal(0)
     withdrawal_sum = Decimal(0)
 
