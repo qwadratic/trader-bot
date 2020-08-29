@@ -2,13 +2,13 @@ Django==3.0.5
 django-environ==0.4.5
 django-modeltranslation==0.15.1
 django-silk==4.0.1
+django-apscheduler
+django-constance[database]==2.7.0
 Pyrogram==0.17.1
 TgCrypto==1.2.0
 psycopg2-binary==2.8.5
-APScheduler==3.6.3
 web3==5.11.1
 minter-sdk==1.0.34
 python-bitcoinrpc==1.0
 cachetools==4.1.1
 APScheduler==3.6.3
-

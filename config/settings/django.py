@@ -38,15 +38,14 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'modeltranslation',
     'django.contrib.admin',
+    'constance',
+    'constance.backends.database',
     'django_apscheduler',
     'bot',
     'user',
     'order',
     'trade',
-    'silk',
-
-]
-
+    'silk',]
 APSCHEDULER_DATETIME_FORMAT = "N j, Y, f:s a"
 
 
@@ -90,6 +89,9 @@ DATABASES = {
     'default': env.db('DATABASE_URL')
 }
 
+CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
+
+#CONSTANCE_CONFIG =
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
