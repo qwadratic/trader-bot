@@ -148,9 +148,9 @@ STATIC_URL = '/static/'
 POST_SERVER_ITEM_ACCESS_TOKEN = '4ae1bed48b524ba4b7e1e22315bdbd6f' #'ff446ee4-661d-4bbd-9094-5276955bd39d'
 ROLLBAR = {
     'access_token': 'POST_SERVER_ITEM_ACCESS_TOKEN',
-    'environment':  'development' if DEBUG else 'production',
-    'branch': 'master',
-    'root': 'os.path.abspath(os.curdir)',
+    'environment':  'production',
+    'branch': 'log',
+    'root':  'log/config/settings/django.py',
 }
 
 DJANGO_LOG_LEVEL = 'INFO'
@@ -209,12 +209,12 @@ LOGGING = {
             'utc': True,
             'backupCount': 7
         },
-        'trade_api': {
+        'trade_errors': {
             'formatter': 'verbose',
             'filters': ['require_debug_false'],
             'level': 'WARNING',
             'class': 'logging.handlers.TimedRotatingFileHandler',
-            'filename': 'logs/trade_api.log',
+            'filename': 'logs/trade_errors.log',
             'when': 'midnight',
             'utc': True,
             'backupCount': 7
@@ -251,8 +251,8 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': False,
         },
-        'TradeAPI': {
-            'handlers': ['console', 'trade_api', 'rollbar'],
+        'TradeErrors': {
+            'handlers': ['console', 'trade_errors', 'rollbar'],
             'level': 'WARNING',
             'propagate': False,
         },

@@ -6,7 +6,12 @@ from bot.models import ExchangeRate, Settings
 from requests import Session
 import logging
 
+import rollbar
+
+from config.settings import POST_SERVER_ITEM_ACCESS_TOKEN
+
 logger = logging.getLogger('TradeJobs')
+rollbar.init(POST_SERVER_ITEM_ACCESS_TOKEN, 'production')
 
 def coinmarket_currency_usd(currency):
     url = 'https://pro-api.coinmarketcap.com/v1/tools/price-conversion'
@@ -51,6 +56,7 @@ def update_exchange_rates():
 
         ExchangeRate.objects.bulk_create([ExchangeRate(**r) for r in rate_list])
     except Exception as ex:
+        rollbar.report_message('ExchangeRate doesn`t update. Exception: %s'%(ex))
         logger.warning('ExchangeRate doesn`t update. Exception: %s'%(ex))
 
 
