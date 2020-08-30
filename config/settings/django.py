@@ -21,7 +21,7 @@ from .env import env
 SECRET_KEY = env.str('SECRET_KEY', default='qwerty')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env.bool('DEBUG', default=False) # necesary to change in .env DEBUG=off
+DEBUG = env.bool('DEBUG', default=False)
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
@@ -145,12 +145,12 @@ STATIC_ROOT = os.path.join(PROJECT_DIR, 'static')
 STATIC_URL = '/static/'
 
 
-POST_SERVER_ITEM_ACCESS_TOKEN = '4ae1bed48b524ba4b7e1e22315bdbd6f' #'ff446ee4-661d-4bbd-9094-5276955bd39d'
+POST_SERVER_ITEM_ACCESS_TOKEN = '4ae1bed48b524ba4b7e1e22315bdbd6f'
 ROLLBAR = {
     'access_token': 'POST_SERVER_ITEM_ACCESS_TOKEN',
     'environment':  'production',
     'branch': 'log',
-    'root':  'log/config/settings/django.py',
+    'root': 'os.path.dirname(os.path.abspath(__file__))',
 }
 
 DJANGO_LOG_LEVEL = 'INFO'
@@ -164,8 +164,8 @@ LOGGING = {
         },
     },
     'filters': {
-      'require_debug_false': {
-          '()': 'django.utils.log.RequireDebugFalse',
+      'require_debug_true': {
+          '()': 'django.utils.log.RequireDebugTrue', # change on django.utils.log.RequireDebugFalse if DEBUG = off in .env
       },
     },
     'handlers': {
@@ -174,14 +174,14 @@ LOGGING = {
             'formatter': 'verbose',
         },
         'rollbar': {
-            'filters': ['require_debug_false'],
+            'filters': ['require_debug_true'],
             'accsess_token': 'POST_SERVER_ITEM_ACCESS_TOKEN',
             'enviroment': 'production',
             'class': 'rollbar.logger.RollbarHandler',
         },
         'jobs': {
             'formatter': 'verbose',
-            'filters': ['require_debug_false'],
+            'filters': ['require_debug_true'],
             'level': 'INFO',
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'filename': 'logs/jobs.log',
@@ -191,7 +191,7 @@ LOGGING = {
         },
         'trade_event': {
             'formatter': 'verbose',
-            'filters': ['require_debug_false'],
+            'filters': ['require_debug_true'],
             'level': 'INFO',
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'filename': 'logs/trade_event.log',
@@ -201,7 +201,7 @@ LOGGING = {
         },
         'trade_operations': {
             'formatter': 'verbose',
-            'filters': ['require_debug_false'],
+            'filters': ['require_debug_true'],
             'level': 'DEBUG',
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'filename': 'logs/trade_operations.log',
@@ -211,7 +211,7 @@ LOGGING = {
         },
         'trade_errors': {
             'formatter': 'verbose',
-            'filters': ['require_debug_false'],
+            'filters': ['require_debug_true'],
             'level': 'WARNING',
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'filename': 'logs/trade_errors.log',
