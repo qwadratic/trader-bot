@@ -21,7 +21,7 @@ from .env import env
 SECRET_KEY = env.str('SECRET_KEY', default='qwerty')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env.bool('DEBUG', default=False) # necesary to change in .env DEBUG=off
+DEBUG = bool(int(os.getenv('LOCAL', '0'))) #env.bool('DEBUG', default=False)
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
@@ -148,12 +148,12 @@ STATIC_URL = '/static/'
 POST_SERVER_ITEM_ACCESS_TOKEN = '4ae1bed48b524ba4b7e1e22315bdbd6f' #'ff446ee4-661d-4bbd-9094-5276955bd39d'
 ROLLBAR = {
     'access_token': 'POST_SERVER_ITEM_ACCESS_TOKEN',
-    'environment': 'production',
-    'branch': 'log',
+    'environment':  'development' if DEBUG else 'production',
+    'branch': 'master',
     'root': 'os.path.abspath(os.curdir)',
 }
 
-DJANGO_LOG_LEVEL = 'DEBUG'
+DJANGO_LOG_LEVEL = 'INFO'
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -204,7 +204,7 @@ LOGGING = {
             'filters': ['require_debug_false'],
             'level': 'DEBUG',
             'class': 'logging.handlers.TimedRotatingFileHandler',
-            'filename': 'logs/trade_operations',
+            'filename': 'logs/trade_operations.log',
             'when': 'midnight',
             'utc': True,
             'backupCount': 7
