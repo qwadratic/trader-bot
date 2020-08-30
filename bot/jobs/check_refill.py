@@ -1,5 +1,5 @@
 from pyrogram import Client
-from requests import ReadTimeout
+from requests import ReadTimeout, RequestException
 
 from bot.blockchain.core import get_eth_refill_txs, get_bip_refill_txs, order_deposit
 from bot.blockchain.ethAPI import w3
@@ -16,6 +16,12 @@ from user.models import Wallet, VirtualWallet
 from user.logic import kb
 from collections import defaultdict
 
+import logging
+import rollbar
+from config.settings import POST_SERVER_ITEM_ACCESS_TOKEN
+
+logger = logging.getLogger('TradeErrors')
+rollbar.init(POST_SERVER_ITEM_ACCESS_TOKEN, 'production')
 
 @retry(Exception)
 def check_refill_eth():
@@ -55,10 +61,14 @@ def check_refill_bip():
 
     addresses = [w.address for w in Wallet.objects.filter(currency='BIP')]
     for block in range(last_block + 1, last_block + block_diff + 1):
-        refill_txs = get_bip_refill_txs(addresses, block)
-        update_balance(refill_txs)
-        service.last_block = block
-        service.save()
+        try:
+            refill_txs = get_bip_refill_txs(addresses, block)
+            update_balance(refill_txs)
+            service.last_block = block
+            service.save()
+        except RequestException:
+            rollbar.report_message('MaxRetryError: requests.exceptions.ConnectTimeout')
+            logger.warning('MaxRetryError: requests.exceptions.ConnectTimeout')
 
 @retry(ReadTimeout)
 def check_refill_btc():
