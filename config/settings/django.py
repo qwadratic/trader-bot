@@ -237,17 +237,17 @@ LOGGING = {
             'propagate': False,
         },
         'TradeJobs': {
-            'handlers': ['console', 'jobs', 'rollbar'],
+            'handlers': ['console', 'jobs'],
             'level': 'INFO',
             'propagate': False,
         },
         'TradeEvent': {
-            'handlers': ['console', 'trade_event', 'rollbar'],
+            'handlers': ['console', 'trade_event'],
             'level': 'INFO',
             'propagate': False,
         },
         'TradeOperations': {
-            'handlers': ['console', 'trade_operations', 'rollbar'],
+            'handlers': ['console', 'trade_operations'],
             'level': 'DEBUG',
             'propagate': False,
         },

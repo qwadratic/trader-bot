@@ -10,7 +10,7 @@ import rollbar
 
 from config.settings import POST_SERVER_ITEM_ACCESS_TOKEN
 
-logger = logging.getLogger('TradeJobs')
+logger = logging.getLogger('TradeErrors')
 rollbar.init(POST_SERVER_ITEM_ACCESS_TOKEN, 'production')
 
 def coinmarket_currency_usd(currency):
@@ -34,7 +34,8 @@ def coinmarket_currency_usd(currency):
         coin = data['data']['quote']['USD']['price']
         return coin
     except KeyError:
-        logging.warning('You have exceeded your API Keys monthly credit limit. API info: %s'%(data))
+        rollbar.report_message('You have exceeded your API Keys monthly credit limit. API info: %s'%(data))
+        logger.warning('You have exceeded your API Keys monthly credit limit. API info: %s'%(data))
 
 
 
