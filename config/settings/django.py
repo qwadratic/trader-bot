@@ -21,7 +21,7 @@ from .env import env
 SECRET_KEY = env.str('SECRET_KEY', default='qwerty')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = bool(int(os.getenv('LOCAL', '0'))) #env.bool('DEBUG', default=False)
+DEBUG = env.bool('DEBUG', default=False) # necesary to change in .env DEBUG=off
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
