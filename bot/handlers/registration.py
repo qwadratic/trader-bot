@@ -1,9 +1,11 @@
 from pyrogram import Client, Filters
 
+from order.logic.core import order_info_for_owner, get_order_info
 from user.logic import kb
 from user.logic.filters import ref_link
 from user.logic.registration import register_user
 from order.models import Order
+from order.logic import kb as order_kb
 from bot.helpers.shortcut import get_user
 
 
@@ -60,13 +62,12 @@ def ref_start(_, m):
         m.reply(user.get_text(name='user-start_ref'), reply_markup=kb.hide(user))
 
     # Мы попали в объявление.
-    # TODO:: заимплементить этот кусок
     if is_ref_order:
         # Перешли по своей же ссылке
         if referrer.id == user.id:
-            m.reply('TODO:: Интерфейс редактирования объявления (посетили свое по рефке)', reply_markup=kb.hide(user))
+            m.reply(order_info_for_owner(order.parent_order), reply_markup=order_kb.order_for_owner(order.parent_order))
         else:
-            m.reply('TODO:: Интерфейс просмотра объявления (возможно доп. логика, т. к. перешли по рефке)', reply_markup=kb.hide(user))
+            m.reply(get_order_info(user, order.id), reply_markup=order_kb.order_for_user(user, order.id))
         return
 
     # Переход на объявление по валидной рефке мы уже обработали - значит мы в главном меню

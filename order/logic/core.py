@@ -4,9 +4,10 @@ from constance import config
 from pyrogram import InlineKeyboardButton
 
 from bot.helpers.converter import currency_in_usd
-from bot.helpers.shortcut import to_units, to_cents, round_currency, get_fee_amount
+from bot.helpers.shortcut import to_units, to_cents, round_currency, get_fee_amount, create_record_cashflow
 from bot.models import CurrencyList
 from order.models import Order, ParentOrder, OrderHoldMoney
+from user.logic.core import update_wallet_balance
 
 
 def get_order_info(user, order_id):
@@ -313,7 +314,7 @@ def button_orders(user, orders, kb_list, offset):
         else:
             icon = '🟩'
 
-        trade_currency_rate = to_units(trade_currency, order.currency_rate, round=True)
+        trade_currency_rate = to_units(payment_currency, order.currency_rate, round=True)
         payment_currency_rate = round_currency(trade_currency, 1 / trade_currency_rate)
 
         amount = to_units(order.trade_currency, order.amount, round=True)
@@ -325,3 +326,10 @@ def button_orders(user, orders, kb_list, offset):
         kb_list.append([InlineKeyboardButton('{:ᅠ<100}'.format(button_name), callback_data=f'market_depth-open-{order.id}-{type_operation}-{offset}')])
 
     return kb_list
+
+
+def convert_bonus(user, amount, currency, amount_in_currency):
+    update_wallet_balance(user, 'BONUS', to_cents('BONUS', amount), 'down')
+    update_wallet_balance(user, currency, to_cents(currency, amount_in_currency), 'up')
+    create_record_cashflow(user, None, 'convert_bonus', to_cents('BONUS', amount), 'BONUS')
+    create_record_cashflow(user, None, 'convert_bonus', to_cents(currency, amount_in_currency), currency)

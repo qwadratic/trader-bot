@@ -27,6 +27,7 @@ def _default_telegramuser_cache():
             'order_enter_amount': None,
             'trade_enter_amount': None,
             'last_trade': None,
+            'amount_for_conver_bonus': None
         },
         'clipboard': {
             'currency': None,
@@ -119,6 +120,7 @@ class UserFlag(Model):
     await_amount_for_withdrawal = BooleanField(default=False)
     await_tx_hash_for_withdrawal = BooleanField(default=False)
     await_replenishment_for_trade = BooleanField(default=False)
+    await_amount_for_convert_bonus = BooleanField(default=False)
 
 
 class UserSettings(Model):
@@ -130,8 +132,10 @@ class UserSettings(Model):
 
 
 class UserRef(Model):
+    objects = GetOrNoneManager()
+
     user = OneToOneField(TelegramUser, related_name='ref', on_delete=CASCADE)
-    referrer = ForeignKey(TelegramUser, on_delete=CASCADE)
+    referrer = ForeignKey(TelegramUser, related_name='Ref', on_delete=CASCADE)
     ref_created_at = DateTimeField(auto_now_add=True)
 
 

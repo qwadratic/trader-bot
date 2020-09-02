@@ -239,6 +239,10 @@ def confirm_amount_for_trade(cli, cb):
             # проведение автотрейда
             auto_trade(trade)
 
+            flags = user.flags
+            flags.in_trade = False
+            flags.save()
+
             txt_for_user = user.get_text(name='trade-success_trade').format(
                 type_operation=type_translate_for_user,
                 amount=round_currency(trade.trade_currency, to_units(trade.trade_currency, trade.amount)),

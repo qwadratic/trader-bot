@@ -34,7 +34,7 @@ def update_exchange_rates():
     rate_list = []
     for currency in currency_list:
         for s in sources:
-            rate = to_cents(currency, sources[s](currency))
+            rate = to_cents('USD', sources[s](currency))
 
             rate_list.append(dict(
                 currency=currency,

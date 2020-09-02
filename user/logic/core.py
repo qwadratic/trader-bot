@@ -59,13 +59,13 @@ def create_wallets_for_user(user):
         VirtualWallet.objects.create(user_id=user.id, currency=c)
 
 
-def create_reflink(user_id, trade_id=None):
+def create_reflink(user_id=None, order_id=None):
     # TODO  Возможно использовать шифрование
 
     bot_link = f'https://t.me/{env.str("BOT_USERNAME")}?start=u{user_id}'
 
-    if trade_id:
-        bot_link = f'https://t.me/{env.str("BOT_USERNAME")}?start=t{trade_id}'
+    if order_id:
+        bot_link = f'https://t.me/{env.str("BOT_USERNAME")}?start=t{order_id}'
 
     return bot_link
 

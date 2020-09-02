@@ -17,7 +17,7 @@ def currency_in_usd(currency, amount):
 
 
 def currency_in_user_currency(currency, user_currency, amount):
-    currency_rate = to_units(currency, get_currency_rate(currency))
-    user_currency_rate = to_units(user_currency, get_currency_rate(user_currency))
+    currency_rate = to_units('USD', get_currency_rate(currency))
+    user_currency_rate = to_units('USD', get_currency_rate(user_currency))
 
     return currency_rate * amount * user_currency_rate

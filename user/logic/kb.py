@@ -71,6 +71,11 @@ def wallet_menu(user):
     if withdrawal_requests.count() > 0:
         kb.insert(0, [InlineKeyboardButton(user.get_text(name='wallet-kb-cancel_withdrawal'), callback_data=f'wallet_menu-cancel_withdrawal')])
 
+    bonus_balance = to_units('BONUS', user.virtual_wallets.get(currency='BONUS').balance, round=True)
+
+    if bonus_balance >= 0.01:
+        kb.insert(0, [InlineKeyboardButton(user.get_text(name='wallet-kb-convert_bonus'),
+                                           callback_data=f'wallet_menu-convert_bonus')])
     return InlineKeyboardMarkup(kb)
 
 
@@ -113,6 +118,40 @@ select_currency_for_withdrawal = InlineKeyboardMarkup(
         [InlineKeyboardButton('🔙', callback_data='withdrawal-back')]
 
     ])
+
+
+def select_currency_for_convert_bonus(user, amount):
+    kb = InlineKeyboardMarkup(
+    [
+        [InlineKeyboardButton('BIP', callback_data=f'convert_bonus-BIP-{amount}'),
+         InlineKeyboardButton('BTC', callback_data=f'convert_bonus-BTC-{amount}')],
+
+        [InlineKeyboardButton('USDT', callback_data=f'convert_bonus-USDT-{amount}'),
+         InlineKeyboardButton('ETH', callback_data=f'convert_bonus-ETH-{amount}')],
+
+        [InlineKeyboardButton(user.get_text('wallet-kb-cancel_convert_bonus'), callback_data='cancel_convert_bonus')]
+
+    ])
+    return kb
+
+
+def confirm_convert_bonus(user, amount, currency_rate, currency):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='kb-yes'), callback_data=f'confirm_convert_bonus-{amount}-{currency}-{currency_rate}')],
+            [InlineKeyboardButton(user.get_text(name='kb-no'), callback_data='cancel_convert_bonus')]
+        ]
+    )
+    return kb
+
+
+def cancel_convert_bonus(user):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='wallet-kb-cancel_convert_bonus'), callback_data=f'cancel_convert_bonus')]
+        ]
+    )
+    return kb
 
 
 def cancel_withdrawal(user):

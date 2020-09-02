@@ -7,6 +7,7 @@ from bot.helpers.converter import currency_in_usd
 from bot.helpers.shortcut import to_units, round_currency, get_currency_rate
 from order.logic.core import get_orders, button_orders
 from order.models import Order
+from user.logic.core import create_reflink
 
 
 def trade_menu(user):
@@ -256,8 +257,8 @@ def market_depth(user, trade_currency, payment_currency, offset, revers=False):
     buy_orders = get_orders('buy', trade_currency, payment_currency, offset, 5, 'open')
     all_orders = Order.objects.filter(type_operation=1, status='open')
 
-    trade_currency_rate_usd = to_units(trade_currency, get_currency_rate(trade_currency), round=True)
-    payment_currency_rate_usd = to_units(payment_currency, get_currency_rate(payment_currency), round=True)
+    trade_currency_rate_usd = to_units('USD', get_currency_rate(trade_currency), round=True)
+    payment_currency_rate_usd = to_units('USD', get_currency_rate(payment_currency), round=True)
     trade_currency_rate = round_currency(payment_currency, Decimal(trade_currency_rate_usd / payment_currency_rate_usd))
     payment_currency_rate = round_currency(trade_currency, Decimal(payment_currency_rate_usd / trade_currency_rate_usd))
 
@@ -365,7 +366,7 @@ def order_for_owner(order):
 
     kb = InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton(user.get_text(name='order-kb-share'), callback_data=f'order_info-share-{order.id}')],
+            [InlineKeyboardButton(user.get_text(name='order-kb-share'), callback_data=f'share_order-{order.id}')],
             [InlineKeyboardButton(f'{marker_status_button[order.status]}',
                                   callback_data=f'order_info-switch-{order.id}')],
             [InlineKeyboardButton(user.get_text(name='kb-close'), callback_data='close'),
@@ -380,7 +381,7 @@ def order_for_owner(order):
 def order_for_user(user, order_id):
     kb = InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton(user.get_text(name='order-kb-share'), callback_data=f'order_info-share-{order_id}')],
+            #[InlineKeyboardButton(user.get_text(name='order-kb-share'), callback_data=f'share_order-user-{order_id}')],
             [InlineKeyboardButton(user.get_text(name='kb-close'), callback_data=f'close'),
              InlineKeyboardButton(user.get_text(name='order-kb-start_trade'), callback_data=f'start_trade-{order_id}')]
 
@@ -429,6 +430,18 @@ def continue_order_after_deposit(user):
         [
             [InlineKeyboardButton(user.get_text(name='order-kb-create_order'), callback_data='complete_order_create')],
             [InlineKeyboardButton(user.get_text(name='order-kb-cancel_order'), callback_data=f'cancel_order_create')]
+        ]
+    )
+    return kb
+
+
+def share_url(user, order_id):
+    url = create_reflink(order_id=order_id)
+
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='order-kb-share-go'), url=url)]
+
         ]
     )
     return kb

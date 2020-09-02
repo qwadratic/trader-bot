@@ -131,7 +131,7 @@ def market_depth(cli, cb):
 
         if user.id == order.parent_order.user_id:
 
-            cb.message.reply(get_order_info(user, order_id),
+            cb.message.reply(order_info_for_owner(order.parent_order),
                              reply_markup=kb.order_for_owner(order.parent_order))
         else:
 
@@ -270,9 +270,7 @@ def owner_order_list(cli, cb):
         order_id = int(cb.data.split('-')[2])
         order = user.parentOrders.get(id=order_id)
 
-        cb.message.edit(order_info_for_owner(order),
-
-                        reply_markup=kb.order_for_owner(order))
+        cb.message.reply(order_info_for_owner(order), reply_markup=kb.order_for_owner(order))
 
     if action == 'move':
         cours = cb.data.split('-')[2]
@@ -296,14 +294,9 @@ def order_info(cli, cb):
 
     action = cb.data.split('-')[1]
 
-    if action == 'share':
-        cli.answer_callback_query(cb.id, 'coming soon')
-
-    elif action == 'switch':
-
+    if action == 'switch':
         order_id = int(cb.data.split('-')[2])
         order = user.parentOrders.get(id=order_id)
-
         if order.status == 'close':
             for currency in order.payment_currency:
 
@@ -415,8 +408,8 @@ def select_payment_currency(cli, cb):
             cb.message.reply(user.get_text(name='order-enter_currency_rate').format(
                 trade_currency=order.trade_currency,
 
-                price=round_currency(order.trade_currency,
-                                     to_units(order.trade_currency, get_currency_rate(order.trade_currency)))),
+                price=round_currency('USD',
+                                     to_units('USD', get_currency_rate(order.trade_currency)))),
                 reply_markup=kb.avarage_rate(user))
 
         if order.type_operation == 'buy':
@@ -444,8 +437,8 @@ def select_payment_currency(cli, cb):
             cb.message.reply(user.get_text(name='order-enter_currency_rate').format(
                 trade_currency=order.trade_currency,
 
-                price=round_currency(order.trade_currency,
-                                     to_units(order.trade_currency, get_currency_rate(order.trade_currency)))),
+                price=round_currency('USD',
+                                     to_units('USD', get_currency_rate(order.trade_currency)))),
                 reply_markup=kb.avarage_rate(user))
 
         flags = user.flags
@@ -643,7 +636,7 @@ def enter_currency_rate(cli, m):
     order = user.temp_order
     try:
         value = Decimal(m.text.replace(',', '.'))
-        current_price = to_units(order.trade_currency, get_currency_rate(order.trade_currency))
+        current_price = to_units('USD', get_currency_rate(order.trade_currency))
 
         max_price_range_factor = config.GET_MAX_PRICE_RANGE_FACTOR
 
@@ -917,3 +910,14 @@ def create_order_after_deposit(cli, cb):
     cb.message.edit(cb.message.text)
 
     cb.message.reply(order_info_for_owner(order), reply_markup=kb.order_for_owner(order))
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('share_order')))
+def share_order(cli, cb):
+    user = get_user(cb.from_user.id)
+
+    order_id = int(cb.data.split('-')[1])
+
+    parent_order = user.parentOrders.get(id=order_id)
+    for order in parent_order.orders.all():
+        cb.message.reply(get_order_info(user, order.id), reply_markup=kb.share_url(user, order.id))

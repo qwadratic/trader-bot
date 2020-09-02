@@ -136,6 +136,7 @@ def round_currency(currency_id, number):
     # if isinstance(number, float):
     #     number = Decimal(number)
     #
+
     if number % 1 == 0:
         return int(number)
     if isinstance(number, Decimal):
