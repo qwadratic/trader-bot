@@ -4,7 +4,8 @@ from bot.helpers.shortcut import to_cents
 
 from bot.models import ExchangeRate, Settings
 from requests import Session
-
+from bot.blockchain.bithumb_api import BithumbGlobalRestAPI, \
+    API_KEY, SECRET_KEY
 
 def coinmarket_currency_usd(currency):
     url = 'https://pro-api.coinmarketcap.com/v1/tools/price-conversion'
@@ -26,10 +27,22 @@ def coinmarket_currency_usd(currency):
 
     return data['data']['quote']['USD']['price']
 
+def bithumb_currency_usdt(currency):
+    api = BithumbGlobalRestAPI(API_KEY, SECRET_KEY)
+    symbol = '%s-USDT'%(currency)
+    depth = api.depth(symbol, count=1)
+
+    asks_usdt = depth['asks'][0][0]
+    bids_usdt = depth['bids'][0][0]
+    average_exchange_rate = (asks_usdt + bids_usdt)/2
+
+    return average_exchange_rate
+
 
 def update_exchange_rates():
     currency_list = ['BIP', 'BTC', 'USDT', 'ETH', 'UAH', 'RUB']
-    sources = {'coinmarketcup': coinmarket_currency_usd}
+    sources = {'coinmarketcup': coinmarket_currency_usd,
+               'bithumb': bithumb_currency_usdt}
 
     rate_list = []
     for currency in currency_list:
