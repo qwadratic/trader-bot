@@ -41,6 +41,7 @@ def bithumb_currency_usdt(currency):
 
 def update_exchange_rates():
     currency_list = ['BIP', 'BTC', 'USDT', 'ETH', 'UAH', 'RUB']
+    currency_list_2 = ['USDT', 'UAH', 'RUB']
     source_c = {'coinmarketcup': coinmarket_currency_usd}
     source_b = {'bithumb': bithumb_currency_usdt}
 
@@ -54,15 +55,26 @@ def update_exchange_rates():
                 value=rate
             ))
 
-        for s in source_b:  #TODO if exceeded API Key's monthly credit limit coinmarketcup - use bithumb
-            try:
-                for keys in rate_list:
+        for s in source_b:  # TODO if exceeded API Key's monthly credit limit coinmarketcup - use bithumb
+            for keys in rate_list:
+                try:
                     rate = source_b[s](currency)
                     if keys['currency'] == currency and keys['source'] != s:
-                        keys.update({'source': '%s/%s'%(keys['source'], s),
-                                     'value': to_cents('USD', ((keys['value'] + rate) / 2))})
+                        keys.update({'source': '%s/%s' % (keys['source'], s),
+                                        'value': to_cents('USD', ((keys['value'] + rate) / 2))})
 
-            except TypeError:
-                pass
+                except TypeError:
+                    a = keys.values()
+                    for i in a:
+                        for currency in currency_list_2:
+                            if i in currency_list_2:
+                                i = to_cents('USD', keys['value'])
+                                keys.update({'value': i})
+                                currency_list_2.remove(currency)
 
-    ExchangeRate.objects.bulk_create([ExchangeRate(**r) for r in rate_list])
+
+
+    return  rate_list
+
+    #ExchangeRate.objects.bulk_create([ExchangeRate(**r) for r in rate_list])
+
