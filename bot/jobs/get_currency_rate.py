@@ -72,9 +72,5 @@ def update_exchange_rates():
                                 keys.update({'value': i})
                                 currency_list_2.remove(currency)
 
-
-
-    return  rate_list
-
-    #ExchangeRate.objects.bulk_create([ExchangeRate(**r) for r in rate_list])
+    ExchangeRate.objects.bulk_create([ExchangeRate(**r) for r in rate_list])
 
