@@ -1,12 +1,10 @@
 from json import loads as load_json
-from datetime import datetime as DateTime
-from base64 import b64encode, b64decode
-from hmac import digest
 import requests
+from config.settings import BH_API_KEY, BH_SECRET_KEY
 
 DEPTH_URL = 'https://global-openapi.bithumb.pro/market/data/orderBook?symbol='
-API_KEY = '0000'#'8d8539bb27f1eb1f7441101a0854d0f6'
-SECRET_KEY = 'd870491693ff6162d1a35eb56f9a8906e4d6e67ad14e599659e03c8b7bd85aeb'
+API_KEY = BH_API_KEY
+SECRET_KEY = BH_SECRET_KEY
 
 class BithumbGlobalError(RuntimeError):
     def __init__(self, code, msg):

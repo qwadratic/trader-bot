@@ -6,6 +6,10 @@ from bot.models import ExchangeRate, Settings
 from requests import Session
 from bot.blockchain.bithumb_api import BithumbGlobalRestAPI, \
     API_KEY, SECRET_KEY
+from binance.client import Client
+
+from config.settings import BIN_API_KEY, BIN_API_SECRET
+
 
 def coinmarket_currency_usd(currency):
     url = 'https://pro-api.coinmarketcap.com/v1/tools/price-conversion'
@@ -37,6 +41,12 @@ def bithumb_currency_usdt(currency):
     average_exchange_rate = (asks_usdt + bids_usdt)/2
 
     return average_exchange_rate
+
+def binance_currency_usdt(currency):
+    client = Client(BIN_API_KEY, BIN_API_SECRET)
+    depth = client.get_order_book(symbol='%sBTC'%(currency))
+
+    return  depth
 
 
 def update_exchange_rates():
