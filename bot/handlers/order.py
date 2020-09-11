@@ -768,9 +768,8 @@ def cancel_order_create(cli, cb):
     flags.save()
 
     cb.message.edit(cb.message.text + '\n\n**Создание объявления отменено**')
-    user_msg = user.msg
 
-    delete_msg(cli, user.telegram_id, user_msg.trade_menu)
+    delete_msg(cli, user.telegram_id, user.cache['msg']['trade_menu'])
 
     msg = cb.message.reply(user.get_text(name='user-trade_menu'), reply_markup=kb.trade_menu(user))
 
