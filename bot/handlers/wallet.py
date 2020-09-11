@@ -368,7 +368,7 @@ def add_reqiusites_address(cli, m):
 
     if not uniq_address:
         m.reply(user.get_text(name='purse-requisite_address_is_already_exist').format(address=req_address))
-        
+
     else:
         address = m.text if check_address(m.text, requisite.currency) else None
         if not address:
