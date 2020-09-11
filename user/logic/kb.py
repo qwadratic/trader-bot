@@ -80,9 +80,9 @@ def wallet_menu(user):
 
 
 def purse_menu(user):
-    requisites = user.requisites.all()
+    requisites = user.requisites.filter(status='valid')
 
-    kb = [[InlineKeyboardButton('🔙 Назад', callback_data='purse-back')],
+    kb = [[InlineKeyboardButton(user.get_text(name='kb-back'), callback_data='purse-back')],
           [InlineKeyboardButton('Добавить реквизиты', callback_data='purse-add')]]
 
     for r in requisites:
@@ -90,6 +90,16 @@ def purse_menu(user):
         kb.append([InlineKeyboardButton(f'{name}[{r.currency}] {r.address}', callback_data=f'purse-req-{r.id}')])
 
     return InlineKeyboardMarkup(kb)
+
+
+def confirm_delete_requisite(user, req_id):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='kb-yes'), callback_data=f'delete_requisite-{req_id}')],
+            [InlineKeyboardButton(user.get_text(name='kb-no'), callback_data=f'purse-req-{req_id}')]
+        ]
+    )
+    return kb
 
 
 choice_currency_for_wallet = InlineKeyboardMarkup(
@@ -191,7 +201,7 @@ def confirm_withdrawal(user):
 def requisite(user, requisite_id):
     kb = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton('🔙 Назад', callback_data=f'wallet_menu-purse')],
+                [InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=f'wallet_menu-purse')],
 
                 [InlineKeyboardButton(
                     user.get_text(name='purse-kb-edit_address'),

@@ -12,6 +12,7 @@ from order.logic.core import convert_bonus
 from order.logic.text_func import wallet_info
 
 from user.logic import kb
+from user.logic.core import check_commands_requisite, check_requisite_uniq_name, check_requisite_uniq_address
 from user.models import UserPurse
 
 
@@ -20,12 +21,9 @@ def my_wallet(cli, m):
     user = get_user(m.from_user.id)
     msg = m.reply(wallet_info(user), reply_markup=kb.wallet_menu(user))
 
-    user_msg = user.msg
+    delete_msg(cli, user.telegram_id, user.cache['msg']['wallet_menu'])
 
-    delete_msg(cli, user.telegram_id, user_msg.wallet_menu)
-
-    user_msg.wallet_menu = msg.message_id
-    user_msg.save()
+    update_cache_msg(user, 'wallet_menu', msg.message_id)
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:11] == 'wallet_menu'))
@@ -141,7 +139,6 @@ def cancel_convert_bonus(cli, cb):
     cb.message.reply(user.get_text(name='wallet-cancel_convert_bonus'))
 
 
-
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('currency_for_deposit')))
 def currency_for_deposit(cli, cb):
     user = get_user(cb.from_user.id)
@@ -206,9 +203,7 @@ def requisites_menu(cli, cb):
         cb.message.edit(user.get_text(name='purse-enter_requisite_name'), reply_markup=kb.edit_requisite_name(user, requisite.id))
 
     if set == 'delete':
-        requisite.delete()
-
-        cb.message.edit(user.get_text(name='purse-purse_menu'), reply_markup=kb.purse_menu(user))
+        cb.message.edit(user.get_text(name='purse-confirm_delete_requisite'), reply_markup=kb.confirm_delete_requisite(user, requisite.id))
         return
 
     if set == 'cancel':
@@ -238,7 +233,15 @@ def requisites_menu(cli, cb):
     user_flag.save()
 
 
-@Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:6] == 'chcurr'))
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('delete_requisite')))
+def confirm_delete_requisite(cli, cb):
+    user = get_user(cb.from_user.id)
+    user.requisites.get(id=int(cb.data.split('-')[1])).delete()
+
+    cb.message.edit(user.get_text(name='purse-purse_menu'), reply_markup=kb.purse_menu(user))
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('chcurr')))
 def add_requisites_currency(cli, cb):
     user = get_user(cb.from_user.id)
     currency = cb.data.split('-')[1]
@@ -286,10 +289,15 @@ def skip_requisite_name(cli, cb):
 
 
 @Client.on_message(Filters.create(lambda _, m: get_user(m.from_user.id) and
-                                               get_user(m.from_user.id).flags.await_requisites_name))
+                                               get_user(m.from_user.id).flags.await_requisites_name), group=-1)
 def add_reqiusites_name(cli, m):
     user = get_user(m.from_user.id)
-    user_msg = user.msg
+
+    other_command = check_commands_requisite(cli, m.text, user)
+    if other_command:
+        return
+
+    user_msg = user.cache['msg']
 
     user_flag = user.flags
 
@@ -299,70 +307,90 @@ def add_reqiusites_name(cli, m):
         user_flag.save()
 
         requisite = user.requisites.get(status='edit')
-
-        requisite.name = m.text
         requisite.status = 'valid'
         requisite.save()
 
-        delete_msg(cli, user.telegram_id, user_msg.wallet_menu)
+        check_uniq_name = check_requisite_uniq_name(user, requisite.currency, m.text)
+        if not check_uniq_name:
+            m.reply(user.get_text(name='purse-requisite_name_is_already_exist').format(name=m.text, currency=requisite.currency))
+            msg = m.reply(user.get_text(name='purse-purse_menu'), reply_markup=kb.purse_menu(user))
+        else:
+            requisite.name = m.text
+            txt = requisite.get_display_text(user)
+            msg = m.reply(txt, reply_markup=kb.requisite(user, requisite.id))
 
-        txt = requisite.get_display_text(user)
-
-        msg = m.reply(txt, reply_markup=kb.requisite(user, requisite.id))
-        user_msg.wallet_menu = msg.message_id
-        user_msg.save()
+        delete_msg(cli, user.telegram_id, user_msg['wallet_menu'])
+        update_cache_msg(user, 'wallet_menu', msg.message_id)
         return
 
     requisite = user.requisites.get(status='invalid')
-    requisite.name = m.text
-    requisite.save()
 
-    user_flag.await_requisites_name = False
-    user_flag.await_requisites_address = True
+    check_uniq_name = check_requisite_uniq_name(user, requisite.currency, m.text)
+    if not check_uniq_name:
+        m.reply(user.get_text(name='purse-requisite_name_is_already_exist').format(name=m.text, currency=requisite.currency))
+        user_flag.await_requisites_name = False
+        msg = m.reply(user.get_text(name='purse-purse_menu'), reply_markup=kb.purse_menu(user))
+
+    else:
+        requisite.name = m.text
+        requisite.save()
+        user_flag.await_requisites_name = False
+        user_flag.await_requisites_address = True
+
+        txt = user.get_text(name='purse-enter_address').format(currency=requisite.currency)
+        msg = m.reply(txt, reply_markup=kb.cancel_add_requisites(user))
+
     user_flag.save()
-
-    txt = user.get_text(name='purse-enter_address').format(currency=requisite.currency)
-    msg = m.reply(txt, reply_markup=kb.cancel_add_requisites(user))
-
-    delete_msg(cli, user.telegram_id, user_msg.wallet_menu)
-
-    user_msg.wallet_menu = msg.message_id
-    user_msg.save()
+    delete_msg(cli, user.telegram_id, user_msg['wallet_menu'])
+    update_cache_msg(user, 'wallet_menu', msg.message_id)
 
 
 @Client.on_message(Filters.create(lambda _, m: get_user(m.from_user.id) and
-                                               get_user(m.from_user.id).flags.await_requisites_address))
+                                               get_user(m.from_user.id).flags.await_requisites_address), group=-1)
 def add_reqiusites_address(cli, m):
+    user = get_user(m.from_user.id)
+
+    other_command = check_commands_requisite(cli, m.text, user)
+    if other_command:
+        return
+
     user = get_user(m.from_user.id)
     user_flag = user.flags
 
     if user_flag.edit_requisite:
         requisite = user.requisites.get(status='edit')
+        req_address = requisite.address
     else:
         requisite = user.requisites.get(status='invalid')
+        req_address = m.text
 
-    address = m.text if check_address(m.text, requisite.currency) else None
-    if not address:
-        msg = m.reply(user.get_text(name='bot-invalid_address'))
-        sleep(3)
-        msg.delete()
-        return
+    uniq_address = check_requisite_uniq_address(user, requisite.currency, req_address)
 
-    if address:
-        requisite.address = address
-        requisite.status = 'valid'
-        requisite.save()
+    if not uniq_address:
+        m.reply(user.get_text(name='purse-requisite_address_is_already_exist').format(address=req_address))
+        
+    else:
+        address = m.text if check_address(m.text, requisite.currency) else None
+        if not address:
+            msg = m.reply(user.get_text(name='bot-invalid_address'))
+            sleep(3)
+            msg.delete()
+            return
+
+        if address:
+            requisite.address = address
+            requisite.status = 'valid'
+            requisite.save()
 
     user_flag.await_requisites_address = False
     user_flag.edit_requisite = False
+
     user_flag.save()
 
-    delete_msg(cli, user.telegram_id, user.msg.wallet_menu)
+    delete_msg(cli, user.telegram_id, user.cache['msg']['wallet_menu'])
 
     msg = m.reply(user.get_text(name='purse-purse_menu'), reply_markup=kb.purse_menu(user))
-    user_msg = user.msg
-    user_msg.wallet_menu = msg.message_id
-    user_msg.save()
+    update_cache_msg(user, 'wallet_menu', msg.message_id)
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('withdrawal')))

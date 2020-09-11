@@ -1,5 +1,5 @@
 from bot.blockchain import minterAPI, ethAPI, rpc_btc
-from bot.helpers.shortcut import create_record_cashflow
+from bot.helpers.shortcut import create_record_cashflow, get_user, delete_msg
 from bot.models import WithdrawalRequest
 
 from user.models import Wallet, VirtualWallet
@@ -93,3 +93,40 @@ def finish_withdraw(withdrawal_request_id, tx_hash):
     update_wallet_balance(user, withdrawal_request.currency, amount, 'down')
 
     create_record_cashflow(user, None, 'withdrawal', amount, currency, tx_hash=tx_hash)
+
+
+def check_commands_requisite(cli, txt, user):
+    commands = [
+        user.get_text(name='user-kb-wallet'),
+        user.get_text(name='user-kb-trade'),
+        user.get_text(name='user-kb-settings')
+    ]
+
+    if txt in commands:
+        flags = user.flags
+        flags.await_requisites_name = False
+        flags.edit_requisite = False
+        flags.await_requisites_address = False
+        flags.save()
+        delete_msg(cli, user.telegram_id, user.cache['msg']['wallet_menu'])
+        return True
+
+    return False
+
+
+def check_requisite_uniq_name(user, currency, req_name):
+    req = user.requisites.get_or_none(currency=currency, name__in=[req_name.lower(), req_name])
+
+    if req:
+        return False
+
+    return True
+
+
+def check_requisite_uniq_address(user, currency, req_address):
+    req = user.requisites.get_or_none(currency=currency, address__in=[req_address.lower(), req_address])
+
+    if req:
+        return False
+
+    return True

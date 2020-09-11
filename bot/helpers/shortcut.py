@@ -18,8 +18,8 @@ def get_user(tg_id):
 def delete_msg(cli, user_id, msg):
     try:
         cli.delete_messages(user_id, msg)
-    except Exception:
-        pass
+    except Exception as e:
+        print(e, '\ndelete_msg')
 
 
 def delete_inline_kb(cli, telegram_id, msg_id):
