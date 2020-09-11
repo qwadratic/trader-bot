@@ -8,6 +8,8 @@ class Trade(Model):
     payment_currency = CharField(max_length=255)
     amount = DecimalField(max_digits=40, decimal_places=0, default=0)
     price_trade = DecimalField(max_digits=40, decimal_places=0, default=0)
+    taker_fee = DecimalField(max_digits=40, decimal_places=0, default=0)
+    maker_fee = DecimalField(max_digits=40, decimal_places=0, default=0)
     trade_currency_rate = DecimalField(max_digits=40, decimal_places=0, default=0)
     payment_currency_rate = DecimalField(max_digits=40, decimal_places=0, default=0)
     type_trade = CharField(max_length=255, null=True)

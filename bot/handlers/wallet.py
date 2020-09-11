@@ -1,11 +1,14 @@
 from decimal import Decimal, InvalidOperation
 from time import sleep
 
+from constance import config
 from pyrogram import Client, Filters
 
 from bot.helpers.shortcut import get_user, delete_msg, check_address, get_max_amount_withdrawal, get_currency_rate, \
-    to_units, round_currency, to_cents
+    to_units, round_currency, to_cents, update_cache_msg, delete_inline_kb
+from bot.jobs.get_currency_rate import coinmarket_currency_usd
 from bot.models import WithdrawalRequest
+from order.logic.core import convert_bonus
 from order.logic.text_func import wallet_info
 
 from user.logic import kb
@@ -53,6 +56,90 @@ def wallet_menu(cli, cb):
             amount=amount,
             currency=currency
         ), reply_markup=kb.confirm_cancel_withdrawal(user))
+
+    if button == 'convert_bonus':
+        flags = user.flags
+        flags.await_amount_for_convert_bonus = True
+        flags.save()
+
+        msg = cb.message.edit(user.get_text(name='wallet-enter_amount_for_conver_bonus').format(
+            min_amount=config.MIN_AMOUNT_CONVERT_BONUS
+        ), reply_markup=kb.cancel_convert_bonus(user))
+        update_cache_msg(user, 'amount_for_conver_bonus', msg.message_id)
+
+
+@Client.on_message(Filters.create(lambda _, m: get_user(m.from_user.id).flags.await_amount_for_convert_bonus))
+def amount_convert_bonus(cli, m):
+    user = get_user(m.from_user.id)
+    bonus_balance = user.get_balance('BONUS', cent2unit=True)
+    try:
+        amount = Decimal(m.text.replace(',', '.'))
+
+        if amount > bonus_balance:
+            m.reply(user.get_text(name='wallet-limit_convert_bonus').format(amount=round_currency('BONUS', bonus_balance)))
+            return
+
+    except InvalidOperation:
+
+        msg = m.reply(user.get_text(name='bot-type_error'))
+        sleep(5)
+        msg.delete()
+        return
+
+    flags = user.flags
+    flags.await_amount_for_convert_bonus = False
+    flags.save()
+
+    delete_inline_kb(cli, user.telegram_id, user.cache['msg']['amount_for_conver_bonus'])
+
+    m.reply(user.get_text(name='wallet-select_currency_for_convert_bonus'), reply_markup=kb.select_currency_for_convert_bonus(user, amount))
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('convert_bonus')))
+def currency_convert_bonus(cli, cb):
+    user = get_user(cb.from_user.id)
+    cb_data = cb.data.split('-')
+    currency = cb_data[1]
+    amount = Decimal(cb_data[2])
+    currency_rate = to_units('USD', get_currency_rate(currency))
+    amount_in_currency = amount / currency_rate
+
+    cb.message.edit(cb.message.text + '\n\n' + user.get_text(name='you_selected').format(foo=currency))
+    cb.message.reply(user.get_text(name='wallet-confirm_convert_bonus').format(
+        amount=round_currency('BONUS', amount),
+        amount_in_currency=round_currency(currency, amount_in_currency),
+        currency=currency
+    ), reply_markup=kb.confirm_convert_bonus(user, amount, currency_rate, currency))
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('confirm_convert_bonus')))
+def confirm_convert_bonus(cli, cb):
+    user = get_user(cb.from_user.id)
+    cb_data = cb.data.split('-')
+    amount = Decimal(cb_data[1])
+    currency = cb_data[2]
+    currency_rate = Decimal(cb_data[3])
+    amount_in_currency = amount / currency_rate
+
+    convert_bonus(user, amount, currency, amount_in_currency)
+    cb.message.edit(cb.message.text)
+    cb.message.reply(user.get_text(name='wallet-successful_convert_bonus').format(
+        amount=round_currency('BONUS', amount),
+        amount_in_currency=round_currency(currency, amount_in_currency),
+        currency=currency
+    ))
+
+
+@Client.on_callback_query(Filters.callback_data('cancel_convert_bonus'))
+def cancel_convert_bonus(cli, cb):
+    user = get_user(cb.from_user.id)
+    flags = user.flags
+    flags.await_amount_for_convert_bonus = False
+    flags.save()
+
+    cb.message.edit(cb.message.text)
+    cb.message.reply(user.get_text(name='wallet-cancel_convert_bonus'))
+
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('currency_for_deposit')))
@@ -297,7 +384,7 @@ def select_currency_for_withdrawal(cli, cb):
 
         cb.message.edit(cb.message.text + '\n\n' + user.get_text(name='you_selected').format(foo=currency))
 
-        max_withdrawal_amount = get_max_amount_withdrawal(user, currency) / to_units(currency, get_currency_rate(currency))
+        max_withdrawal_amount = get_max_amount_withdrawal(user, currency) / to_units('USD', get_currency_rate(currency))
         cb.message.reply(
             user.get_text(name='wallet-enter_amount_for_withdrawal').format(
                 max_amount=round_currency(currency, max_withdrawal_amount),
@@ -336,7 +423,7 @@ def amount_withdrawal(cli, m):
     withdrawal_request = user.cache['clipboard']['withdrawal_request']
     currency = withdrawal_request['currency']
 
-    max_withdrawal_amount = get_max_amount_withdrawal(user, currency) / to_units(currency, get_currency_rate(currency))
+    max_withdrawal_amount = get_max_amount_withdrawal(user, currency) / to_units('USD', get_currency_rate(currency))
 
     # TODO учесть комсу
     if amount > max_withdrawal_amount:

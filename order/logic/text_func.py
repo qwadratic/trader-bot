@@ -27,7 +27,7 @@ def choice_payment_currency_text(order):
 def wallet_info(user):
     user_currency = user.settings.currency
 
-    virt_wallets = user.virtual_wallets.exclude(currency__in=['UAH', 'RUB', 'USD'])
+    virt_wallets = user.virtual_wallets.exclude(currency__in=['UAH', 'RUB', 'USD', 'BONUS'])
 
     balance_txt = ''
     for w in virt_wallets:
@@ -41,14 +41,19 @@ def wallet_info(user):
 
         balance_txt += f'{round_currency(w.currency, balance)} {w.currency} ~{balance_in_user_currency} {user_currency}\n'
 
-    txt = user.get_text(name='wallet-wallet_info').format(balances=balance_txt)
+    bonus_balance = to_units('BONUS', user.virtual_wallets.get(currency='BONUS').balance, round=True)
+    txt = user.get_text(name='wallet-wallet_info').format(
+        balances=balance_txt)
+
+    if bonus_balance >= 0.01:
+        txt += user.get_text(name='wallet-affiliate_bonus').format(balance=bonus_balance)
 
     hold_money = user.holdMoney.exclude(currency__in=['UAH', 'RUB', 'USD'])
 
     if hold_money.count() > 0:
         hm_dict = defaultdict(int)
         for hm in hold_money:
-            hm_dict[hm.currency] += hm.amount
+            hm_dict[hm.currency] += hm.amount + hm.fee
 
         hold_money_txt = ''
 

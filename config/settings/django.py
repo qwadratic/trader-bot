@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 import logging
 import os
+from _decimal import Decimal
+from collections import OrderedDict
 
 from .env import env
 
@@ -28,7 +30,6 @@ ALLOWED_HOSTS = [
     "localhost",
 ]
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -39,17 +40,17 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'modeltranslation',
     'django.contrib.admin',
+    'constance',
+    'constance.backends.database',
     'django_apscheduler',
     'bot',
     'user',
     'order',
     'trade',
     'silk',
-
 ]
 
 APSCHEDULER_DATETIME_FORMAT = "N j, Y, f:s a"
-
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -83,7 +84,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
 
@@ -92,6 +92,40 @@ DATABASES = {
     'default': env.db('DATABASE_URL')
 }
 
+CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
+CONSTANCE_DATABASE_PREFIX = 'constance:trader-bot:'
+
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+#         'LOCATION': '127.0.0.1:11211',
+#     }
+# }
+# CONSTANCE_DATABASE_CACHE_BACKEND = 'default'
+
+CONSTANCE_CONFIG = OrderedDict(
+    [
+        ('CRON_CHECK_REFILL_BIP_SEC', (5, 'Интервал запуска джобы пополнения BIP')),
+        ('CRON_CHECK_REFILL_ETH_SEC', (20, 'Интервал запуска джобы пополнения ETH')),
+        ('CRON_CHECK_REFILL_BTC_SEC', (60, 'Интервал запуска джобы пополнения BTC')),
+        ('CRON_UPDATE_EXCHANGE_RATES_MIN', (20, 'Интервал запуска джобы парса курса валют')),
+        ('CRON_VERIFICATION_WITHDRAWAL_REQUESTS_SEC', (10, 'Интервал запуска джобы проверки заявок на вывод средств')),
+        ('CRON_CHECK_SUBSCRIPTION_TIME_SEC', (300, 'Интервал проверки времени реф подписки')),
+        ('ETH_NODE', ('http://isheldon:dfhjgkjnlkdrlRHJYrstdryS346645346ythdfshyfHEr4635763Y4hbfGSDs@116.202.202.230/dsfkhkgdl/', ' ')),
+        ('MINTER_NODE', ('http://195.201.211.234:8841', ' ')),
+        ('BTC_NODE', ('http://{user}:{password}@195.201.211.234:8878', ' ')),
+        ('BTC_WALLET_NAME', ('garry', 'Имя основного глобального кошелька, по умолчанию установлено имя dev кошелька')),
+        ('GET_MAX_PRICE_RANGE_FACTOR', (Decimal('1'), 'Коэффициент максимального отклонения от курса валют')),
+        ('WITHDRAWAL_FACTOR', (Decimal('1.2'), 'некий коэффициент для вычисления максимальной суммы вывода')),
+        ('TAKER_FEE', (Decimal('0.3'), 'Юзер который отозвался на объявление')),
+        ('MAKER_FEE', (Decimal('0.3'), 'Создатель объявления')),
+        ('AFFILIATE_FEE', (Decimal('0.25'), 'Комса рефереру')),
+        ('MIN_AMOUNT_CONVERT_BONUS', (1, 'Минимальная сумма для конвертации бонусных шекелей')),
+        ('', ('', '')),
+    ]
+)
+
+# CONSTANCE_CONFIG =
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
@@ -111,12 +145,10 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/3.0/topics/i18n/
-#LANGUAGE_CODE = 'ru-ru'
+# LANGUAGE_CODE = 'ru-ru'
 LANGUAGE_CODE = 'en-us'
-
 
 gettext = lambda s: s
 LANGUAGES = [
@@ -126,7 +158,6 @@ LANGUAGES = [
 
 MODELTRANSLATION_TRANSLATION_REGISTRY = 'bot.translation'
 
-
 TIME_ZONE = 'UTC'
 
 USE_I18N = True
@@ -134,7 +165,6 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/

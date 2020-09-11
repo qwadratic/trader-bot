@@ -1,16 +1,15 @@
-from collections import defaultdict
-from decimal import Decimal
-
 from web3 import Web3
 from web3.exceptions import TransactionNotFound
 
 from bot.blockchain.ethAPI import w3, USDT_CONTRACT_ADDRESS
 from bot.blockchain.minterAPI import Minter
 from bot.blockchain.rpc_btc import check_transaction
-from bot.helpers.shortcut import to_units, round_currency, delete_inline_kb
-from order.logic import kb
-from order.logic.core import check_balance_from_order
+from bot.helpers.shortcut import to_units, round_currency, delete_inline_kb, send_message, update_cache_msg
+from order.logic import kb as order_kb
+from order.logic.core import check_balance_from_order, get_order_info
 from order.logic.text_func import get_lack_balance_text
+from trade.logic.core import check_balance_from_trade, close_trade
+from trade.logic import kb as trade_kb
 
 TOPIC_SEND_TOKENS = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
 
@@ -202,43 +201,102 @@ def order_deposit(cli, user, refill_txs):
         amount = round_currency(currency, to_units(currency, refill['amount']))
         refill_currency += f'{amount} {currency}\n'
 
+    txt_refill = user.get_text(name='bot-balance_replinished').format(refill=refill_currency)
+    delete_inline_kb(cli, user.telegram_id, user_msg['last_temp_order'])
+
     if is_good_balance:
         flags.await_replenishment_for_order = False
         flags.save()
 
-        txt = f'Ваш баланс пополнен на:\n' \
-            f'{refill_currency}'
+        send_message(cli, user.telegram_id, txt_refill, kb=None)
+        send_message(cli, user.telegram_id, user.get_text(name='order-continue_order_after_deposit'),
+                              kb=order_kb.continue_order_after_deposit(user))
 
-        delete_inline_kb(cli, user.telegram_id, user_msg['last_temp_order'])
-        try:
-            with cli:
-                cli.send_message(user.telegram_id, txt)
-                txt = 'Баланса достаточно для завершения создания объявления. Желаете продолжить?'
-                cli.send_message(user.telegram_id, txt, reply_markup=kb.continue_order_after_deposit(user))
-        except Exception as e:
-            print(e)
     else:
         deposit_currency = user.cache['clipboard']['deposit_currency']
         lack_balance_txt = get_lack_balance_text(order, deposit_currency)
-
-        txt = f'Ваш баланс пополнен на:\n' \
-              f'{refill_currency}'
-
-        txt += f'\nНо это не достаточно чтобы завершить создание объявления.\n' \
-            f'Если хотите исопльзовать бота как гаранта - надо пополнить\n\n' \
-            f'{lack_balance_txt}'
+        txt_refill += f'\n{user.get_text(name="order-not_enough_money_after_deposit").format(deposit_currency=lack_balance_txt)}'
 
         delete_inline_kb(cli, user.telegram_id, user_msg['last_temp_order'])
+        msg = send_message(cli, user.telegram_id, txt_refill, kb=order_kb.deposit_from_order(user))
 
-        try:
-            with cli:
-                msg = cli.send_message(user.telegram_id, txt, reply_markup=kb.deposit_from_order(user))
-
-            user_msg['last_temp_order'] = msg.message_id
-            user.save()
-        except Exception:
-            pass
+        if msg:
+            update_cache_msg(user, 'last_temp_order', msg.message_id)
 
 
+def trade_deposit(cli, user, refill_txs):
+    trade = user.trade.get(id=user.cache['clipboard']['active_trade'])
+    flags = user.flags
+    msg = user.cache['msg']
+    amount = to_units(trade.trade_currency, trade.amount)
+
+    if trade.order.type_operation == 'sale':
+        currency = trade.payment_currency
+        balance = user.get_balance(currency, cent2unit=True)
+        price_trade = to_units(trade.payment_currency, trade.price_trade)
+    else:
+        currency = trade.trade_currency
+        balance = user.get_balance(currency, cent2unit=True)
+        price_trade = amount
+
+    is_good_balance = check_balance_from_trade(currency, price_trade, balance)
+
+    refill_currency = ''
+    for refill in refill_txs:
+        currency = refill['currency']
+        amount_refill = round_currency(currency, to_units(currency, refill['amount']))
+        refill_currency += f'{amount_refill} {currency}\n'
+
+    txt_refill = user.get_text(name='bot-balance_replinished').format(refill=refill_currency)
+
+    delete_inline_kb(cli, user.telegram_id, msg['last_trade'])
+
+    if is_good_balance[0]:
+        flags.await_replenishment_for_trade = False
+        flags.save()
+        order_amount = trade.order.amount
+
+        if trade.order.status != 'open':
+            msg = txt_refill + f'\n\n{user.get_text(name="trade-order_not_open")}'
+            send_message(cli, user.telegram_id, msg, kb=None)
+            trade.status = 'canceled'
+            trade.save()
+            return
+
+        if trade.amount > order_amount:
+            msg = txt_refill + f'\n\n{user.get_text(name="trade-trade_amount_more_than_order_amount")}'
+            trade.status = 'canceled'
+            trade.save()
+            send_message(cli, user.telegram_id, msg, kb=None)
+            send_message(cli, user.telegram_id, get_order_info(user, trade.order.id), kb=order_kb.order_for_user(user, trade.order.id))
+            return
+
+        if trade.order.type_operation == 'sale':
+            type_translate = user.get_text(name='order-type_operation_translate_buy_1')
+        else:
+            type_translate = user.get_text(name='order-type_operation_translate_sale_1')
+
+        txt = user.get_text(name='trade-continue_trade_after_deposit').format(
+            type_operation=type_translate,
+            amount=round_currency(trade.trade_currency, amount),
+            payment_currency=trade.payment_currency,
+            price_trade=to_units(trade.payment_currency, trade.price_trade, round=True),
+            trade_currency=trade.trade_currency
+        )
+
+        msg = send_message(cli, user.telegram_id, f'{txt_refill}\n\n{txt}', kb=trade_kb.continue_trade_after_deposit(user))
+        if msg:
+            update_cache_msg(user, 'last_trade', msg.message_id)
+    else:
+        currency = is_good_balance[1]
+        amount_deposit = is_good_balance[2]
+
+        msg = send_message(cli,
+            user.telegram_id,
+            user.get_text(name='trade-not_enough_money_after_deposit').format(amount=amount_deposit, currency=currency),
+            kb=trade_kb.not_enough_money_to_trade(user, currency))
+
+        if msg:
+            update_cache_msg(user, 'last_trade', msg.message_id)
 
 

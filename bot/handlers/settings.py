@@ -1,10 +1,11 @@
 from pyrogram import Client, Filters
 
+from trade.logic.trade_filters import in_trade
 from user.logic import kb
 from bot.helpers.shortcut import get_user
 
 
-@Client.on_message(Filters.create(lambda _, m: m.text == get_user(m.from_user.id).get_text(name='user-kb-settings')))
+@Client.on_message(Filters.create(lambda _, m: m.text == get_user(m.from_user.id).get_text(name='user-kb-settings')) & in_trade)
 def setting_menu(cli, m):
     m.delete()
 

@@ -1,8 +1,10 @@
 from pyrogram import Client, Filters
+from constance import config
 
 
 @Client.on_message(Filters.regex(r'dev'), group=-10)
 def dev(cli, m):
+    print(config.cron_check_refill_bip_sec)
     m.reply('dev')
 
 

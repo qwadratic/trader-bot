@@ -114,7 +114,6 @@ def confirm_tx_hash_withdrawal(cli, cb):
         cb.message.reply('Готово!')
 
 
-
 @Client.on_callback_query(Filters.callback_data('cancel_withdrawal_tx'))
 def cancel_withdrawal_tx(cli, cb):
     user = get_user(cb.from_user.id)

@@ -3,15 +3,18 @@ from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
 from bot.helpers.shortcut import to_cents
 from config.settings import BTC_USER, BTC_PASS
 
+from constance import config
+
 rpc_user = BTC_USER
 rpc_password = BTC_PASS
 
 tx_fee = 0.00015
 
-rpc_connection = AuthServiceProxy("http://%s:%s@195.201.211.234:8878"%
-                                  (rpc_user, rpc_password))
+btc_node = config.BTC_NODE
 
-wallet_name = 'garry'
+wallet_name = config.BTC_WALLET_NAME
+url = btc_node.format(user=rpc_user, password=rpc_password) + '/wallet/' + wallet_name
+rpc_connection = AuthServiceProxy(url)#btc_node.format(user=rpc_user, password=rpc_password))#%(rpc_user, rpc_password))
 
 
 def get_block():
@@ -22,36 +25,24 @@ def get_block():
 
 
 def get_new_address():
-    uri_path_w = '/wallet/%s' % (wallet_name)
-    rpc_conn = AuthServiceProxy("http://%s:%s@195.201.211.234:8878%s" %
-                                (rpc_user, rpc_password, uri_path_w))
     address_type = 'legacy'
-    new_adr = rpc_conn.getnewaddress('', address_type)
+    new_adr = rpc_connection.getnewaddress('', address_type)
     return new_adr
 
 
 def get_wallet_balance():
-    uri_path_w = '/wallet/%s' % (wallet_name)
-    rpc_conn = AuthServiceProxy("http://%s:%s@195.201.211.234:8878%s" %
-                                (rpc_user, rpc_password, uri_path_w))
-    wallet_balance = rpc_conn.getbalance()
+    wallet_balance = rpc_connection.getbalance()
     return wallet_balance
 
 
 def get_wallet_info():
-    uri_path_w = '/wallet/%s' % (wallet_name)
-    rpc_conn = AuthServiceProxy("http://%s:%s@195.201.211.234:8878%s" %
-                                (rpc_user, rpc_password, uri_path_w))
-    wallet_info = rpc_conn.getwalletinfo()
-    return print('Your wallet information:', wallet_info)
 
+    wallet_info = rpc_connection.getwalletinfo()
+    return wallet_info
 
 
 def get_all_transactions():
-    uri_path_w = '/wallet/%s' % (wallet_name)
-    rpc_conn = AuthServiceProxy("http://%s:%s@195.201.211.234:8878%s" %
-                                (rpc_user, rpc_password, uri_path_w))
-    all_transactions = rpc_conn.listtransactions("*", 1000)
+    all_transactions = rpc_connection.listtransactions("*", 1000)
 
     all_tx = [{**key, 'amount': to_cents('BTC', key['amount']), 'fee': to_cents('BTC', key.get('fee', 0))} for key in all_transactions]
 
@@ -95,7 +86,7 @@ def set_transaction_fee():
 
 def check_address(wallet_address):
     uri_path_w = '/wallet/%s' % (wallet_name)
-    rpc_conn = AuthServiceProxy("http://%s:%s@195.201.211.234:8878%s" %
+    rpc_conn = AuthServiceProxy(btc_node %
                                 (rpc_user, rpc_password, uri_path_w))
     try:
         check_address = rpc_conn.getaddressinfo(wallet_address)
@@ -104,9 +95,10 @@ def check_address(wallet_address):
 
     return  check_address
 
+
 def check_transaction(tx_hash):
     uri_path_w = '/wallet/%s' % (wallet_name)
-    rpc_conn = AuthServiceProxy("http://%s:%s@195.201.211.234:8878%s" %
+    rpc_conn = AuthServiceProxy(btc_node %
                                 (rpc_user, rpc_password, uri_path_w))
     try:
         tx = rpc_conn.gettransaction(tx_hash)
