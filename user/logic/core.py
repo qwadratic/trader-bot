@@ -8,7 +8,7 @@ from config.settings import env
 
 
 def create_wallets_for_user(user):
-    currency = ['BIP', 'ETH', 'BTC', 'USDT', 'UAH', 'USD', 'RUB']
+    currency = ['BIP', 'ETH', 'BTC', 'USDT', 'UAH', 'USD', 'RUB', 'BONUS']
     minter_wallet = minterAPI.create_wallet()
     eth_wallet = ethAPI.create_wallet()
 
