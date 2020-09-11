@@ -4,8 +4,8 @@ from bot.helpers.shortcut import to_cents
 
 from bot.models import ExchangeRate
 from requests import Session
-from bot.blockchain.bithumb_api import BithumbGlobalRestAPI
-from binance.client import Client
+from bot.blockchain.bithumb_api import BithumbGlobalRestAPI, BithumbGlobalError
+from binance.client import Client, BinanceAPIException
 
 from config.settings import BH_API_KEY, BH_SECRET_KEY, BIN_API_KEY, BIN_API_SECRET
 import logging
@@ -43,32 +43,40 @@ def coinmarket_currency_usd(currency):
 
 
 def bithumb_currency_usdt(currency):
-    api = BithumbGlobalRestAPI(BH_API_KEY, BH_SECRET_KEY)
-    symbol = '%s-USDT'%(currency)
-    depth = api.depth(symbol, count=1)
+    try:
+        api = BithumbGlobalRestAPI(BH_API_KEY, BH_SECRET_KEY)
+        symbol = '%s-USDT'%(currency)
+        depth = api.depth(symbol, count=1)
 
-    asks_usdt = depth['asks'][0][0]
-    bids_usdt = depth['bids'][0][0]
-    average_exchange_rate = (asks_usdt + bids_usdt)/2
+        asks_usdt = depth['asks'][0][0]
+        bids_usdt = depth['bids'][0][0]
+        average_exchange_rate = (asks_usdt + bids_usdt)/2
 
-    return average_exchange_rate
+        return average_exchange_rate
+    except BithumbGlobalError as info:
+        rollbar.report_message('Error bithumb API update data: %s'%(info))
+        logger.warning('Error bithumb API update data: %s'%(info))
 
 def binance_currency_usdt(currency):
     client = Client(api_key=BIN_API_KEY, api_secret=BIN_API_SECRET)
 
     currency_list = ['BTC', 'ETH']
 
-    if currency in currency_list:
-        depth = client.get_order_book(symbol='%sUSDT' % (currency))
-        asks_usdt = float(depth['asks'][0][0])
-        bids_usdt = float(depth['bids'][0][0])
-    else:
-        depth = client.get_order_book(symbol='USDT%s' % (currency))
-        asks_usdt = 1 / float(depth['asks'][0][0])
-        bids_usdt = 1 / float(depth['bids'][0][0])
+    try:
+        if currency in currency_list:
+            depth = client.get_order_book(symbol='%sUSDT' % (currency))
+            asks_usdt = float(depth['asks'][0][0])
+            bids_usdt = float(depth['bids'][0][0])
+        else:
+            depth = client.get_order_book(symbol='USDT%s' % (currency))
+            asks_usdt = 1 / float(depth['asks'][0][0])
+            bids_usdt = 1 / float(depth['bids'][0][0])
 
-    average_exchange_rate = (asks_usdt + bids_usdt) / 2
-    return average_exchange_rate
+        average_exchange_rate = (asks_usdt + bids_usdt) / 2
+        return average_exchange_rate
+    except BinanceAPIException as info:
+        rollbar.report_message('Error binance API update data: %s'%(info))
+        logger.warning('Error binance API update data: %s'%(info))
 
 
 def update_exchange_rates():
