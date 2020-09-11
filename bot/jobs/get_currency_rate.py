@@ -8,7 +8,14 @@ from bot.blockchain.bithumb_api import BithumbGlobalRestAPI
 from binance.client import Client
 
 from config.settings import BH_API_KEY, BH_SECRET_KEY, BIN_API_KEY, BIN_API_SECRET
+import logging
 
+import rollbar
+
+from config.settings import POST_SERVER_ITEM_ACCESS_TOKEN
+
+logger = logging.getLogger('TradeErrors')
+rollbar.init(POST_SERVER_ITEM_ACCESS_TOKEN, 'production')
 
 def coinmarket_currency_usd(currency):
     url = 'https://pro-api.coinmarketcap.com/v1/tools/price-conversion'
@@ -27,8 +34,13 @@ def coinmarket_currency_usd(currency):
     }
     response = session.get(url, params=parameters)
     data = json.loads(response.text)
+    try:
+        coin = data['data']['quote']['USD']['price']
+        return coin
+    except KeyError:
+        rollbar.report_message('You have exceeded your API Keys monthly credit limit. API info: %s'%(data))
+        logger.warning('You have exceeded your API Keys monthly credit limit. API info: %s'%(data))
 
-    return data['data']['quote']['USD']['price']
 
 def bithumb_currency_usdt(currency):
     api = BithumbGlobalRestAPI(BH_API_KEY, BH_SECRET_KEY)
@@ -78,4 +90,3 @@ def update_exchange_rates():
                 pass
 
     ExchangeRate.objects.bulk_create([ExchangeRate(**r) for r in rate_list])
-

@@ -13,7 +13,6 @@ from trade.logic import kb as trade_kb
 
 TOPIC_SEND_TOKENS = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
 
-
 def _get_usdt_transfer_params_from_tx_logs(tx_logs):
     """
     transfer params should be in first log record in 'topics' field

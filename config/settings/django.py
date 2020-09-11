@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/3.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.0/ref/settings/
 """
+import logging
 import os
 from _decimal import Decimal
 from collections import OrderedDict
@@ -60,6 +61,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'silk.middleware.SilkyMiddleware',
+    'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -171,3 +173,118 @@ _CONFIG_DIR = os.path.dirname(_SETTINGS_DIR)
 PROJECT_DIR = os.path.dirname(_CONFIG_DIR)
 STATIC_ROOT = os.path.join(PROJECT_DIR, 'static')
 STATIC_URL = '/static/'
+
+
+POST_SERVER_ITEM_ACCESS_TOKEN = '4ae1bed48b524ba4b7e1e22315bdbd6f'
+ROLLBAR = {
+    'access_token': 'POST_SERVER_ITEM_ACCESS_TOKEN',
+    'environment':  'production',
+    'branch': 'log',
+    'root': 'os.path.dirname(os.path.abspath(__file__))',
+}
+
+DJANGO_LOG_LEVEL = 'INFO'
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] ({module}.{filename}:{lineno} {thread:d}|{process:d}) [{levelname}]: {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+      'require_debug_true': {
+          '()': 'django.utils.log.RequireDebugTrue', # change on django.utils.log.RequireDebugFalse if DEBUG = off in .env
+      },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'rollbar': {
+            'filters': ['require_debug_true'],
+            'accsess_token': 'POST_SERVER_ITEM_ACCESS_TOKEN',
+            'enviroment': 'production',
+            'class': 'rollbar.logger.RollbarHandler',
+        },
+        'jobs': {
+            'formatter': 'verbose',
+            'filters': ['require_debug_true'],
+            'level': 'INFO',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': 'logs/jobs.log',
+            'when': 'midnight',
+            'utc': True,
+            'backupCount': 7
+        },
+        'trade_event': {
+            'formatter': 'verbose',
+            'filters': ['require_debug_true'],
+            'level': 'INFO',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': 'logs/trade_event.log',
+            'when': 'midnight',
+            'utc': True,
+            'backupCount': 7
+        },
+        'trade_operations': {
+            'formatter': 'verbose',
+            'filters': ['require_debug_true'],
+            'level': 'DEBUG',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': 'logs/trade_operations.log',
+            'when': 'midnight',
+            'utc': True,
+            'backupCount': 7
+        },
+        'trade_errors': {
+            'formatter': 'verbose',
+            'filters': ['require_debug_true'],
+            'level': 'WARNING',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': 'logs/trade_errors.log',
+            'when': 'midnight',
+            'utc': True,
+            'backupCount': 7
+        },
+    },
+    'loggers': {
+        'pyrogram.client.ext.syncer': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'pyrogram.session.session': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'pyrogram': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'TradeJobs': {
+            'handlers': ['console', 'jobs'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'TradeEvent': {
+            'handlers': ['console', 'trade_event'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'TradeOperations': {
+            'handlers': ['console', 'trade_operations'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'TradeErrors': {
+            'handlers': ['console', 'trade_errors', 'rollbar'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+    },
+}
