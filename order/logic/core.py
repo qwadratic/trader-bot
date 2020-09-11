@@ -7,13 +7,12 @@ from bot.helpers.converter import currency_in_usd
 from bot.helpers.shortcut import to_units, to_cents, round_currency, get_fee_amount, create_record_cashflow
 from bot.models import CurrencyList
 from order.models import Order, ParentOrder, OrderHoldMoney
-<<<<<<< HEAD
+
 from user.logic.core import update_wallet_balance
-=======
 import logging
 
 logger = logging.getLogger('TradeOperations')
->>>>>>> log
+
 
 
 def get_order_info(user, order_id):

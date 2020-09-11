@@ -62,7 +62,7 @@ def check_refill_bip(cli):
     for block in range(last_block + 1, last_block + block_diff + 1):
         try:
             refill_txs = get_bip_refill_txs(addresses, block)
-            update_balance(refill_txs)
+            update_balance(cli, refill_txs)
             service.last_block = block
             service.save()
         except RequestException:

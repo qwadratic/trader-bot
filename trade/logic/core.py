@@ -4,20 +4,16 @@ from bot.helpers.shortcut import create_record_cashflow, to_units, to_cents, rou
 from order.logic.core import update_order, close_order
 from trade.models.trade import TradeHoldMoney
 from user.logic.core import update_wallet_balance
-<<<<<<< HEAD
 from user.models import UserRef
+import logging
 
+logger = logging.getLogger('TradeOperations')
 
 def pay_commssion(user, ):
     user_refferer = user.ref.get_or_none()
 
     if user_refferer:
         pass
-=======
-import logging
-
-logger = logging.getLogger('TradeOperations')
->>>>>>> log
 
 
 def auto_trade(trade):
@@ -58,7 +54,6 @@ def auto_trade(trade):
         if user_ref:
             user_referrer = user_ref.referrer
 
-<<<<<<< HEAD
             taker_affiliate_fee = to_cents(payment_currency, get_fee_amount(config.AFFILIATE_FEE, to_units(payment_currency, taker_fee)))
             taker_affiliate_fee_usd = to_cents('USD', to_units(payment_currency, taker_affiliate_fee) * to_units(payment_currency, trade.order.parent_order.payment_currency_rate[payment_currency]))
 
@@ -70,16 +65,6 @@ def auto_trade(trade):
         update_wallet_balance(user, payment_currency, trade.price_trade + taker_fee, 'down')
         create_record_cashflow(user, owner, 'transfer', trade.price_trade, payment_currency, trade)
         create_record_cashflow(user, None, 'trade_fee', taker_fee, payment_currency, trade)
-=======
-        update_wallet_balance(owner, trade.payment_currency, trade.price_trade, 'up')
-        update_wallet_balance(owner, trade.trade_currency, trade.amount, 'down')
-        logger.info('User`s %s wallet is update: +%s %s; -%s %s'%(owner, trade.payment_currency, trade.price_trade, trade.trade_currency, trade.amount))
-
-        create_record_cashflow(owner, user, 'transfer', trade.amount, trade.trade_currency, trade)
-        update_wallet_balance(user, trade.trade_currency, trade.amount, 'up')
-        update_wallet_balance(user, trade.payment_currency, trade.price_trade, 'down')
-        logger.info('User`s %s wallet is update: +%s %s; -%s %s'%(user, trade.trade_currency, trade.amount, trade.payment_currency, trade.price_trade))
->>>>>>> log
 
     # покупка
     else:
@@ -101,34 +86,21 @@ def auto_trade(trade):
 
         update_wallet_balance(user, payment_currency, trade.price_trade, 'up')
 
-<<<<<<< HEAD
         if user_ref:
             user_referrer = user_ref.referrer
-=======
-        update_wallet_balance(owner, trade.order.payment_currency, trade.price_trade, 'down')
-        update_wallet_balance(owner, trade.trade_currency, trade.amount, 'up')
-        logger.info('User`s %s wallet is update: +%s %s; -%s %s'%(owner, trade.trade_currency, trade.amount, trade.order.payment_currency, trade.price_trade))
->>>>>>> log
 
             taker_affiliate_fee = to_cents(trade_currency, get_fee_amount(config.AFFILIATE_FEE, to_units(trade_currency, taker_fee)))
             taker_affiliate_fee_usd = to_cents('USD', to_units(trade_currency, taker_affiliate_fee) * to_units(trade_currency, trade.order.parent_order.currency_rate))
             taker_fee -= taker_affiliate_fee
 
-<<<<<<< HEAD
             update_wallet_balance(user_referrer, 'BONUS', taker_affiliate_fee_usd, 'up')
             create_record_cashflow(user, user_referrer, 'affiliate_fee', taker_affiliate_fee_usd, 'USD', trade)
 
         update_wallet_balance(user, trade_currency, trade.amount + taker_fee, 'down')
         create_record_cashflow(user, owner, 'transfer', trade.amount, trade_currency, trade)
         create_record_cashflow(user, None, 'trade_fee', taker_fee, trade_currency, trade)
-=======
-        update_wallet_balance(user, trade.payment_currency, trade.price_trade, 'down')
-        update_wallet_balance(user, trade.trade_currency, trade.amount, 'up')
-        logger.info('User`s %s wallet is update: +%s %s; -%s %s'%(user, trade.trade_currency, trade.amount, trade.order.payment_currency, trade.price_trade))
->>>>>>> log
 
     close_trade(trade)
-    logger.info('AutoTrade is closed %s'%(trade.id))
 
 # def semi_auto_trade(trade):
 #     owner = trade.order.parent_order.user
