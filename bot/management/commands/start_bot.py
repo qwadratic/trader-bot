@@ -21,8 +21,7 @@ from django.core.management import BaseCommand
 from bot.jobs import check_refill_bip, check_refill_eth, update_exchange_rates, check_refill_btc
 from bot.jobs.withdrawal import verification_withdrawal_requests
 
-#logger = logging.getLogger(__name__)
-
+logger = logging.getLogger('TradeJobs')
 
 class Command(BaseCommand):
     help = 'Start telegram client'
@@ -36,7 +35,7 @@ class Command(BaseCommand):
         shed = BackgroundScheduler()
         shed.add_job(check_refill_bip, 'interval', seconds=config.CRON_CHECK_REFILL_BIP_SEC, args=[app])
         shed.add_job(check_refill_eth, 'interval', seconds=config.CRON_CHECK_REFILL_ETH_SEC, args=[app])
-        shed.add_job(update_exchange_rates, 'interval', minutes=config.CRON_UPDATE_EXCHANGE_RATES_MIN)
+        shed.add_job(update_exchange_rates, 'interval', seconds=config.CRON_UPDATE_EXCHANGE_RATES_MIN)
         shed.add_job(check_refill_btc, 'interval', seconds=config.CRON_CHECK_REFILL_BTC_SEC, args=[app])
         shed.add_job(verification_withdrawal_requests, 'interval', seconds=config.CRON_VERIFICATION_WITHDRAWAL_REQUESTS_SEC)
         shed.add_job(check_subscription_time, 'interval', seconds=config.CRON_CHECK_SUBSCRIPTION_TIME_SEC)

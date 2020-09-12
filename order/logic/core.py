@@ -7,7 +7,12 @@ from bot.helpers.converter import currency_in_usd
 from bot.helpers.shortcut import to_units, to_cents, round_currency, get_fee_amount, create_record_cashflow
 from bot.models import CurrencyList
 from order.models import Order, ParentOrder, OrderHoldMoney
+
 from user.logic.core import update_wallet_balance
+import logging
+
+logger = logging.getLogger('TradeOperations')
+
 
 
 def get_order_info(user, order_id):
@@ -173,6 +178,10 @@ def create_order(temp_order):
                 requisites=order.requisites[order.trade_currency],
                 mirror=True
             ))
+    type_op = [w['type_operation'] for w in order_list]
+    trade_cur = [w['trade_currency'] for w in order_list]
+    amnt = [w['amount'] for w in order_list]
+    logger.info('New order created: type operation: %s; trade currency: %s; amount: %s' % (type_op, trade_cur, amnt))
 
     Order.objects.bulk_create([Order(**r) for r in order_list])
 

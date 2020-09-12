@@ -5,7 +5,9 @@ from order.logic.core import update_order, close_order
 from trade.models.trade import TradeHoldMoney
 from user.logic.core import update_wallet_balance
 from user.models import UserRef
+import logging
 
+logger = logging.getLogger('TradeOperations')
 
 def pay_commssion(user, ):
     user_refferer = user.ref.get_or_none()
@@ -99,7 +101,6 @@ def auto_trade(trade):
         create_record_cashflow(user, None, 'trade_fee', taker_fee, trade_currency, trade)
 
     close_trade(trade)
-
 
 # def semi_auto_trade(trade):
 #     owner = trade.order.parent_order.user

@@ -12,3 +12,5 @@ minter-sdk==1.0.34
 python-bitcoinrpc==1.0
 cachetools==4.1.1
 APScheduler==3.6.3
+python-binance==0.7.5
+rollbar==0.15.0

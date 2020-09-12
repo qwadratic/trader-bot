@@ -5,7 +5,9 @@ from bot.models import WithdrawalRequest
 from user.models import Wallet, VirtualWallet
 
 from config.settings import env
+import logging
 
+logger = logging.getLogger('TradeEvent')
 
 def create_wallets_for_user(user):
     currency = ['BIP', 'ETH', 'BTC', 'USDT', 'UAH', 'USD', 'RUB', 'BONUS']
@@ -57,6 +59,7 @@ def create_wallets_for_user(user):
 
     for c in currency:
         VirtualWallet.objects.create(user_id=user.id, currency=c)
+    logger.info('New user registered: %s, name: %s. New Wallets created'%(user.telegram_id, user.first_name))
 
 
 def create_reflink(user_id=None, order_id=None):
@@ -78,7 +81,6 @@ def update_wallet_balance(user, currency, amount, operation):
         wallet.balance -= amount
 
     wallet.save()
-
 
 def finish_withdraw(withdrawal_request_id, tx_hash):
     withdrawal_request = WithdrawalRequest.objects.get(id=withdrawal_request_id)
@@ -130,3 +132,4 @@ def check_requisite_uniq_address(user, currency, req_address):
         return False
 
     return True
+

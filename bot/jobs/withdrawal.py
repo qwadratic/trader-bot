@@ -1,4 +1,5 @@
 from bot.models import WithdrawalRequest
+import logging
 
 
 def verification_withdrawal_requests():
