@@ -348,19 +348,9 @@ def select_trade_currency(_, cb):
         temp_order.trade_currency = trade_currency
         temp_order.save()
 
-        if temp_order.type_operation == 'sale':
-            txt = f'\n\n{user.get_text(name="order-type_operation_translate_sale_3").format(currency=trade_currency)}'
-            type_op = user.get_text(name="order-type_operation_translate_sale_1")
-        else:
-            txt = f'\n\n{user.get_text(name="order-type_operation_translate_buy_3").format(currency=trade_currency)}'
-            type_op = user.get_text(name="order-type_operation_translate_buy_1")
-
+        txt = f'\n\n{user.get_text(name="you_selected").format(foo=trade_currency)}'
         cb.message.edit(cb.message.text + txt)
-        cb.message.reply(
-
-            user.get_text('order-select_payment_currency').format(type_operation=type_op,
-                                                                  currency=temp_order.trade_currency),
-            reply_markup=kb.payment_currency(trade_currency, user))
+        cb.message.reply(user.get_text('order-select_payment_currency'), reply_markup=kb.payment_currency(trade_currency, user))
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:22] == 'order_payment_currency'))
@@ -778,9 +768,8 @@ def cancel_order_create(cli, cb):
     flags.save()
 
     cb.message.edit(cb.message.text + '\n\n**Создание объявления отменено**')
-    user_msg = user.msg
 
-    delete_msg(cli, user.telegram_id, user_msg.trade_menu)
+    delete_msg(cli, user.telegram_id, user.cache['msg']['trade_menu'])
 
     msg = cb.message.reply(user.get_text(name='user-trade_menu'), reply_markup=kb.trade_menu(user))
 
@@ -879,13 +868,7 @@ def order_deposit_navigation(cli, cb):
         temp_order.save()
         cb.message.edit(cb.message.text)
 
-        if temp_order.type_operation == 'sale':
-            type_op = user.get_text(name="order-type_operation_translate_sale_1")
-        else:
-            type_op = user.get_text(name="order-type_operation_translate_buy_1")
-
-        cb.message.reply(user.get_text('order-select_payment_currency').format(type_operation=type_op,
-                                                                               currency=temp_order.trade_currency),
+        cb.message.reply(user.get_text('order-select_payment_currency'),
                          reply_markup=kb.payment_currency(temp_order.trade_currency, user))
 
     if button == 'continue':
