@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 
 from bot.helpers.shortcut import to_cents
 
@@ -16,6 +17,7 @@ from config.settings import POST_SERVER_ITEM_ACCESS_TOKEN
 
 logger = logging.getLogger('TradeErrors')
 rollbar.init(POST_SERVER_ITEM_ACCESS_TOKEN, 'production')
+
 
 def coinmarket_currency_usd(currency):
     url = 'https://pro-api.coinmarketcap.com/v1/tools/price-conversion'
@@ -38,14 +40,15 @@ def coinmarket_currency_usd(currency):
         coin = data['data']['quote']['USD']['price']
         return coin
     except KeyError:
-        rollbar.report_message('You have exceeded your API Keys monthly credit limit. API info: %s'%(data))
-        logger.warning('You have exceeded your API Keys monthly credit limit. API info: %s'%(data))
+        rollbar.report_message(f'You have exceeded your API Keys monthly credit limit. API info: {data}')
+        logger.warning(f'You have exceeded your API Keys monthly credit limit. API info: {data}')
+        return None
 
 
 def bithumb_currency_usdt(currency):
     try:
         api = BithumbGlobalRestAPI(BH_API_KEY, BH_SECRET_KEY)
-        symbol = '%s-USDT'%(currency)
+        symbol = f'{currency}-USDT'
         depth = api.depth(symbol, count=1)
 
         asks_usdt = depth['asks'][0][0]
@@ -54,47 +57,48 @@ def bithumb_currency_usdt(currency):
 
         return average_exchange_rate
     except BithumbGlobalError as info:
-        rollbar.report_message('Error bithumb API update data: %s'%(info))
-        logger.warning('Error bithumb API update data: %s'%(info))
+        rollbar.report_message(f'Error bithumb API update data: {info}')
+        logger.warning(f'Error bithumb API update data: {info}')
+
 
 def binance_currency_usdt(currency):
     client = Client(api_key=BIN_API_KEY, api_secret=BIN_API_SECRET)
 
-    currency_list = ['BTC', 'ETH']
+    currency_list = ['BTC', 'ETH', 'USDT']
 
     try:
         if currency in currency_list:
-            depth = client.get_order_book(symbol='%sUSDT' % (currency))
-            asks_usdt = float(depth['asks'][0][0])
-            bids_usdt = float(depth['bids'][0][0])
+            depth = client.get_order_book(symbol=f'{currency}USDT')
+            asks_usdt = Decimal(depth['asks'][0][0])
+            bids_usdt = Decimal(depth['bids'][0][0])
         else:
-            depth = client.get_order_book(symbol='USDT%s' % (currency))
-            asks_usdt = 1 / float(depth['asks'][0][0])
-            bids_usdt = 1 / float(depth['bids'][0][0])
+            depth = client.get_order_book(symbol=f'USDT{currency}')
+            asks_usdt = 1 / Decimal(depth['asks'][0][0])
+            bids_usdt = 1 / Decimal(depth['bids'][0][0])
 
         average_exchange_rate = (asks_usdt + bids_usdt) / 2
         return average_exchange_rate
     except BinanceAPIException as info:
-        rollbar.report_message('Error binance API update data: %s'%(info))
-        logger.warning('Error binance API update data: %s'%(info))
+        rollbar.report_message(f'Error binance API update data: {info}')
+        logger.warning(f'Error binance API update data: {info}')
+        return None
 
 
 def update_exchange_rates():
     currency_list = ['BIP', 'BTC', 'USDT', 'ETH', 'UAH', 'RUB']
     sources = {'coinmarketcup': coinmarket_currency_usd,
-                'bithumb': bithumb_currency_usdt, 'binance': binance_currency_usdt}
+               'bithumb': bithumb_currency_usdt,
+               'binance': binance_currency_usdt}
 
     rate_list = []
     for currency in currency_list:
         for s in sources:
-            try:
-                rate = sources[s](currency)
-                rate_list.append(dict(
-                    currency=currency,
-                    source=s,
-                    value=to_cents('USD', rate)
-                ))
-            except:
-                pass
+            rate = sources[s](currency)
+            if rate:
+                    rate_list.append(dict(
+                        currency=currency,
+                        source=s,
+                        value=to_cents('USD', rate)
+                    ))
 
     ExchangeRate.objects.bulk_create([ExchangeRate(**r) for r in rate_list])
