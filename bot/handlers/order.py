@@ -398,8 +398,8 @@ def select_payment_currency(cli, cb):
             cb.message.reply(user.get_text(name='order-enter_currency_rate').format(
                 trade_currency=order.trade_currency,
 
-                price=round_currency('USD',
-                                     to_units('USD', get_currency_rate(order.trade_currency)))),
+                price=round_currency(order.trade_currency,
+                                     to_units(order.trade_currency, get_currency_rate(order.trade_currency)))),
                 reply_markup=kb.avarage_rate(user))
 
         if order.type_operation == 'buy':
@@ -420,15 +420,10 @@ def select_payment_currency(cli, cb):
                 order.save()
 
             cb.message.edit(cb.message.text)
-            # cb.message.reply(
-            #     user.get_text(name='order-select_requisite_for_order').format(currency=currency),
-            #     reply_markup=kb.choice_requisite_for_order(order, currency))
 
             cb.message.reply(user.get_text(name='order-enter_currency_rate').format(
                 trade_currency=order.trade_currency,
-
-                price=round_currency('USD',
-                                     to_units('USD', get_currency_rate(order.trade_currency)))),
+                price=round_currency(order.trade_currency,to_units(order.trade_currency, get_currency_rate(order.trade_currency)))),
                 reply_markup=kb.avarage_rate(user))
 
         flags = user.flags
@@ -626,7 +621,7 @@ def enter_currency_rate(cli, m):
     order = user.temp_order
     try:
         value = Decimal(m.text.replace(',', '.'))
-        current_price = to_units('USD', get_currency_rate(order.trade_currency))
+        current_price = to_units(order.trade_currency, get_currency_rate(order.trade_currency))
 
         max_price_range_factor = config.GET_MAX_PRICE_RANGE_FACTOR
 
