@@ -114,7 +114,7 @@ def get_currency_rate(currency):
     if currency == 'USD':
         return to_cents('USD', 1)
 
-    return ExchangeRate.objects.filter(currency=currency, source='coinmarketcup').latest('time').value
+    return ExchangeRate.objects.filter(currency=currency, source='coinmarketcup').latest('time').value  # TODO: Пофиксить на разные источники
 
 
 def create_record_cashflow(user, to, type_operation, amount, currency, trade=None, tx_hash=None):
