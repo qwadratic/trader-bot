@@ -76,6 +76,7 @@ def check_address(address, currency):
 
 
 def to_cents(currency, amount):
+    amount = Decimal(amount)
     if currency in ['USDT', 'ETH']:
         amount = ethAPI.Web3.toWei(amount, 'ether')
 
