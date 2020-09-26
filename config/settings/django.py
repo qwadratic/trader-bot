@@ -105,9 +105,9 @@ CONSTANCE_DATABASE_PREFIX = 'constance:trader-bot:'
 
 CONSTANCE_CONFIG = OrderedDict(
     [
-        ('CRON_CHECK_REFILL_BIP_SEC', (5, 'Интервал запуска джобы пополнения BIP')),
+        ('CRON_CHECK_REFILL_BIP_SEC', (15, 'Интервал запуска джобы пополнения BIP')),
         ('CRON_CHECK_REFILL_ETH_SEC', (20, 'Интервал запуска джобы пополнения ETH')),
-        ('CRON_CHECK_REFILL_BTC_SEC', (60, 'Интервал запуска джобы пополнения BTC')),
+        ('CRON_CHECK_REFILL_BTC_SEC', (30, 'Интервал запуска джобы пополнения BTC')),
         ('CRON_UPDATE_EXCHANGE_RATES_MIN', (20, 'Интервал запуска джобы парса курса валют')),
         ('CRON_VERIFICATION_WITHDRAWAL_REQUESTS_SEC', (10, 'Интервал запуска джобы проверки заявок на вывод средств')),
         ('CRON_CHECK_SUBSCRIPTION_TIME_SEC', (300, 'Интервал проверки времени реф подписки')),

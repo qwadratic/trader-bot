@@ -113,7 +113,8 @@ def to_units(currency, amount, round=False):
 def get_currency_rate(currency):
     if currency == 'USD':
         return to_cents('USD', 1)
-    return ExchangeRate.objects.filter(currency=currency).latest('time').value
+
+    return ExchangeRate.objects.filter(currency=currency, source='coinmarketcup').latest('time').value
 
 
 def create_record_cashflow(user, to, type_operation, amount, currency, trade=None, tx_hash=None):
@@ -131,22 +132,15 @@ def create_record_cashflow(user, to, type_operation, amount, currency, trade=Non
 def round_currency(currency_id, number):
 
     currency = CurrencyList.objects.get(currency=currency_id)
-    #result = round(Decimal(number), currency.accuracy)
-    #
-    # if isinstance(number, float):
-    #     number = Decimal(number)
-    #
+    accuracy = currency.accuracy
 
     if number % 1 == 0:
         return int(number)
     if isinstance(number, Decimal):
-        return number.quantize(Decimal(f'0.{"1" * currency.accuracy}'), rounding=ROUND_DOWN)
+        if '0.00' in str(number):
+            accuracy = 4
+        return number.quantize(Decimal(f'0.{"1" * accuracy}'), rounding=ROUND_DOWN)
     return number
-
-    # if result % 1 == 0:
-    #     return int(result)
-    # else:
-    #     return result
 
                                        
 def get_max_amount_withdrawal(user, currency):

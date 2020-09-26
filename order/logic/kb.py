@@ -255,7 +255,7 @@ def market_depth(user, trade_currency, payment_currency, offset, revers=False):
 
     sale_orders = get_orders('sale', trade_currency, payment_currency, offset, 5, 'open')
     buy_orders = get_orders('buy', trade_currency, payment_currency, offset, 5, 'open')
-    all_orders = Order.objects.filter(type_operation=1, status='open')
+
 
     trade_currency_rate_usd = to_units('USD', get_currency_rate(trade_currency), round=True)
     payment_currency_rate_usd = to_units('USD', get_currency_rate(payment_currency), round=True)
