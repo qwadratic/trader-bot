@@ -98,7 +98,7 @@ def update_exchange_rates():
                     rate_list.append(dict(
                         currency=currency,
                         source=s,
-                        value=to_cents('USD', rate)
+                        value=to_cents(currency, rate)
                     ))
 
     ExchangeRate.objects.bulk_create([ExchangeRate(**r) for r in rate_list])

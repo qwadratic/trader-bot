@@ -698,7 +698,7 @@ def amount_for_order(cli, m):
         fee_amount = get_fee_amount(config.MAKER_FEE, amount)
         if amount + fee_amount > balance:
             m.reply(f'Вы не можете продать больше чем '
-                    f'{balance}'
+                    f'{balance-fee_amount}'
                     f' {temp_order.trade_currency}')
             return
 

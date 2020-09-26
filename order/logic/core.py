@@ -14,7 +14,6 @@ import logging
 logger = logging.getLogger('TradeOperations')
 
 
-
 def get_order_info(user, order_id):
     trade_direction = {'buy': {'type': 'Покупка',
                                'icon': '📈'},
@@ -270,8 +269,8 @@ def check_balance_from_order(user, order):
         trade_currency_rate = to_units(order.trade_currency, order.currency_rate)
         price_trade = Decimal(amount * trade_currency_rate / payment_currency_rate)
         balance = user.get_balance(currency, cent2unit=True)
-
         fee_amount = get_fee_amount(config.MAKER_FEE, amount)
+
         if price_trade + fee_amount > balance:
             is_good_balance = False
 
