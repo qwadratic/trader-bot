@@ -138,7 +138,7 @@ def round_currency(currency_id, number):
     if number % 1 == 0:
         return int(number)
     if isinstance(number, Decimal):
-        if '0.00' in str(number):
+        if '0.00' in str(number) and currency_id == 'USD':
             accuracy = 4
         return number.quantize(Decimal(f'0.{"1" * accuracy}'), rounding=ROUND_DOWN)
     return number
