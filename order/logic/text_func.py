@@ -92,6 +92,6 @@ def get_lack_balance_text(order, deposit_currency):
         price_trade = Decimal(amount * trade_currency_rate / payment_currency_rate)
         to_deposit = price_trade - balance
 
-        text += f'{currency} {to_deposit}\n'
+        text += f'{currency} {round_currency(currency, to_deposit)}\n'
 
     return text

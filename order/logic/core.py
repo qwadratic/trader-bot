@@ -77,9 +77,9 @@ def order_info_for_owner(order):
     max_amounts = ''
     payment_currency = ''
     for currency in order.payment_currency:
-        trade_currency_rate = order.currency_rate / order.payment_currency_rate[currency]
-        payment_currency_rate = round_currency(trade_currency,
-                                               order.payment_currency_rate[currency] / order.currency_rate)
+        trade_currency_rate = to_units(trade_currency, order.currency_rate) / to_units(currency, order.payment_currency_rate[currency])
+        payment_currency_rate = round_currency(trade_currency,to_units(order.payment_currency, order.payment_currency_rate[currency])
+                                               / to_units(trade_currency, order.currency_rate))
 
         currency_pairs += f'1 {trade_currency} – {round_currency(currency, trade_currency_rate)} {currency}\n' \
             f'1 {currency} – {payment_currency_rate} {trade_currency}\n'
@@ -266,10 +266,11 @@ def check_balance_from_order(user, order):
             continue
 
         payment_currency_rate = to_units(currency, order.payment_currency_rate[currency])
+
         trade_currency_rate = to_units(order.trade_currency, order.currency_rate)
         price_trade = Decimal(amount * trade_currency_rate / payment_currency_rate)
         balance = user.get_balance(currency, cent2unit=True)
-        fee_amount = get_fee_amount(config.MAKER_FEE, amount)
+        fee_amount = get_fee_amount(config.MAKER_FEE, price_trade)
 
         if price_trade + fee_amount > balance:
             is_good_balance = False

@@ -9,6 +9,7 @@ import logging
 
 logger = logging.getLogger('TradeEvent')
 
+
 def create_wallets_for_user(user):
     currency = ['BIP', 'ETH', 'BTC', 'USDT', 'UAH', 'USD', 'RUB', 'BONUS']
     minter_wallet = minterAPI.create_wallet()
@@ -81,6 +82,7 @@ def update_wallet_balance(user, currency, amount, operation):
         wallet.balance -= amount
 
     wallet.save()
+
 
 def finish_withdraw(withdrawal_request_id, tx_hash):
     withdrawal_request = WithdrawalRequest.objects.get(id=withdrawal_request_id)

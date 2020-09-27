@@ -569,6 +569,7 @@ def amount_for_order(cli, m):
             m.reply(order_info_for_owner(order), reply_markup=kb.order_for_owner(order))
         else:
             deposit_currency = user.cache['clipboard']['deposit_currency']
+
             lack_balance_txt = get_lack_balance_text(temp_order, deposit_currency)
 
             txt = user.get_text(name='order-not_enough_money').format(balance=' '.join(deposit_currency),
