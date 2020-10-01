@@ -8,12 +8,12 @@ class Command(BaseCommand):
     def handle(self, **options):
         currency_list = [
             {'currency': 'ETH', 'type': 'crypto', 'accuracy': 6},
-            {'currency': 'USDT', 'type': 'crypto', 'accuracy': 4},
+            {'currency': 'USDT', 'type': 'crypto', 'accuracy': 2},
             {'currency': 'BTC', 'type': 'crypto', 'accuracy': 8},
-            {'currency': 'BIP', 'type': 'crypto', 'accuracy': 4},
+            {'currency': 'BIP', 'type': 'crypto', 'accuracy': 2},
             {'currency': 'USD', 'type': 'fiat', 'accuracy': 2},
             {'currency': 'UAH', 'type': 'fiat', 'accuracy': 2},
-            {'currency': 'RUB', 'type': 'fiat', 'accuracy': 4},
+            {'currency': 'RUB', 'type': 'fiat', 'accuracy': 3},
             {'currency': 'BONUS', 'type': 'affiliate', 'accuracy': 2}
         ]
 
