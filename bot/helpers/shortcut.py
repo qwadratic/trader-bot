@@ -130,16 +130,19 @@ def create_record_cashflow(user, to, type_operation, amount, currency, trade=Non
     )
 
 
-def round_currency(currency_id, number):
+def round_currency(currency_id, number, to_str=False):
 
     currency = CurrencyList.objects.get(currency=currency_id)
     accuracy = currency.accuracy
-
     if number % 1 == 0:
         return int(number)
     if isinstance(number, Decimal):
-        if '0.00' in str(number) and currency_id == 'USD':
+        if '0.00' in str(number) and currency_id in ['USD', 'BIP', 'USDT', 'UAH', 'RUB']:
             accuracy = 4
+
+        if to_str:
+            return '%.*f' % (accuracy, number)
+
         return number.quantize(Decimal(f'0.{"1" * accuracy}'), rounding=ROUND_DOWN)
     return number
 

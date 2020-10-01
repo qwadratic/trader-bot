@@ -84,7 +84,6 @@ class TelegramUser(Model):
 
             for hm in hold_money:
                 balance -= hm.amount
-                balance -= hm.fee
 
         withdrawal_query = self.withdrawalRequests.filter(status__in=['pending verification', 'verifed'], currency=currency)
 

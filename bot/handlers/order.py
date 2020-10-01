@@ -128,6 +128,13 @@ def market_depth(cli, cb):
         order_id = int(cb_data[2])
 
         order = Order.objects.get(id=order_id)
+        if order.status == 'deleted':
+            trade_currency = user.cache['clipboard']['market_depth']['trade_currency']
+            payment_currency = user.cache['clipboard']['market_depth']['payment_currency']
+
+            cb.message.edit(user.get_text(name='order-orders_menu'),
+                            reply_markup=kb.market_depth(user, trade_currency, payment_currency, 0))
+            return
 
         if user.id == order.parent_order.user_id:
 
@@ -189,76 +196,6 @@ def market_depth(cli, cb):
         cb.message.edit(user.get_text(name='order-orders_menu'),
                         reply_markup=kb.half_market_depth(user, type_operation, offset))
 
-    # elif action == 'switch':
-    #     type_orders = cb.data.split('-')[2]
-    #     cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list(user, type_orders, 0))
-    #
-    # elif action == 'move':
-    #     cours = cb.data.split('-')[2]
-    #     type_operation = cb.data.split('-')[3]
-    #     offset = int(cb.data.split('-')[4])
-    #
-    #     if cours == 'right':
-    #         offset += 7
-    #
-    #     elif cours == 'left':
-    #         offset -= 7
-    #
-    #     cb.message.edit(user.get_text(name='order-orders_menu'),
-    #                     reply_markup=kb.order_list(user, type_operation, offset))
-    #
-    # elif action == 'open':
-    #     order_id = int(cb.data.split('-')[2])
-    #     type_orders = cb.data.split('-')[3]
-    #     offset = int(cb.data.split('-')[4])
-    #     order = Order.objects.get(id=order_id)
-    #     if user.id == order.parent_order.user_id:
-    #         cb.message.edit(get_order_info(user, order_id),
-    #                         reply_markup=kb.order_for_owner(order.parent_order, 'orders', type_orders, offset))
-    #     else:
-    #         cb.message.edit(get_order_info(user, order_id),
-    #                          reply_markup=kb.order_for_user(user, order_id, type_orders, offset))
-
-
-# @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:10] == 'order_list'))
-# def order_list(cli, cb):
-#     user = get_user(cb.from_user.id)
-#
-#     action = cb.data.split('-')[1]
-#
-#     if action == 'back':
-#         cb.message.edit(user.get_text(name='user-trade_menu'), reply_markup=kb.trade_menu(user))
-#
-#     elif action == 'switch':
-#         type_orders = cb.data.split('-')[2]
-#         cb.message.edit(user.get_text(name='order-orders_menu'), reply_markup=kb.order_list(user, type_orders, 0))
-#
-#     elif action == 'move':
-#         cours = cb.data.split('-')[2]
-#         type_operation = cb.data.split('-')[3]
-#         offset = int(cb.data.split('-')[4])
-#
-#         if cours == 'right':
-#             offset += 7
-#
-#         elif cours == 'left':
-#             offset -= 7
-#
-#         cb.message.edit(user.get_text(name='order-orders_menu'),
-#                         reply_markup=kb.order_list(user, type_operation, offset))
-#
-#     elif action == 'open':
-#         order_id = int(cb.data.split('-')[2])
-#         type_orders = cb.data.split('-')[3]
-#         offset = int(cb.data.split('-')[4])
-#         order = Order.objects.get(id=order_id)
-#         if user.id == order.parent_order.user_id:
-#             cb.message.edit(get_order_info(user, order_id),
-#                             reply_markup=kb.order_for_owner(order.parent_order, 'orders', type_orders, offset))
-#         else:
-#             cb.message.edit(get_order_info(user, order_id),
-#                              reply_markup=kb.order_for_user(user, order_id, type_orders, offset))
-
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('owner_order')))
 def owner_order_list(cli, cb):
@@ -269,6 +206,9 @@ def owner_order_list(cli, cb):
     if action == 'open':
         order_id = int(cb.data.split('-')[2])
         order = user.parentOrders.get(id=order_id)
+        if order.status == 'deleted':
+            cb.message.edit(user.get_text(name='order-my_orders'), reply_markup=kb.owner_order_list(user, 'sale', 0))
+            return
 
         cb.message.reply(order_info_for_owner(order), reply_markup=kb.order_for_owner(order))
 
@@ -288,15 +228,15 @@ def owner_order_list(cli, cb):
         cb.message.edit(user.get_text(name='user-trade_menu'), reply_markup=kb.trade_menu(user))
 
 
-@Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:10] == 'order_info'))
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('order_info')))
 def order_info(cli, cb):
     user = get_user(cb.from_user.id)
 
     action = cb.data.split('-')[1]
-
+    order_id = int(cb.data.split('-')[2])
+    order = user.parentOrders.get(id=order_id)
     if action == 'switch':
-        order_id = int(cb.data.split('-')[2])
-        order = user.parentOrders.get(id=order_id)
+
         if order.status == 'close':
             for currency in order.payment_currency:
 
@@ -325,17 +265,32 @@ def order_info(cli, cb):
             hold_money_order(order)
 
             update_order(order, 'set status', 'open')
-            cb.message.edit(order_info_for_owner(order),
-
-                            reply_markup=kb.order_for_owner(order))
+            cb.message.edit(order_info_for_owner(order), reply_markup=kb.order_for_owner(order))
 
         elif order.status == 'open':
 
             close_order(order, 'close')
             cb.message.edit(order_info_for_owner(order), reply_markup=kb.order_for_owner(order))
 
+    if action == 'delete':
+        cb.message.edit(user.get_text(name='order-confirm_delete_order'), reply_markup=kb.confirm_delete_order(user, order_id))
 
-@Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:14] == 'trade_currency'))
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('delete_order')))
+def delete_order(_, cb):
+    user = get_user(cb.from_user.id)
+
+    action = cb.data.split('-')[1]
+    order = user.parentOrders.get(id=int(cb.data.split('-')[2]))
+    if action == 'yes':
+        close_order(order, 'deleted')
+        cb.message.edit(f'{cb.message.text}\n\n{user.get_text(name="you_selected").format(foo=user.get_text(name="kb-yes"))}')
+        cb.message.reply(user.get_text(name='order-order_deleted'))
+    else:
+        cb.message.edit(order_info_for_owner(order), reply_markup=kb.order_for_owner(order))
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('trade_currency')))
 def select_trade_currency(_, cb):
     trade_currency = cb.data.split('-')[1]
     user = get_user(cb.from_user.id)
@@ -397,9 +352,7 @@ def select_payment_currency(cli, cb):
             cb.message.edit(cb.message.text)
             cb.message.reply(user.get_text(name='order-enter_currency_rate').format(
                 trade_currency=order.trade_currency,
-
-                price=round_currency('USD',
-                                     to_units(order.trade_currency, get_currency_rate(order.trade_currency)))),
+                price=round_currency('USD', to_units(order.trade_currency, get_currency_rate(order.trade_currency)))),
                 reply_markup=kb.avarage_rate(user))
 
         if order.type_operation == 'buy':
@@ -503,9 +456,7 @@ def enter_currency_rate(cli, m):
         msg = m.reply(user.get_text(name='order-enter_amount_for_sale').format(
             currency=order.trade_currency,
             amount=max_amount), reply_markup=kb.max_amount(user))
-
     else:
-
         msg = m.reply(user.get_text(name='order-enter_amount_for_buy').format(
             currency=order.trade_currency), reply_markup=kb.cancel_order(user, order.id))
 
@@ -530,10 +481,10 @@ def amount_for_order(cli, m):
 
     if temp_order.type_operation == 'sale':
         balance = user.get_balance(temp_order.trade_currency, cent2unit=True)
-        fee_amount = get_fee_amount(config.MAKER_FEE, amount)
-        if amount + fee_amount > balance:
+
+        if amount > balance:
             m.reply(f'Вы не можете продать больше чем '
-                    f'{balance-fee_amount}'
+                    f'{balance}'
                     f' {temp_order.trade_currency}')
             return
 
@@ -644,7 +595,6 @@ def order_helper(cli, cb):
 
         # покупка
         else:
-
             msg = cb.message.reply(user.get_text(name='order-enter_amount_for_buy').format(
                 currency=order.trade_currency), reply_markup=kb.cancel_order(user, order.id))
 
@@ -670,6 +620,8 @@ def order_helper(cli, cb):
 
             max_amount = to_cents(order.trade_currency,
                                   currency_balance[min_currency] / to_units(order.trade_currency, order.currency_rate))
+
+        delete_inline_kb(cli, user.telegram_id, user.cache['msg']['order_enter_amount'])
 
         order.amount = max_amount
         order.save()

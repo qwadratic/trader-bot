@@ -21,7 +21,6 @@ class DeleteAndCreateManager(Manager):
         try:
             return self.create(**kwargs)
         except IntegrityError:
-            print(kwargs)
             self.get(user=kwargs['user']).delete()
             return self.create(**kwargs)
 
@@ -73,4 +72,3 @@ class OrderHoldMoney(Model):
     user = ForeignKey('user.TelegramUser', related_name='holdMoney', on_delete=CASCADE)
     currency = CharField(max_length=255)
     amount = DecimalField(max_digits=40, decimal_places=0)
-    fee = DecimalField(max_digits=40, decimal_places=0)

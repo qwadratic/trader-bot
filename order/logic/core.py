@@ -45,10 +45,10 @@ def get_order_info(user, order_id):
         order_id=order.id,
         type_operation=trade_direction[type_operation]["type"],
         trade_currency=trade_currency,
-        trade_currency_rate_usd=trade_currency_rate_usd,
+        trade_currency_rate_usd=round_currency('USD', trade_currency_rate_usd),
         payment_currency=payment_currency,
-        rate_1=round_currency(payment_currency, trade_currency_rate),
-        rate_2=round_currency(trade_currency, payment_currency_rate),
+        rate_1=round_currency(payment_currency, trade_currency_rate, to_str=True),
+        rate_2=round_currency(trade_currency, payment_currency_rate, to_str=True),
         amount=round_currency(trade_currency, amount),
         price_order=round_currency(payment_currency, price_order)
     )
@@ -57,15 +57,11 @@ def get_order_info(user, order_id):
 
 
 def order_info_for_owner(order):
-    #  TODO сделать логику
 
     trade_direction = {'buy': {'type': 'Покупка',
                                'icon': '📈'},
                        'sale': {'type': 'Продажа',
                                 'icon': '📉'}}
-
-    status = {'open': '⚪️ Активно',
-              'close': '🔴 Отключено'}
 
     user = order.user
     type_operation = order.type_operation
@@ -75,26 +71,25 @@ def order_info_for_owner(order):
 
     currency_pairs = ''
     max_amounts = ''
-    payment_currency = ''
-    for currency in order.payment_currency:
-        trade_currency_rate = to_units(trade_currency, order.currency_rate) / to_units(currency, order.payment_currency_rate[currency])
-        payment_currency_rate = round_currency(trade_currency,to_units(order.payment_currency, order.payment_currency_rate[currency])
-                                               / to_units(trade_currency, order.currency_rate))
 
-        currency_pairs += f'1 {trade_currency} – {round_currency(currency, trade_currency_rate)} {currency}\n' \
+    for currency in order.payment_currency:
+
+        trade_currency_rate = to_units(trade_currency, order.currency_rate) / to_units(currency, order.payment_currency_rate[currency])
+        payment_currency_rate = round_currency(trade_currency, to_units(currency, order.payment_currency_rate[currency])
+                                               / to_units(trade_currency, order.currency_rate), to_str=True)
+
+        currency_pairs += f'1 {trade_currency} – {round_currency(currency, trade_currency_rate, to_str=True)} {currency}\n' \
             f'1 {currency} – {payment_currency_rate} {trade_currency}\n'
 
         price_lot = round_currency(currency, amount * trade_currency_rate)
         max_amounts += f'{price_lot} {currency}\n'
 
-        payment_currency += f'{currency}\n'
-
     txt = user.get_text(name='order-parent_order_info').format(
         order_id=order.id,
         type_operation=trade_direction[type_operation]["type"],
         trade_currency=trade_currency,
-        trade_currency_rate_usd=round_currency(trade_currency, trade_currency_rate_usd),
-        payment_currency=payment_currency,
+        trade_currency_rate_usd=round_currency('USD', trade_currency_rate_usd),
+        payment_currency=', '.join(order.payment_currency),
         amount=round_currency(trade_currency, amount),
         currency_pairs=currency_pairs,
         max_amounts=max_amounts
@@ -193,13 +188,11 @@ def hold_money_order(order):
     hold_list = []
 
     if order.type_operation == 'sale':
-        fee_amount = to_cents(order.trade_currency, get_fee_amount(config.MAKER_FEE, to_units(order.trade_currency, order.amount)))
         hold_list.append(dict(
             order=order,
             user=user,
             currency=order.trade_currency,
-            amount=order.amount,
-            fee=fee_amount
+            amount=order.amount
         ))
 
     elif order.type_operation == 'buy':
@@ -208,13 +201,11 @@ def hold_money_order(order):
 
             currency_rate = Decimal(order.currency_rate / order.payment_currency_rate[currency])
             amount = currency_rate * to_units(order.trade_currency, order.amount)
-            fee_amount = to_cents(currency, get_fee_amount(config.MAKER_FEE, to_units(currency, amount)))
             hold_list.append(dict(
                 order=order,
                 user=user,
                 currency=currency,
                 amount=to_cents(currency, amount),
-                fee=to_cents(currency, fee_amount)
             ))
 
     OrderHoldMoney.objects.bulk_create([OrderHoldMoney(**r) for r in hold_list])
@@ -312,19 +303,18 @@ def button_orders(user, orders, kb_list, offset):
         type_operation = order.type_operation
         trade_currency = order.trade_currency
         payment_currency = order.payment_currency
-
         if order.mirror:
-            currency_rate_usd = to_units(payment_currency, order.parent_order.payment_currency_rate[order.trade_currency], round=True)
+            currency_rate_usd = round_currency('USD', to_units(order.trade_currency, order.parent_order.payment_currency_rate[order.trade_currency]))
         else:
-            currency_rate_usd = to_units(trade_currency, order.parent_order.currency_rate, round=True)
+            currency_rate_usd = round_currency('USD', to_units(trade_currency, order.parent_order.currency_rate))
 
         if type_operation == 'sale':
             icon = '🟥'
         else:
             icon = '🟩'
 
-        trade_currency_rate = to_units(payment_currency, order.currency_rate, round=True)
-        payment_currency_rate = round_currency(trade_currency, 1 / trade_currency_rate)
+        trade_currency_rate = to_units(trade_currency, order.currency_rate)
+        payment_currency_rate = round_currency(trade_currency, 1 / trade_currency_rate, to_str=True)
 
         amount = to_units(order.trade_currency, order.amount, round=True)
         button_name = f'{icon} {payment_currency_rate} {trade_currency}/{payment_currency} | {currency_rate_usd}$ {trade_currency} | {amount} {order.trade_currency} |'
