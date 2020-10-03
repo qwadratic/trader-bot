@@ -85,13 +85,20 @@ def get_lack_balance_text(order, deposit_currency):
     user = order.user
     amount = to_units(order.trade_currency, order.amount)
     text = ''
-    for currency in deposit_currency:
-        payment_currency_rate = to_units(currency, order.payment_currency_rate[currency])
-        trade_currency_rate = to_units(order.trade_currency, order.currency_rate)
-        balance = user.get_balance(currency, cent2unit=True)
-        price_trade = Decimal(amount * trade_currency_rate / payment_currency_rate)
-        to_deposit = price_trade - balance
 
-        text += f'{currency} {round_currency(currency, to_deposit)}\n'
+    if order.type_operation == 'sale':
+        trade_currency = order.trade_currency
+        balance = user.get_balance(trade_currency, cent2unit=True)
+        to_deposit = amount - balance
+        text += f'{trade_currency} {round_currency(trade_currency, to_deposit, to_str=True, round_up=True)}\n'
+    else:
+        for currency in deposit_currency:
+            payment_currency_rate = to_units(currency, order.payment_currency_rate[currency])
+            trade_currency_rate = to_units(order.trade_currency, order.currency_rate)
+            balance = user.get_balance(currency, cent2unit=True)
+            price_trade = Decimal(amount * trade_currency_rate / payment_currency_rate)
+            to_deposit = price_trade - balance
+
+            text += f'{currency} {round_currency(currency, to_deposit, to_str=True, round_up=True)}\n'
 
     return text

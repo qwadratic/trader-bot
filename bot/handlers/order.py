@@ -449,13 +449,17 @@ def enter_currency_rate(cli, m):
     flags.save()
 
     if order.type_operation == 'sale':
-        type_operation = user.get_text(name='order-type_operation_translate_sale_1')
         balance = user.get_balance(order.trade_currency, cent2unit=True)
         max_amount = round_currency(order.trade_currency, balance)
 
+        if balance <= 0:
+            reply_kb = kb.cancel_order(user, order.id)
+        else:
+            reply_kb = kb.max_amount(user)
+
         msg = m.reply(user.get_text(name='order-enter_amount_for_sale').format(
             currency=order.trade_currency,
-            amount=max_amount), reply_markup=kb.max_amount(user))
+            amount=max_amount), reply_markup=reply_kb)
     else:
         msg = m.reply(user.get_text(name='order-enter_amount_for_buy').format(
             currency=order.trade_currency), reply_markup=kb.cancel_order(user, order.id))
@@ -479,69 +483,47 @@ def amount_for_order(cli, m):
         msg.delete()
         return
 
-    if temp_order.type_operation == 'sale':
-        balance = user.get_balance(temp_order.trade_currency, cent2unit=True)
+    if amount == 0:
+        msg = m.reply('Недопустимое значение 0')
+        sleep(5)
+        msg.delete()
+        return
+    temp_order.amount = to_cents(temp_order.trade_currency, amount)
+    temp_order.save()
 
-        if amount > balance:
-            m.reply(f'Вы не можете продать больше чем '
-                    f'{balance}'
-                    f' {temp_order.trade_currency}')
-            return
+    is_good_balance = check_balance_from_order(user, temp_order)
 
-        if amount == 0:
-            msg = m.reply('Недопустимое значение 0')
-            sleep(5)
-            msg.delete()
-            return
-
+    if is_good_balance:
         flags = user.flags
         flags.await_amount_for_order = False
         flags.save()
 
-        temp_order.amount = to_cents(temp_order.trade_currency, amount)
-        temp_order.save()
-
         order = create_order(temp_order)
 
         m.reply(order_info_for_owner(order), reply_markup=kb.order_for_owner(order))
-    # покупка
     else:
-        temp_order.amount = to_cents(temp_order.trade_currency, amount)
-        temp_order.save()
+        deposit_currency = user.cache['clipboard']['deposit_currency']
 
-        is_good_balance = check_balance_from_order(user, temp_order)
-        if is_good_balance:
-            flags = user.flags
-            flags.await_amount_for_order = False
-            flags.save()
+        lack_balance_txt = get_lack_balance_text(temp_order, deposit_currency)
 
-            order = create_order(temp_order)
-
-            m.reply(order_info_for_owner(order), reply_markup=kb.order_for_owner(order))
-        else:
-            deposit_currency = user.cache['clipboard']['deposit_currency']
-
-            lack_balance_txt = get_lack_balance_text(temp_order, deposit_currency)
-
-            txt = user.get_text(name='order-not_enough_money').format(balance=' '.join(deposit_currency),
+        reply_kb = kb.deposit_from_order(user)
+        txt = user.get_text(name='order-not_enough_money').format(balance=' '.join(deposit_currency),
                                                                       deposit_amount=lack_balance_txt)
+        flags = user.flags
+        flags.await_amount_for_order = False
+        flags.await_replenishment_for_order = True
+        flags.save()
 
-            flags = user.flags
-            flags.await_amount_for_order = False
-            flags.await_replenishment_for_order = True
-            flags.save()
+        msg = m.reply(txt, reply_markup=reply_kb)
 
-            msg = m.reply(txt, reply_markup=kb.deposit_from_order(user))
-
-            update_cache_msg(user, 'last_temp_order', msg.message_id)
-
-            return
+        update_cache_msg(user, 'last_temp_order', msg.message_id)
 
     delete_inline_kb(cli, user.telegram_id, user.cache['msg']['order_enter_amount'])
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('cancel_order_create')))
 def cancel_order_create(cli, cb):
+
     user = get_user(cb.from_user.id)
     user.temp_order.delete()
 
@@ -585,14 +567,17 @@ def order_helper(cli, cb):
         flags.save()
 
         if order.type_operation == 'sale':
-            type_operation = user.get_text(name='order-type_operation_translate_sale_1')
             balance = user.get_balance(order.trade_currency, cent2unit=True)
             max_amount = round_currency(order.trade_currency, balance)
 
+            if balance <= 0:
+                reply_kb = kb.cancel_order(user, order.id)
+            else:
+                reply_kb = kb.max_amount(user)
+
             msg = cb.message.reply(user.get_text(name='order-enter_amount_for_sale').format(
                 currency=order.trade_currency,
-                amount=max_amount), reply_markup=kb.max_amount(user))
-
+                amount=max_amount), reply_markup=reply_kb)
         # покупка
         else:
             msg = cb.message.reply(user.get_text(name='order-enter_amount_for_buy').format(
@@ -655,9 +640,15 @@ def order_deposit_navigation(cli, cb):
         temp_order.payment_currency = []
         temp_order.save()
         cb.message.edit(cb.message.text)
+        type_operation = temp_order.type_operation
 
-        cb.message.reply(user.get_text('order-select_payment_currency'),
-                         reply_markup=kb.payment_currency(temp_order.trade_currency, user))
+        if type_operation == 'sale':
+            msg = cb.message.reply(user.get_text('order-select_trade_currency').format(type_operation=user.get_text(name='order-type_operation_translate_sale_1')),
+                                   reply_markup=kb.trade_currency(user))
+        else:
+            msg = cb.message.reply(user.get_text('order-select_payment_currency'),
+                             reply_markup=kb.payment_currency(temp_order.trade_currency, user))
+        update_cache_msg(user, 'trade_menu', msg.message_id)
 
     if button == 'continue':
 

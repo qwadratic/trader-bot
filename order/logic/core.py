@@ -251,29 +251,41 @@ def check_balance_from_order(user, order):
     amount = to_units(order.trade_currency, order.amount)
 
     deposit_currency = {}
-    for currency in order.payment_currency:
-        inst_currency = CurrencyList.objects.get(currency=currency)
-        if inst_currency.type == 'fiat':
-            continue
+    if order.type_operation == 'sale':
+        trade_currency = order.trade_currency
+        balance = user.get_balance(trade_currency, cent2unit=True)
 
-        payment_currency_rate = to_units(currency, order.payment_currency_rate[currency])
-
-        trade_currency_rate = to_units(order.trade_currency, order.currency_rate)
-        price_trade = Decimal(amount * trade_currency_rate / payment_currency_rate)
-        balance = user.get_balance(currency, cent2unit=True)
-        fee_amount = get_fee_amount(config.MAKER_FEE, price_trade)
-
-        if price_trade + fee_amount > balance:
+        if amount > balance:
             is_good_balance = False
 
-            if currency == 'USDT':
+            if trade_currency == 'USDT':
                 deposit_address = user.wallets.get(currency='ETH').address
             else:
-                deposit_address = user.wallets.get(currency=currency).address
+                deposit_address = user.wallets.get(currency=trade_currency).address
 
-            deposit_currency[currency] = dict(
-                address=deposit_address
-            )
+            deposit_currency[trade_currency] = dict(address=deposit_address)
+
+    else:
+        for currency in order.payment_currency:
+            inst_currency = CurrencyList.objects.get(currency=currency)
+            if inst_currency.type == 'fiat':
+                continue
+
+            payment_currency_rate = to_units(currency, order.payment_currency_rate[currency])
+
+            trade_currency_rate = to_units(order.trade_currency, order.currency_rate)
+            price_trade = Decimal(amount * trade_currency_rate / payment_currency_rate)
+            balance = user.get_balance(currency, cent2unit=True)
+
+            if price_trade > balance:
+                is_good_balance = False
+
+                if currency == 'USDT':
+                    deposit_address = user.wallets.get(currency='ETH').address
+                else:
+                    deposit_address = user.wallets.get(currency=currency).address
+
+                deposit_currency[currency] = dict(address=deposit_address)
 
     if is_good_balance:
         return True

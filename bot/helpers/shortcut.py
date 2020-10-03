@@ -1,4 +1,4 @@
-from decimal import Decimal, ROUND_DOWN
+from decimal import Decimal, ROUND_DOWN, ROUND_UP
 
 from pyrogram import Client
 
@@ -28,28 +28,6 @@ def delete_inline_kb(cli, telegram_id, msg_id):
         msg.edit(msg.text)
     except:
         pass
-
-
-# def delete_inline_kb(cli, telegram_id, msg_id):
-#
-#     app = Client(
-#         'delete_kb',
-#         api_id=TG_API_ID, api_hash=TG_API_HASH, bot_token=TG_API_TOKEN)
-#     app.start()
-#     msg = app.get_messages(telegram_id, msg_id)
-#     msg.edit_text(msg.text)
-#     app.stop()
-#
-#     # try:
-#     #
-#     # except ConnectionError:
-#     #     try:
-#     #         with cli:
-#     #             msg = cli.get_messages(telegram_id, msg_id)
-#     #             msg.edit(msg.text)
-#     #             cli.stop()
-#     #     except:
-#     #         pass
 
 
 def check_address(address, currency):
@@ -130,8 +108,8 @@ def create_record_cashflow(user, to, type_operation, amount, currency, trade=Non
     )
 
 
-def round_currency(currency_id, number, to_str=False):
-
+def round_currency(currency_id, number, to_str=False, round_up=False):
+    #TODO пересмотреть эту функцию
     currency = CurrencyList.objects.get(currency=currency_id)
     accuracy = currency.accuracy
     if number % 1 == 0:
@@ -143,7 +121,10 @@ def round_currency(currency_id, number, to_str=False):
         if to_str:
             return '%.*f' % (accuracy, number)
 
-        return number.quantize(Decimal(f'0.{"1" * accuracy}'), rounding=ROUND_DOWN)
+        rounding = ROUND_DOWN
+        if round_up:
+            rounding = ROUND_UP
+        return number.quantize(Decimal(f'0.{"1" * accuracy}'), rounding=rounding)
     return number
 
                                        
