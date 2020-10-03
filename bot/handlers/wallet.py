@@ -10,6 +10,7 @@ from bot.jobs.get_currency_rate import coinmarket_currency_usd
 from bot.models import WithdrawalRequest
 from order.logic.core import convert_bonus
 from order.logic.text_func import wallet_info
+from order.logic import kb as order_kb
 
 from user.logic import kb
 from user.logic.core import check_commands_requisite, check_requisite_uniq_name, check_requisite_uniq_address
@@ -64,6 +65,10 @@ def wallet_menu(cli, cb):
             min_amount=config.MIN_AMOUNT_CONVERT_BONUS
         ), reply_markup=kb.cancel_convert_bonus(user))
         update_cache_msg(user, 'amount_for_conver_bonus', msg.message_id)
+
+    if button == 'my_orders':
+        delete_msg(cli, user.telegram_id, user.cache['msg']['trade_menu'])
+        cb.message.edit(user.get_text(name='order-my_orders'), reply_markup=order_kb.owner_order_list(user, 'sale', 0, wallet_menu=True))
 
 
 @Client.on_message(Filters.create(lambda _, m: get_user(m.from_user.id).flags.await_amount_for_convert_bonus))

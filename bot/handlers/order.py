@@ -8,14 +8,14 @@ from bot.models import CurrencyList
 from order.logic import kb
 from order.logic.core import get_order_info, create_order, order_info_for_owner, hold_money_order, \
     check_balance_from_order, update_order, close_order
-from order.logic.text_func import choice_payment_currency_text, get_lack_balance_text
+from order.logic.text_func import choice_payment_currency_text, get_lack_balance_text, wallet_info
 from order.models import TempOrder, Order
 
 from bot.helpers.converter import currency_in_usd
 from bot.helpers.shortcut import get_user, delete_msg, to_cents, to_units, get_currency_rate, \
     round_currency, update_cache_msg, delete_inline_kb, get_fee_amount
 from trade.logic.trade_filters import in_trade
-
+from user.logic import kb as user_kb
 from constance import config
 
 
@@ -225,7 +225,12 @@ def owner_order_list(cli, cb):
         cb.message.edit(user.get_text(name='order-my_orders'), reply_markup=kb.owner_order_list(user, 'sale', offset))
 
     if action == 'back':
-        cb.message.edit(user.get_text(name='user-trade_menu'), reply_markup=kb.trade_menu(user))
+        location = cb.data.split('-')[2]
+
+        if location == 'to_wallet':
+            cb.message.edit(wallet_info(user), reply_markup=user_kb.wallet_menu(user))
+        else:
+            cb.message.edit(user.get_text(name='user-trade_menu'), reply_markup=kb.trade_menu(user))
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data.startswith('order_info')))

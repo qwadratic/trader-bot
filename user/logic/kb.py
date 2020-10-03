@@ -60,7 +60,8 @@ def wallet_menu(user):
         [
             [InlineKeyboardButton(user.get_text(name='wallet-kb-deposit'), callback_data=f'wallet_menu-deposit'),
              InlineKeyboardButton(user.get_text(name='wallet-kb-withdrawal'), callback_data=f'wallet_menu-withdrawal')],
-            [InlineKeyboardButton(user.get_text(name='wallet-kb-purse'), callback_data=f'wallet_menu-purse')],
+            [InlineKeyboardButton(user.get_text(name='wallet-kb-purse'), callback_data=f'wallet_menu-purse'),
+             InlineKeyboardButton(user.get_text(name='order-kb-trade_menu-my_orders'), callback_data='wallet_menu-my_orders')],
             [InlineKeyboardButton(user.get_text(name='wallet-kb-affiliate_program'), callback_data=f'wallet_menu-afiliate_program')],
             [InlineKeyboardButton(user.get_text(name='wallet-kb-premium'), callback_data=f'wallet_menu-premium')]
         ]

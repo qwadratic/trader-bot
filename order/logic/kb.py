@@ -265,11 +265,16 @@ def half_market_depth(user, type_orders, offset):
     return InlineKeyboardMarkup(kb_list)
 
 
-def owner_order_list(user, type_orders, offset):
+def owner_order_list(user, type_orders, offset, wallet_menu=False):
     sort_orders = user.parentOrders.exclude(status__in=['completed', 'deleted'])[offset:offset+7]
     all_orders = user.parentOrders.exclude(status__in=['completed', 'deleted'])
 
-    kb_list = [[InlineKeyboardButton(user.get_text(name='kb-back'), callback_data='owner_order-back')],
+    if wallet_menu:
+        cbdata_back = 'owner_order-back-to_wallet'
+    else:
+        cbdata_back = 'owner_order-back-to_trade_menu'
+
+    kb_list = [[InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=cbdata_back)],
                [InlineKeyboardButton(user.get_text(name='order-kb-trade_menu-new_buy'), callback_data='trade_menu-new_buy'),
                 InlineKeyboardButton(user.get_text(name='order-kb-trade_menu-new_sale'), callback_data='trade_menu-new_sale')]]
 
