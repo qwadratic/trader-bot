@@ -9,7 +9,7 @@ from order.logic import kb as order_kb
 from bot.helpers.shortcut import get_user
 
 
-@Client.on_message(Filters.command('start', prefixes=None) & ~ref_link, group=-1)
+@Client.on_message(Filters.command('start') & ~ref_link, group=-1)
 def start_command(_, m):
     tg_user = m.from_user
     user = get_user(tg_user.id)
@@ -21,12 +21,6 @@ def start_command(_, m):
         text_name, markup = 'user-start', kb.start_menu(user)
 
     m.reply(user.get_text(text_name), reply_markup=markup)
-
-
-@Client.on_message(Filters.text & ~Filters.edited)
-def start_m(_, m):
-    if m != '/start':
-        m.reply('Для начала работы с ботом - используйте команду /start')
 
 
 @Client.on_message(Filters.command('start') & ref_link, group=-1)
@@ -85,6 +79,15 @@ def ref_start(_, m):
         text_name, markup = 'user-start', kb.start_menu(user)
 
     m.reply(user.get_text(name=text_name), reply_markup=markup)
+
+
+@Client.on_message(Filters.text)
+def start_m(_, m):
+    tg_user = m.from_user
+    user = get_user(tg_user.id)
+
+    if not user and m != 'start':
+        m.reply('Для начала работы с ботом - используйте команду /start')
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:14] == 'choicelanguage'))
