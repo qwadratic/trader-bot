@@ -100,7 +100,7 @@ def start_m(_, m):
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data == '/start'))
-def start_bottom(_, cb):
+def start_button(_, cb):
     tg_user = cb.from_user
     user = get_user(cb.from_user.id)
 
