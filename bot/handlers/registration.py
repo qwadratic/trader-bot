@@ -81,11 +81,12 @@ def ref_start(_, m):
     m.reply(user.get_text(name=text_name), reply_markup=markup)
 
 
-@Client.on_message(Filters.text & ~filter_kb, group=-1)
+@Client.on_message(Filters.text | ~filter_kb, group=-1)
 def start_m(_, m):
     tg_user = m.from_user
     user = get_user(tg_user.id)
-    if not user and m != '/start':
+
+    if not user and m.text != '/start':
         m.reply('Для начала работы с ботом - нажмите START', reply_markup=kb.start())
 
 
