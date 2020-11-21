@@ -1,10 +1,8 @@
 from pyrogram import Client, Filters
 
 from order.logic.core import order_info_for_owner, get_order_info
-from order.logic.text_func import wallet_info
 from user.logic import kb
-from user.logic.core import check_commands_requisite
-from user.logic.filters import ref_link
+from user.logic.filters import ref_link, filter_kb
 from user.logic.registration import register_user
 from order.models import Order
 from order.logic import kb as order_kb
@@ -83,20 +81,12 @@ def ref_start(_, m):
     m.reply(user.get_text(name=text_name), reply_markup=markup)
 
 
-@Client.on_message(Filters.text)
+@Client.on_message(Filters.text & ~filter_kb, group=-1)
 def start_m(_, m):
     tg_user = m.from_user
     user = get_user(tg_user.id)
     if not user and m != '/start':
         m.reply('Для начала работы с ботом - нажмите START', reply_markup=kb.start())
-
-    if user and m.text == get_user(m.from_user.id).get_text(name='user-kb-wallet'):
-        m.reply(wallet_info(user), reply_markup=kb.wallet_menu(user))
-
-    if user and m.text == get_user(m.from_user.id).get_text(name='user-kb-settings'):
-        m.delete()
-        m.reply(get_user(m.from_user.id).get_text(name='user-kb-settings'),
-                reply_markup=kb.settings_menu(get_user(m.from_user.id)))
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data == '/start'))
@@ -109,7 +99,6 @@ def start_button(_, cb):
         text_name, markup = 'user-settings-select_language', kb.choice_language
     else:
         text_name, markup = 'user-start', kb.start_menu(user)
-
     cb.message.reply(user.get_text(text_name), reply_markup=markup)
 
 
