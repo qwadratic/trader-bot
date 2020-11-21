@@ -11,6 +11,15 @@ choice_language = InlineKeyboardMarkup(
         )
 
 
+def start():
+    kb = InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton('START', callback_data=f'/start')]
+                ]
+            )
+    return kb
+
+
 def select_currency(user):
     kb = InlineKeyboardMarkup(
             [
@@ -24,7 +33,7 @@ def select_currency(user):
 
 
 def start_menu(user):
-    if user.telegram_id in [69062067, 373283223, 862797627]:
+    if user.telegram_id in [69062067, 373283223, 862797627, 263425422]:
         kb = ReplyKeyboardMarkup(
             [
                 [user.get_text(name='user-kb-wallet'), user.get_text(name='user-kb-trade')],
