@@ -14,10 +14,8 @@ def _unknown_command(_, m):
     activate(user.settings.language)
     query = Text.objects.filter(name__regex="-kb-")
     texts = [t.text for t in query]
-    if m.text in texts:
-        return False
-
-    return True
+    if m.text not in texts:
+        return True
 
 
 unknown_command = Filters.create(
