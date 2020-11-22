@@ -2,7 +2,7 @@ from pyrogram import Client, Filters
 
 from order.logic.core import order_info_for_owner, get_order_info
 from user.logic import kb
-from user.logic.filters import ref_link, filter_kb
+from user.logic.filters import ref_link
 from user.logic.registration import register_user
 from order.models import Order
 from order.logic import kb as order_kb
@@ -81,7 +81,7 @@ def ref_start(_, m):
     m.reply(user.get_text(name=text_name), reply_markup=markup)
 
 
-@Client.on_message(Filters.new_chat_members & (Filters.text | ~filter_kb), group=-1)
+@Client.on_message(Filters.text, group=1)
 def start_m(_, m):
     tg_user = m.from_user
     user = get_user(tg_user.id)
