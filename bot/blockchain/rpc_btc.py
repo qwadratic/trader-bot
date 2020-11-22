@@ -49,6 +49,15 @@ def get_all_transactions():
     return all_tx
 
 
+def check_address_btc(wallet_address):
+    try:
+        result_address = rpc_connection.getaddressinfo(wallet_address)
+    except JSONRPCException:
+        result_address = 'Invalid address'
+
+    return result_address
+
+
 # def get_private_key(address):
 #     uri_path_w = '/wallet/%s' % (wallet_name)
 #     rpc_conn = AuthServiceProxy("http://%s:%s@195.201.211.234:8878%s" %
@@ -82,18 +91,6 @@ def set_transaction_fee():
     tx_fee = None # integer
     transaction_fee = rpc_connection.settxfee(tx_fee)
     return transaction_fee
-
-
-def check_address(wallet_address):
-    uri_path_w = '/wallet/%s' % (wallet_name)
-    rpc_conn = AuthServiceProxy(btc_node %
-                                (rpc_user, rpc_password, uri_path_w))
-    try:
-        check_address = rpc_conn.getaddressinfo(wallet_address)
-    except JSONRPCException:
-        check_address = 'Invalid address'
-
-    return  check_address
 
 
 def check_transaction(tx_hash):
