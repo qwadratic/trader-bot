@@ -2,7 +2,7 @@ from pyrogram import Client, Filters
 
 from order.logic.core import order_info_for_owner, get_order_info
 from user.logic import kb
-from user.logic.filters import ref_link
+from user.logic.filters import ref_link, unknown_command, active_flag
 from user.logic.registration import register_user
 from order.models import Order
 from order.logic import kb as order_kb
@@ -81,13 +81,15 @@ def ref_start(_, m):
     m.reply(user.get_text(name=text_name), reply_markup=markup)
 
 
-@Client.on_message(Filters.text, group=1)
+@Client.on_message(~Filters.command("start") & Filters.create(lambda _, m: get_user(m.from_user.id)) & unknown_command & ~active_flag, group=999)
 def start_m(_, m):
-    tg_user = m.from_user
-    user = get_user(tg_user.id)
 
-    if not user and m.text != '/start':
-        m.reply('Для начала работы с ботом - нажмите START', reply_markup=kb.start())
+    m.reply('Для начала работы с ботом - нажмите START', reply_markup=kb.start())
+
+
+@Client.on_message(~Filters.command("start") & ~Filters.create(lambda _, m: get_user(m.from_user.id)), group=999)
+def start_m_for_newuser(_, m):
+    m.reply('Для начала работы с ботом - нажмите START', reply_markup=kb.start())
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data == '/start'))
