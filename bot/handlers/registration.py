@@ -1,7 +1,8 @@
 from pyrogram import Client, Filters
+
 from order.logic.core import order_info_for_owner, get_order_info
 from user.logic import kb
-from user.logic.filters import ref_link, filter_kb
+from user.logic.filters import ref_link
 from user.logic.registration import register_user
 from order.models import Order
 from order.logic import kb as order_kb
