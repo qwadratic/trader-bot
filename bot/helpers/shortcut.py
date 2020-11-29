@@ -2,7 +2,7 @@ from decimal import Decimal, ROUND_DOWN, ROUND_UP
 
 from pyrogram import Client
 
-from bot.blockchain import minterAPI, ethAPI
+from bot.blockchain import minterAPI, ethAPI, rpc_btc
 from bot.models import ExchangeRate, CashFlow, CurrencyList
 from config.settings import TG_API_ID, TG_API_HASH, TG_API_TOKEN
 from user.models import TelegramUser
@@ -46,8 +46,14 @@ def check_address(address, currency):
         except ValueError:
             pass
 
+    if currency in ['BTC']:
+        from bot.blockchain.rpc_btc import check_address_btc
+        re = check_address_btc(address)
+        if 'Invalid address' not in re:
+            valid = True
+
     # TODO костыль
-    if currency not in ['ETH', 'USDT', 'BIP']:
+    if currency not in ['ETH', 'USDT', 'BIP', 'BTC']:
         valid = True
 
     return valid

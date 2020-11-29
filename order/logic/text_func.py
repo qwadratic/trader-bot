@@ -39,7 +39,7 @@ def wallet_info(user):
         else:
             balance_in_user_currency = 0
 
-        balance_txt += f'{round_currency(w.currency, balance)} {w.currency} ~{balance_in_user_currency} {user_currency}\n'
+        balance_txt += f'{round_currency(w.currency, balance)} {w.currency} ≈ {balance_in_user_currency} {user_currency}\n'
 
     bonus_balance = to_units('BONUS', user.virtual_wallets.get(currency='BONUS').balance, round=True)
     txt = user.get_text(name='wallet-wallet_info').format(
