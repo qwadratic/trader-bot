@@ -40,7 +40,7 @@ def get_order_info(user, order_id):
 
     amount = to_units(trade_currency, order.amount)
     price_order = amount * trade_currency_rate
-    order_user = str(ParentOrder.objects.get(id=order.parent_order_id).order_id)
+    order_user = str(order.order_id)
 
     txt = user.get_text(name='order-order_info').format(
         order_id=order_user.split("-")[4],
@@ -82,7 +82,7 @@ def order_info_for_owner(order):
         currency_pairs += f'1 {trade_currency} – {round_currency(currency, trade_currency_rate, to_str=True)} {currency}\n' \
             f'1 {currency} – {payment_currency_rate} {trade_currency}\n'
 
-        price_lot = round_currency(currency, amount * trade_currency_rate)
+        price_lot = round_currency(currency, amount * trade_currency_rate, to_str=True)
         max_amounts += f'{price_lot} {currency}\n'
         order_user = str(order.order_id)
 

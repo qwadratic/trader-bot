@@ -56,6 +56,7 @@ class ParentOrder(Model):
 class Order(Model):
     objects = GetOrNoneManager()
 
+    order_id = UUIDField(default=uuid.uuid4)
     parent_order = ForeignKey('order.ParentOrder', related_name='orders', on_delete=CASCADE)
     type_operation = CharField(max_length=255)
     trade_currency = CharField(max_length=255)
