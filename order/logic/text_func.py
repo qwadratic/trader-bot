@@ -5,6 +5,7 @@ from django.db.models import Sum
 
 from bot.helpers.converter import currency_in_user_currency
 from bot.helpers.shortcut import to_units, round_currency
+from order.models import Order, ParentOrder
 
 
 def choice_payment_currency_text(order):
@@ -102,3 +103,20 @@ def get_lack_balance_text(order, deposit_currency):
             text += f'{currency} {round_currency(currency, to_deposit, to_str=True, round_up=True)}\n'
 
     return text
+
+
+def order_operation(user, order_id, t_op):
+    user_id = user.id
+    parent_order = Order.objects.get(id=order_id)
+    parent_order_id = parent_order.parent_order_id
+    user_order = ParentOrder.objects.get(id=parent_order_id).user_id
+    operation = parent_order.type_operation
+    type_operation = ''
+    if user_id == user_order:
+        type_operation = t_op
+    if user_id != user_order and operation == 'sale':
+        type_operation = 'Покупка'
+    if user_id != user_order and operation == 'buy':
+        type_operation = 'Продажа'
+
+    return type_operation
