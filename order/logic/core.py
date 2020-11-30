@@ -82,7 +82,7 @@ def order_info_for_owner(order):
         currency_pairs += f'1 {trade_currency} – {round_currency(currency, trade_currency_rate, to_str=True)} {currency}\n' \
             f'1 {currency} – {payment_currency_rate} {trade_currency}\n'
 
-        price_lot = round_currency(currency, amount * trade_currency_rate)
+        price_lot = round_currency(currency, amount * trade_currency_rate, to_str=True)
         max_amounts += f'{price_lot} {currency}\n'
         order_user = str(order.order_id)
 
