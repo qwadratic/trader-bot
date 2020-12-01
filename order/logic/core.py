@@ -6,6 +6,7 @@ from pyrogram import InlineKeyboardButton
 from bot.helpers.converter import currency_in_usd
 from bot.helpers.shortcut import to_units, to_cents, round_currency, get_fee_amount, create_record_cashflow
 from bot.models import CurrencyList
+from order.logic.text_func import order_operation
 from order.models import Order, ParentOrder, OrderHoldMoney
 
 from user.logic.core import update_wallet_balance
@@ -44,7 +45,7 @@ def get_order_info(user, order_id):
 
     txt = user.get_text(name='order-order_info').format(
         order_id=order_user.split("-")[4],
-        type_operation=trade_direction[type_operation]["type"],
+        type_operation=order_operation(user, order.id, trade_direction[type_operation]["type"]), #trade_direction[type_operation]["type"],
         trade_currency=trade_currency,
         trade_currency_rate_usd=round_currency('USD', trade_currency_rate_usd),
         payment_currency=payment_currency,
