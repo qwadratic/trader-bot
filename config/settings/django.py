@@ -111,17 +111,17 @@ CONSTANCE_CONFIG = OrderedDict(
         ('CRON_UPDATE_EXCHANGE_RATES_MIN', (20, 'Интервал запуска джобы парса курса валют')),
         ('CRON_VERIFICATION_WITHDRAWAL_REQUESTS_SEC', (10, 'Интервал запуска джобы проверки заявок на вывод средств')),
         ('CRON_CHECK_SUBSCRIPTION_TIME_SEC', (300, 'Интервал проверки времени реф подписки')),
-        ('ETH_NODE', ('http://isheldon:dfhjgkjnlkdrlRHJYrstdryS346645346ythdfshyfHEr4635763Y4hbfGSDs@116.202.202.230/dsfkhkgdl/', ' ')),
+        ('ETH_NODE', (env.str("ETH_RPC_URL"), ' ')),
         ('MINTER_NODE', ('http://195.201.211.234:8841', ' ')),
-        ('BTC_NODE', ('http://{user}:{password}@195.201.211.234:8878', ' ')),
-        ('BTC_WALLET_NAME', ('garry', 'Имя основного глобального кошелька, по умолчанию установлено имя dev кошелька')),
+        ('BTC_NODE', ('http://{user}:{password}@5.9.65.243:8332/', ' ')),
+        ('BTC_WALLET_NAME', ('dev', 'Имя основного глобального кошелька, по умолчанию установлено имя dev кошелька')),
         ('GET_MAX_PRICE_RANGE_FACTOR', (Decimal('1'), 'Коэффициент максимального отклонения от курса валют')),
         ('WITHDRAWAL_FACTOR', (Decimal('1.2'), 'некий коэффициент для вычисления максимальной суммы вывода')),
         ('TAKER_FEE', (Decimal('0.3'), 'Юзер который отозвался на объявление')),
         ('MAKER_FEE', (Decimal('0.3'), 'Создатель объявления')),
         ('AFFILIATE_FEE', (Decimal('0.25'), 'Комса рефереру')),
         ('MIN_AMOUNT_CONVERT_BONUS', (1, 'Минимальная сумма для конвертации бонусных шекелей')),
-        ('', ('', '')),
+        ('USDT_CONTRACT_ADDRESS', (env.str('USDT_CONTRACT_ADDRESS'), '')),
     ]
 )
 

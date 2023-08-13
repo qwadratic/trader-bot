@@ -24,7 +24,6 @@ def _get_usdt_transfer_params_from_tx_logs(tx_logs):
     # if no 'topics' - it is not a usdt transfer tx
     if not first_log['topics']:
         return None
-
     # if first 'topics' element != TOPIC_SEND_TOKENS - it is not a usdt transfer tx
     topic = Web3.toHex(first_log['topics'][0])
     if topic != TOPIC_SEND_TOKENS:
@@ -79,7 +78,7 @@ def get_eth_refill_txs(addresses, block_height):
             continue
 
         # now handle only USDT transactions
-        if tx.to.lower() != USDT_CONTRACT_ADDRESS:
+        if tx.to.lower() != USDT_CONTRACT_ADDRESS.lower():
             continue
 
         # analyze tx receipt 'topics' to extract receiver address and transaction value

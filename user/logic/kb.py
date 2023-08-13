@@ -326,11 +326,11 @@ def set_currency(user):
 def show_tx(user, currency, tx_hash):
     info_dict = dict(
         ETH=dict(
-            url=f'https://etherscan.io/tx/{tx_hash}',
+            url=f'https://goerli.etherscan.io/tx/{tx_hash}',
             url_name='etherscan.io'),
 
         USDT=dict(
-            url=f'https://etherscan.io/tx/{tx_hash}',
+            url=f'https://goerli.etherscan.io/tx/{tx_hash}',
             url_name='etherscan.io'),
 
         BIP=dict(
@@ -344,7 +344,7 @@ def show_tx(user, currency, tx_hash):
     )
 
     button_name = user.get_text(name='trade-kb-view_on').format(name=info_dict[currency]['url_name'])
-
+    #return f'\n\nYour transaction:\n\n{info_dict[currency]["url"]}'
     return InlineKeyboardMarkup([[InlineKeyboardButton(button_name, url=info_dict[currency]['url'])]])
 
 
