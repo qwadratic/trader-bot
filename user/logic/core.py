@@ -11,7 +11,7 @@ logger = logging.getLogger('TradeEvent')
 
 
 def create_wallets_for_user(user):
-    currency = ['BIP', 'ETH', 'BTC', 'USDT', 'UAH', 'USD', 'RUB', 'BONUS']
+    currency = ['BIP', 'ETH', 'USDT', 'UAH', 'USD', 'RUB', 'BONUS']
     minter_wallet = minterAPI.create_wallet()
     eth_wallet = ethAPI.create_wallet()
 
@@ -30,13 +30,13 @@ def create_wallets_for_user(user):
         private_key=ethAPI.Web3.toHex(eth_wallet.privateKey)
     )
 
-    # add btc_wallet
-    Wallet.objects.create(
-        user_id=user.id,
-        currency='BTC',
-        address=rpc_btc.get_new_address(),
-        private_key='private key'
-    )
+    # # add btc_wallet
+    # Wallet.objects.create(
+    #     user_id=user.id,
+    #     currency='BTC',
+    #     address=rpc_btc.get_new_address(),
+    #     private_key='private key'
+    # )
 
     Wallet.objects.create(
         user_id=user.id,
@@ -60,6 +60,7 @@ def create_wallets_for_user(user):
 
     for c in currency:
         VirtualWallet.objects.create(user_id=user.id, currency=c)
+
     logger.info('New user registered: %s, name: %s. New Wallets created'%(user.telegram_id, user.first_name))
 
 

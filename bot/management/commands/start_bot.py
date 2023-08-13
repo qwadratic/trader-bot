@@ -1,3 +1,4 @@
+from pytz import utc
 from pyrogram import Client
 
 from bot.jobs.affiliate_program import check_subscription_time
@@ -33,11 +34,10 @@ class Command(BaseCommand):
             api_id=TG_API_ID, api_hash=TG_API_HASH, bot_token=TG_API_TOKEN,
             plugins={'root': 'bot/handlers'})
 
-        shed = BackgroundScheduler()
-        shed.add_job(check_refill_bip, 'interval', seconds=config.CRON_CHECK_REFILL_BIP_SEC, args=[app])
+        shed = BackgroundScheduler(timezone=utc)
         shed.add_job(check_refill_eth, 'interval', seconds=config.CRON_CHECK_REFILL_ETH_SEC, args=[app])
-        shed.add_job(update_exchange_rates, 'interval', minutes=config.CRON_UPDATE_EXCHANGE_RATES_MIN)
-        shed.add_job(check_refill_btc, 'interval', seconds=config.CRON_CHECK_REFILL_BTC_SEC, args=[app])
+        shed.add_job(update_exchange_rates, 'interval', minutes=2)
+        # shed.add_job(check_refill_btc, 'interval', seconds=config.CRON_CHECK_REFILL_BTC_SEC, args=[app])
         shed.add_job(verification_withdrawal_requests, 'interval', seconds=config.CRON_VERIFICATION_WITHDRAWAL_REQUESTS_SEC)
         shed.add_job(check_subscription_time, 'interval', seconds=config.CRON_CHECK_SUBSCRIPTION_TIME_SEC)
 

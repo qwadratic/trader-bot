@@ -8,7 +8,7 @@ from requests import Session
 from bot.blockchain.bithumb_api import BithumbGlobalRestAPI, BithumbGlobalError
 from binance.client import Client, BinanceAPIException
 
-from config.settings import BH_API_KEY, BH_SECRET_KEY, BIN_API_KEY, BIN_API_SECRET
+from config.settings import BIN_API_KEY, BIN_API_SECRET # BH_API_KEY, BH_SECRET_KEY,
 import logging
 
 import rollbar
@@ -45,20 +45,20 @@ def coinmarket_currency_usd(currency):
         return None
 
 
-def bithumb_currency_usdt(currency):
-    try:
-        api = BithumbGlobalRestAPI(BH_API_KEY, BH_SECRET_KEY)
-        symbol = f'{currency}-USDT'
-        depth = api.depth(symbol, count=1)
+# def bithumb_currency_usdt(currency):
+#     try:
+#         api = BithumbGlobalRestAPI(BH_API_KEY, BH_SECRET_KEY)
+#         symbol = f'{currency}-USDT'
+#         depth = api.depth(symbol, count=1)
 
-        asks_usdt = depth['asks'][0][0]
-        bids_usdt = depth['bids'][0][0]
-        average_exchange_rate = (asks_usdt + bids_usdt)/2
+#         asks_usdt = depth['asks'][0][0]
+#         bids_usdt = depth['bids'][0][0]
+#         average_exchange_rate = (asks_usdt + bids_usdt)/2
 
-        return average_exchange_rate
-    except BithumbGlobalError as info:
-        rollbar.report_message(f'Error bithumb API update data: {info}')
-        logger.warning(f'Error bithumb API update data: {info}')
+#         return average_exchange_rate
+#     except BithumbGlobalError as info:
+#         rollbar.report_message(f'Error bithumb API update data: {info}')
+#         logger.warning(f'Error bithumb API update data: {info}')
 
 
 def binance_currency_usdt(currency):
@@ -79,7 +79,7 @@ def binance_currency_usdt(currency):
         average_exchange_rate = (asks_usdt + bids_usdt) / 2
         return average_exchange_rate
     except BinanceAPIException as info:
-        rollbar.report_message(f'Error binance API update data: {info}')
+        #rollbar.report_message(f'Error binance API update data: {info}')
         logger.warning(f'Error binance API update data: {info}')
         return None
 
@@ -87,7 +87,6 @@ def binance_currency_usdt(currency):
 def update_exchange_rates():
     currency_list = ['BIP', 'BTC', 'USDT', 'ETH', 'UAH', 'RUB']
     sources = {'coinmarketcup': coinmarket_currency_usd,
-               'bithumb': bithumb_currency_usdt,
                'binance': binance_currency_usdt}
 
     rate_list = []
