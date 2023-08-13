@@ -139,7 +139,7 @@ def update_balance(cli, refill_txs):
 
                 try:
                     cli.send_message(user.telegram_id, user.get_text(name='bot-balance_replinished').format(refill=txt_refills),
-                                         reply_markup=kb.show_tx(user, currency, refill['tx_hash']))
+                                         reply_markup=kb.show_tx(user, currency, refill['tx_hash'].hex()))
                 except Exception as e:
-                    print('check_refill, line 155\n', e)
+                    print('check_refill, line 142\n', e)
 
