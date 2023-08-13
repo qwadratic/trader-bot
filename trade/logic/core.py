@@ -1,215 +1,162 @@
-from mintersdk.shortcuts import to_bip
-from web3 import Web3
+from constance import config
 
-from bot.blockchain.ethAPI import w3
-from bot.blockchain.minterAPI import Minter
-from bot.models import CashFlow
-from trade.models import HoldMoney
+from bot.helpers.shortcut import create_record_cashflow, to_units, to_cents, round_currency, get_fee_amount
+from order.logic.core import update_order, close_order
+from trade.models.trade import TradeHoldMoney
+from user.logic.core import update_wallet_balance
+from user.models import UserRef
+import logging
 
-
-def hold_money(trade):
-    HoldMoney.objects.create(
-        trade=trade,
-        amount=trade.amount
-    )
+logger = logging.getLogger('TradeOperations')
 
 
-def update_order(parent_order, type_update, value):
-    if type_update == 'amount':
-        orders = parent_order.orders.all()
+def pay_commssion(user):
+    user_refferer = user.ref.get_or_none()
 
-        for order in orders:
-            order.amount = value
-            order.save()
+    if user_refferer:
+        pass
 
 
 def auto_trade(trade):
     owner = trade.order.parent_order.user
+    owner_ref = UserRef.objects.get_or_none(user=owner)
     user = trade.user
+    user_ref = UserRef.objects.get_or_none(user=user)
+
     parent_order = trade.order.parent_order
+    
+    new_amount = parent_order.amount - trade.amount
 
-    update_order(parent_order, 'amount', parent_order.amount - trade.amount)
+    new_parent_order = update_order(parent_order, 'set amount', new_amount)
 
-    cashflow_list = []
+    trade_currency = trade.trade_currency
+    payment_currency = trade.payment_currency
+    maker_fee = trade.maker_fee
+    taker_fee = trade.taker_fee
 
     if trade.order.type_operation == 'sale':
-        cashflow_list.append(dict(
-            user=user,
-            to=owner,
-            trade=trade,
-            type_operation='transfer',
-            amount=trade.price_trade,
-            currency=trade.payment_currency
-        ))
+        update_wallet_balance(owner, payment_currency, trade.price_trade - maker_fee, 'up')
+        if owner_ref:
+            owner_referrer = owner_ref.referrer
 
-        owner_balance_in_payment_currency = owner.virtual_wallets.get(currency=trade.payment_currency)
-        owner_balance_in_payment_currency.balance += trade.price_trade
-        owner_balance_in_payment_currency.save()
+            maker_affiliate_fee = to_cents(trade_currency, get_fee_amount(config.AFFILIATE_FEE, to_units(trade_currency, maker_fee)))
+            maker_affiliate_fee_usd = to_cents('BONUS', to_units(trade_currency, maker_affiliate_fee) * to_units(trade_currency, trade.order.parent_order.currency_rate))
+            maker_fee -= maker_affiliate_fee
 
-        owner_balance_in_trade_currency = owner.virtual_wallets.get(currency=trade.trade_currency)
-        owner_balance_in_trade_currency.balance -= trade.amount
-        owner_balance_in_trade_currency.save()
+            update_wallet_balance(owner_referrer, 'BONUS', maker_affiliate_fee_usd, 'up')
+            create_record_cashflow(owner, owner_referrer, 'affiliate_fee', maker_affiliate_fee_usd, 'USD', trade)
 
-        cashflow_list.append(dict(
-            user=owner,
-            to=user,
-            trade=trade,
-            type_operation='transfer',
-            amount=trade.amount,
-            currency=trade.trade_currency
-        ))
+        update_wallet_balance(owner, trade_currency, trade.amount, 'down')
+        create_record_cashflow(owner, user, 'transfer', trade.amount, trade_currency, trade)
+        create_record_cashflow(owner, None, 'trade_fee', maker_fee, trade_currency, trade)
 
-        user_balance_in_trade_currency = user.virtual_wallets.get(currency=trade.trade_currency)
-        user_balance_in_trade_currency.balance += trade.amount
-        user_balance_in_trade_currency.save()
+        update_wallet_balance(user, trade_currency, trade.amount - taker_fee, 'up')
+        if user_ref:
+            user_referrer = user_ref.referrer
 
-        user_balance_in_payment_currency = user.virtual_wallets.get(currency=trade.payment_currency)
-        user_balance_in_payment_currency.balance -= trade.price_trade
-        user_balance_in_payment_currency.save()
+            taker_affiliate_fee = to_cents(payment_currency, get_fee_amount(config.AFFILIATE_FEE, to_units(payment_currency, taker_fee)))
+            taker_affiliate_fee_usd = to_cents('BONUS', to_units(payment_currency, taker_affiliate_fee) * to_units(payment_currency, trade.order.parent_order.payment_currency_rate[payment_currency]))
+
+            taker_fee -= taker_affiliate_fee
+
+            update_wallet_balance(user_referrer, 'BONUS', taker_affiliate_fee_usd, 'up')
+            create_record_cashflow(user, user_referrer, 'affiliate_fee', taker_affiliate_fee_usd, 'USD', trade)
+
+        update_wallet_balance(user, payment_currency, trade.price_trade, 'down')
+        create_record_cashflow(user, owner, 'transfer', trade.price_trade, payment_currency, trade)
+        create_record_cashflow(user, None, 'trade_fee', taker_fee, payment_currency, trade)
 
     # покупка
     else:
-        cashflow_list.append(dict(
-            user=user,
-            to=owner,
-            trade=trade,
-            type_operation='transfer',
-            amount=trade.price_trade,
-            currency=trade.trade_currency
-        ))
+        update_wallet_balance(owner, trade_currency, trade.amount - maker_fee, 'up')
 
-        owner_balance_in_payment_currency = owner.virtual_wallets.get(currency=trade.order.payment_currency)
-        owner_balance_in_payment_currency.balance -= trade.price_trade
-        owner_balance_in_payment_currency.save()
+        if owner_ref:
+            owner_referrer = owner_ref.referrer
 
-        owner_balance_in_trade_currency = owner.virtual_wallets.get(currency=trade.trade_currency)
-        owner_balance_in_trade_currency.balance += trade.amount
-        owner_balance_in_trade_currency.save()
+            maker_affiliate_fee = to_cents(payment_currency, get_fee_amount(config.AFFILIATE_FEE, to_units(trade_currency, maker_fee)))
+            maker_affiliate_fee_usd = to_cents('BONUS', to_units(payment_currency, maker_affiliate_fee) * to_units(payment_currency, trade.order.parent_order.payment_currency_rate[payment_currency]))
+            maker_fee -= maker_affiliate_fee
 
-        cashflow_list.append(dict(
-            user=owner,
-            to=user,
-            trade=trade,
-            type_operation='transfer',
-            amount=trade.amount,
-            currency=trade.payment_currency
-        ))
+            update_wallet_balance(owner_referrer, 'BONUS', maker_affiliate_fee_usd, 'up')
+            create_record_cashflow(owner, owner_referrer, 'affiliate_fee', maker_affiliate_fee_usd, 'USD', trade)
 
-        user_balance_in_payment_currency = user.virtual_wallets.get(currency=trade.payment_currency)
-        user_balance_in_payment_currency.balance -= trade.price_trade
-        user_balance_in_payment_currency.save()
+        update_wallet_balance(owner, payment_currency, trade.price_trade, 'down')
+        create_record_cashflow(owner, user, 'transfer', trade.price_trade, payment_currency, trade)
+        create_record_cashflow(owner, None, 'trade_fee', maker_fee, payment_currency, trade)
 
-        user_balance_in_trade_currency = user.virtual_wallets.get(currency=trade.trade_currency)
-        user_balance_in_trade_currency.balance += trade.amount
-        user_balance_in_trade_currency.save()
+        update_wallet_balance(user, payment_currency, trade.price_trade - taker_fee, 'up')
 
-    CashFlow.objects.bulk_create([CashFlow(**q) for q in cashflow_list])
+        if user_ref:
+            user_referrer = user_ref.referrer
+
+            taker_affiliate_fee = to_cents(trade_currency, get_fee_amount(config.AFFILIATE_FEE, to_units(trade_currency, taker_fee)))
+            taker_affiliate_fee_usd = to_cents('USD', to_units(trade_currency, taker_affiliate_fee) * to_units(trade_currency, trade.order.parent_order.currency_rate))
+            taker_fee -= taker_affiliate_fee
+
+            update_wallet_balance(user_referrer, 'BONUS', taker_affiliate_fee_usd, 'up')
+            create_record_cashflow(user, user_referrer, 'affiliate_fee', taker_affiliate_fee_usd, 'USD', trade)
+
+        update_wallet_balance(user, trade_currency, trade.amount, 'down')
+        create_record_cashflow(user, owner, 'transfer', trade.amount, trade_currency, trade)
+        create_record_cashflow(user, None, 'trade_fee', taker_fee, trade_currency, trade)
+
+    close_trade(trade)
+
+# def semi_auto_trade(trade):
+#     owner = trade.order.parent_order.user
+#     user = trade.user
+#     parent_order = trade.order.parent_order
+#
+#     update_order(parent_order, 'amount', parent_order.amount - trade.amount)
+#
+#     if trade.order.type_operation == 'sale':
+#         create_record_cashflow(owner, user, 'transfer', trade.amount, trade.trade_currency, trade)
+#         update_wallet_balance(user, trade.trade_currency, trade.amount, 'up')
+#         create_record_cashflow(user, owner, 'external-transfer', trade.price_trade, trade.payment_currency, trade, tx_hash=trade.tx_hash)
+#
+#     else:
+#
+#         create_record_cashflow(owner, user, 'transfer', trade.price_trade, trade.payment_currency, trade)
+#         update_wallet_balance(user, trade.payment_currency, trade.price_trade, 'up')
+#         create_record_cashflow(user, owner, 'external-transfer', trade.amount, trade.trade_currency, trade,
+#                                tx_hash=trade.tx_hash)
+#
+#     close_trade(trade)
 
 
-def semi_auto_trade(trade):
-    owner = trade.order.parent_order.user
-    user = trade.user
+def close_trade(trade):
     parent_order = trade.order.parent_order
-
-    cashflow_list = []
-
-    update_order(parent_order, 'amount', parent_order.amount - trade.amount)
-
     if trade.order.type_operation == 'sale':
-        cashflow_list.append(dict(
-            user=owner,
-            to=user,
-            trade=trade,
-            type_operation='transfer',
-            amount=trade.amount,
-            currency=trade.trade_currency
-        ))
+        hm = parent_order.holdMoney.get(currency=trade.trade_currency)
+        hm.amount -= trade.amount
+        hm.save()
 
-        user_balance_in_trade_currency = user.virtual_wallets.get(currency=trade.trade_currency)
-        user_balance_in_trade_currency.balance += trade.amount
-        user_balance_in_trade_currency.save()
+    if trade.order.type_operation == 'buy':
+        hm = parent_order.holdMoney.get(currency=trade.payment_currency)
+        hm.amount -= trade.price_trade
+        hm.save()
 
-        cashflow_list.append(dict(
-            user=user,
-            to=owner,
-            trade=trade,
-            type_operation='external-transfer',
-            amount=trade.price_trade,
-            currency=trade.payment_currency,
-            tx_hash=trade.tx_hash
-        ))
+    trade.status = 'close'
+    trade.save()
 
+    if parent_order.amount == 0:
+        close_order(parent_order, 'completed')
+
+
+def hold_money_trade(trade):
+    hold_list = []
+    hold_list.append(dict(
+        trader=trade,
+        currency=trade.trade_currency,
+        amount=trade.amount
+    ))
+    TradeHoldMoney.objects.bulk_create([TradeHoldMoney(**r) for r in hold_list])
+
+
+def check_balance_from_trade(currency, price_trade, balance):
+    amount_deposit = price_trade - balance
+
+    if to_cents(currency, balance) >= to_cents(currency, price_trade):
+        return True, price_trade
     else:
-
-        cashflow_list.append(dict(
-            user=owner,
-            to=user,
-            trade=trade,
-            type_operation='transfer',
-            amount=trade.price_trade,
-            currency=trade.payment_currency
-        ))
-
-        user_balance_in_payment_currency = user.virtual_wallets.get(currency=trade.payment_currency)
-        user_balance_in_payment_currency.balance += trade.price_trade
-        user_balance_in_payment_currency.save()
-
-        cashflow_list.append(dict(
-            user=user,
-            to=owner,
-            trade=trade,
-            type_operation='external-transfer',
-            amount=trade.amount,
-            currency=trade.trade_currency,
-            tx_hash=trade.tx_hash
-        ))
-
-    CashFlow.objects.bulk_create([CashFlow(**q) for q in cashflow_list])
-
-
-# TODO::
-#  - избавиться от ебаного to_bip.
-#  - сделать функцию независимой от моделей: вместо (trade, tx_hash) будет (tx_hash, currency, amount, address)
-#  - сделать ее более расширяемой или хотя бы красивой/читабельной (мультивалютность)
-#  - после чего перекинуть в модуль blockchain
-def check_tx_hash(trade, tx_hash):
-
-    if trade.payment_currency in ['ETH', 'USDT']:
-        owner_address = trade.order.requisites
-        try:
-            tx_receipt = w3.eth.getTransactionReceipt(tx_hash)
-        except Exception:
-            return False
-
-        if tx_receipt['status'] == 1 and tx_receipt['to'].lower() == owner_address.lower():
-            tx_hash = w3.eth.getTransaction(tx_hash)
-
-            # Проверка эфира
-            if trade.payment_currency == 'ETH':
-
-                if round(to_bip(tx_hash['value']), 6) == round(to_bip(trade.price_trade), 6):
-                    return True
-                return False
-
-            # Проверка юстд
-            amount = 0
-            for element in tx_receipt.logs:
-                amount = Web3.toWei(int(element['data'], 16) / 1000000, 'ether')
-
-            if round(to_bip(amount), 3) == round(to_bip(trade.price_trade), 3):
-                return True
-            return False
-        else:
-            return False
-
-    if trade.payment_currency == 'BIP':
-        tx = Minter.get_transaction(tx_hash[2:])
-
-        if 'error' in tx:
-            return False
-
-        if tx['result']['data']['to'] == trade.order.requisites \
-                and round(to_bip(tx['result']['data']['value']), 2) == round(to_bip(trade.price_trade), 2):
-            return True
-        return False
-
+        return False, currency, round_currency(currency, amount_deposit), price_trade

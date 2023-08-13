@@ -18,30 +18,48 @@ class GetOrNoneManager(Manager):
             return None
 
 
+def _default_telegramuser_cache():
+    return {
+        'msg': {
+            'trade_menu': None,
+            'wallet_menu': None,
+            'last_temp_order': None,
+            'order_enter_amount': None,
+            'trade_enter_amount': None,
+            'last_trade': None,
+            'amount_for_conver_bonus': None
+        },
+        'clipboard': {
+            'currency': None,
+            'requisites': [],
+            'active_trade': None,
+            'deposit_currency': {},
+            'trade_deposit_currency': [],
+            'withdrawal_request': {},
+            'market_depth': {}
+        }
+    }
+
+
 class TelegramUser(Model):
     objects = GetOrNoneManager()
 
     telegram_id = PositiveIntegerField(_('Telegram user ID'), unique=True)
     username = CharField(_('User name'), max_length=255, null=True)
-    first_name = CharField(_('First name'), max_length=255,null=True)
+    first_name = CharField(_('First name'), max_length=255, null=True)
     last_name = CharField(_('Last name'), max_length=255, null=True)
     last_activity = DateTimeField(_('Last activity'), null=True)
     created_at = DateTimeField(_('Registration date'), auto_now_add=True)
-    cache = JSONField(
-        default=lambda: {
-            'msg': {
-                'trade_menu': None,
-                'wallet_menu': None
-            },
-            'clipboard': {
-                'currency': None,
-                'requisites': [],
-                'active_trade': None
-            }
-        })
+    cache = JSONField(default=_default_telegramuser_cache)
 
     class Meta:
         verbose_name = 'Telegram User'
+
+    def get_address(self, currency):
+        if currency == 'USDT':
+            currency = 'ETH'
+
+        return self.wallets.get(currency=currency).address
 
     def get_text(self, name):
         activate(self.settings.language)
@@ -54,26 +72,54 @@ class TelegramUser(Model):
         UserRef.objects.update_or_create(user=self, defaults={'referrer': invited_by})
         return True
 
+    def get_balance(self, currency, cent2unit=False, round=False):
+        from bot.helpers.shortcut import to_units, round_currency
+
+        wallet = self.virtual_wallets.get(currency=currency)
+        balance = wallet.balance
+
+        hold_money = self.holdMoney.filter(currency=currency)
+
+        if hold_money.count() > 0:
+
+            for hm in hold_money:
+                balance -= hm.amount
+
+        withdrawal_query = self.withdrawalRequests.filter(status__in=['pending verification', 'verifed'], currency=currency)
+
+        if withdrawal_query.count() > 0:
+
+            for wq in withdrawal_query:
+                balance -= wq.amount
+
+        if cent2unit:
+            balance = to_units(currency, balance)
+
+        if round:
+            balance = round_currency(currency, balance)
+
+        return balance
+
 
 class UserFlag(Model):
     objects = GetOrNoneManager()
 
     user = OneToOneField(TelegramUser, related_name='flags', on_delete=CASCADE)
+    in_trade = BooleanField(default=False)
     await_requisites_for_order = BooleanField(default=False)
     await_currency_rate = BooleanField(default=False)
     await_requisite_for_order = BooleanField(default=False)
     await_amount_for_order = BooleanField(default=False)
     await_amount_for_trade = BooleanField(default=False)
     await_tx_hash = BooleanField(default=False)
-
-    temp_currency = CharField(null=True, max_length=255)
-    requisites_for_trade = BooleanField(default=False)
-    requisites_for_start_deal = BooleanField(default=False)
-    await_currency_value = BooleanField(default=False)
-    await_amount_for_deal = BooleanField(default=False)
     await_requisites_address = BooleanField(default=False)
     await_requisites_name = BooleanField(default=False)
     edit_requisite = BooleanField(default=False)
+    await_replenishment_for_order = BooleanField(default=False)
+    await_amount_for_withdrawal = BooleanField(default=False)
+    await_tx_hash_for_withdrawal = BooleanField(default=False)
+    await_replenishment_for_trade = BooleanField(default=False)
+    await_amount_for_convert_bonus = BooleanField(default=False)
 
 
 class UserSettings(Model):
@@ -85,8 +131,10 @@ class UserSettings(Model):
 
 
 class UserRef(Model):
+    objects = GetOrNoneManager()
+
     user = OneToOneField(TelegramUser, related_name='ref', on_delete=CASCADE)
-    referrer = ForeignKey(TelegramUser, on_delete=CASCADE)
+    referrer = ForeignKey(TelegramUser, related_name='Ref', on_delete=CASCADE)
     ref_created_at = DateTimeField(auto_now_add=True)
 
 
@@ -118,3 +166,15 @@ class UserPurse(Model):
     currency = CharField(max_length=255)
     address = CharField(max_length=255, null=True)
     status = CharField(max_length=255, default='invalid')
+
+    def get_display_text(self, user):
+        if self.name:
+            return user.get_text(name='purse-requisite_info_with_name').format(
+                name=self.name,
+                address=self.address,
+                currency=self.currency)
+
+        return user.get_text(name='purse-requisite_info').format(
+            address=self.address,
+            currency=self.currency)
+

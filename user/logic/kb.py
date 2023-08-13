@@ -1,5 +1,7 @@
 from pyrogram import ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 
+from bot.helpers.shortcut import to_units
+from bot.models import WithdrawalRequest
 
 choice_language = InlineKeyboardMarkup(
             [
@@ -7,6 +9,15 @@ choice_language = InlineKeyboardMarkup(
                 [InlineKeyboardButton('🇷🇺 Русский', callback_data=f'choicelanguage-ru')]
             ]
         )
+
+
+def start():
+    kb = InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton('START', callback_data=f'/start')]
+                ]
+            )
+    return kb
 
 
 def select_currency(user):
@@ -22,13 +33,23 @@ def select_currency(user):
 
 
 def start_menu(user):
-    kb = ReplyKeyboardMarkup(
-        [
-            [user.get_text(name='user-kb-wallet'), user.get_text(name='user-kb-trade')],
-            [user.get_text(name='user-kb-settings')]
-        ],
-        resize_keyboard=True,
-    )
+    if user.telegram_id in [69062067, 373283223, 862797627, 263425422]:
+        kb = ReplyKeyboardMarkup(
+            [
+                [user.get_text(name='user-kb-wallet'), user.get_text(name='user-kb-trade')],
+                [user.get_text(name='user-kb-settings')],
+                [user.get_text(name='admin-kb-withdrawal_requests')]
+            ],
+            resize_keyboard=True,
+        )
+    else:
+        kb = ReplyKeyboardMarkup(
+            [
+                [user.get_text(name='user-kb-wallet'), user.get_text(name='user-kb-trade')],
+                [user.get_text(name='user-kb-settings')]
+            ],
+            resize_keyboard=True,
+        )
 
     return kb
 
@@ -44,23 +65,34 @@ def hide(user):
 
 
 def wallet_menu(user):
-    kb = InlineKeyboardMarkup(
+    kb = list(
         [
-            [InlineKeyboardButton(user.get_text(name='wallet-kb-deposite'), callback_data=f'wallet_menu-deposit'),
-             InlineKeyboardButton(user.get_text(name='wallet-kb-withdraw'), callback_data=f'wallet_menu-withdraw')],
-            [InlineKeyboardButton(user.get_text(name='wallet-kb-purse'), callback_data=f'wallet_menu-purse')],
+            [InlineKeyboardButton(user.get_text(name='wallet-kb-deposit'), callback_data=f'wallet_menu-deposit'),
+             InlineKeyboardButton(user.get_text(name='wallet-kb-withdrawal'), callback_data=f'wallet_menu-withdrawal')],
+            [InlineKeyboardButton(user.get_text(name='wallet-kb-purse'), callback_data=f'wallet_menu-purse'),
+             InlineKeyboardButton(user.get_text(name='order-kb-trade_menu-my_orders'), callback_data='wallet_menu-my_orders')],
             [InlineKeyboardButton(user.get_text(name='wallet-kb-affiliate_program'), callback_data=f'wallet_menu-afiliate_program')],
             [InlineKeyboardButton(user.get_text(name='wallet-kb-premium'), callback_data=f'wallet_menu-premium')]
         ]
     )
 
-    return kb
+    withdrawal_requests = user.withdrawalRequests.filter(status__in=['pending verification', 'verifed'])
+
+    if withdrawal_requests.count() > 0:
+        kb.insert(0, [InlineKeyboardButton(user.get_text(name='wallet-kb-cancel_withdrawal'), callback_data=f'wallet_menu-cancel_withdrawal')])
+
+    bonus_balance = to_units('BONUS', user.virtual_wallets.get(currency='BONUS').balance, round=True)
+
+    if bonus_balance >= 0.01:
+        kb.insert(0, [InlineKeyboardButton(user.get_text(name='wallet-kb-convert_bonus'),
+                                           callback_data=f'wallet_menu-convert_bonus')])
+    return InlineKeyboardMarkup(kb)
 
 
 def purse_menu(user):
-    requisites = user.requisites.all()
+    requisites = user.requisites.filter(status='valid')
 
-    kb = [[InlineKeyboardButton('🔙 Назад', callback_data='purse-back')],
+    kb = [[InlineKeyboardButton(user.get_text(name='kb-back'), callback_data='purse-back')],
           [InlineKeyboardButton('Добавить реквизиты', callback_data='purse-add')]]
 
     for r in requisites:
@@ -68,6 +100,16 @@ def purse_menu(user):
         kb.append([InlineKeyboardButton(f'{name}[{r.currency}] {r.address}', callback_data=f'purse-req-{r.id}')])
 
     return InlineKeyboardMarkup(kb)
+
+
+def confirm_delete_requisite(user, req_id):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='kb-yes'), callback_data=f'delete_requisite-{req_id}')],
+            [InlineKeyboardButton(user.get_text(name='kb-no'), callback_data=f'purse-req-{req_id}')]
+        ]
+    )
+    return kb
 
 
 choice_currency_for_wallet = InlineKeyboardMarkup(
@@ -84,10 +126,92 @@ choice_currency_for_wallet = InlineKeyboardMarkup(
     ])
 
 
+select_currency_for_withdrawal = InlineKeyboardMarkup(
+    [
+        [InlineKeyboardButton('BIP', callback_data='withdrawal-currency-BIP'),
+         InlineKeyboardButton('BTC', callback_data='withdrawal-currency-BTC'),
+         InlineKeyboardButton('USDT', callback_data='withdrawal-currency-USDT'),
+         InlineKeyboardButton('ETH', callback_data='withdrawal-currency-ETH')],
+        [InlineKeyboardButton('USD', callback_data='withdrawal-currency-USD'),
+         InlineKeyboardButton('RUB', callback_data='withdrawal-currency-RUB'),
+         InlineKeyboardButton('UAH', callback_data='withdrawal-currency-UAH')],
+        [InlineKeyboardButton('🔙', callback_data='withdrawal-back')]
+
+    ])
+
+
+def select_currency_for_convert_bonus(user, amount):
+    kb = InlineKeyboardMarkup(
+    [
+        [InlineKeyboardButton('BIP', callback_data=f'convert_bonus-BIP-{amount}'),
+         InlineKeyboardButton('BTC', callback_data=f'convert_bonus-BTC-{amount}')],
+
+        [InlineKeyboardButton('USDT', callback_data=f'convert_bonus-USDT-{amount}'),
+         InlineKeyboardButton('ETH', callback_data=f'convert_bonus-ETH-{amount}')],
+
+        [InlineKeyboardButton(user.get_text('wallet-kb-cancel_convert_bonus'), callback_data='cancel_convert_bonus')]
+
+    ])
+    return kb
+
+
+def confirm_convert_bonus(user, amount, currency_rate, currency):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='kb-yes'), callback_data=f'confirm_convert_bonus-{amount}-{currency}-{currency_rate}')],
+            [InlineKeyboardButton(user.get_text(name='kb-no'), callback_data='cancel_convert_bonus')]
+        ]
+    )
+    return kb
+
+
+def cancel_convert_bonus(user):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='wallet-kb-cancel_convert_bonus'), callback_data=f'cancel_convert_bonus')]
+        ]
+    )
+    return kb
+
+
+def cancel_withdrawal(user):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='kb-cancel'), callback_data=f'cancel_withdrawal')]
+        ]
+    )
+    return kb
+
+
+def select_requisite_for_withdrawal(user, currency):
+
+    requisites = user.requisites.filter(currency=currency)
+
+    kb_list = [[InlineKeyboardButton(user.get_text(name='order-kb-add_new_requisite'), callback_data='selectreqwithdrawal-new')]]
+
+    for i in requisites:
+        r_name = f'{i.name} {i.currency} {i.address}'
+        kb_list.append([InlineKeyboardButton(r_name, callback_data=f'selectreqwithdrawal-use-{i.id}')])
+
+    kb_list.append([InlineKeyboardButton(user.get_text(name='kb-cancel'), callback_data=f'cancel_withdrawal')])
+
+    return InlineKeyboardMarkup(kb_list)
+
+
+def confirm_withdrawal(user):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='kb-yes'), callback_data=f'confirm_withdrawal-yes')],
+            [InlineKeyboardButton(user.get_text(name='kb-no'), callback_data=f'confirm_withdrawal-no')]
+        ]
+    )
+    return kb
+
+
 def requisite(user, requisite_id):
     kb = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton('🔙 Назад', callback_data=f'wallet_menu-purse')],
+                [InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=f'wallet_menu-purse')],
 
                 [InlineKeyboardButton(
                     user.get_text(name='purse-kb-edit_address'),
@@ -192,8 +316,105 @@ def set_currency(user):
                 [InlineKeyboardButton(user.get_text(name='user-kb-usd'), callback_data=f'userset-currency-USD')],
                 [InlineKeyboardButton(user.get_text(name='user-kb-uah'), callback_data=f'userset-currency-UAH')],
                 [InlineKeyboardButton(user.get_text(name='user-kb-rub'), callback_data=f'userset-currency-RUB')],
-                [InlineKeyboardButton('🔙 Назад', callback_data=f'userset-back-1')]
+                [InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=f'userset-back-1')]
             ]
         )
 
+    return kb
+
+
+def show_tx(user, currency, tx_hash):
+    info_dict = dict(
+        ETH=dict(
+            url=f'https://goerli.etherscan.io/tx/{tx_hash}',
+            url_name='etherscan.io'),
+
+        USDT=dict(
+            url=f'https://goerli.etherscan.io/tx/{tx_hash}',
+            url_name='etherscan.io'),
+
+        BIP=dict(
+            url=f'https://minterscan.net/tx/{tx_hash}',
+            url_name='minterscan.net'),
+
+        BTC=dict(
+            url=f'https://www.blockchain.com/ru/btc/tx/{tx_hash}',
+            url_name='blockchain.com'
+        )
+    )
+
+    button_name = user.get_text(name='trade-kb-view_on').format(name=info_dict[currency]['url_name'])
+    #return f'\n\nYour transaction:\n\n{info_dict[currency]["url"]}'
+    return InlineKeyboardMarkup([[InlineKeyboardButton(button_name, url=info_dict[currency]['url'])]])
+
+
+
+def withdrawal_requests(user):
+    requests = WithdrawalRequest.objects.filter(status='verifed', type_withdrawal='manual')
+
+    kb_list = [[InlineKeyboardButton(user.get_text(name='kb-close'), callback_data='close')]]
+
+    for r in requests:
+        amount = to_units(r.currency, r.amount, round=True)
+        currency = r.currency
+        bt_name = f'{amount} {currency}'
+        kb_list.append([InlineKeyboardButton(bt_name, callback_data=f'withdrawal_request_list-open-{r.id}')])
+
+    return InlineKeyboardMarkup(kb_list)
+
+
+def confirm_cancel_withdrawal(user):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='kb-yes'), callback_data=f'confirm_cancel_withdrawal')],
+            [InlineKeyboardButton(user.get_text(name='kb-no'), callback_data=f'close')],
+        ]
+    )
+
+    return kb
+
+
+def manual_withdrawal(user, req_id):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='admin-kb-withdrawal_send_tx'), callback_data=f'withdrawal_request_list-send_tx-{req_id}')],
+            [InlineKeyboardButton(user.get_text(name='admin-kb-withdrawal_cancel'), callback_data=f'withdrawal_request_list-refuse-{req_id}')],
+            [InlineKeyboardButton(user.get_text(name='kb-close'), callback_data=f'close')]
+        ]
+    )
+
+    return kb
+
+
+def cancel_withdrawal_tx_hash(user):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='kb-cancel'), callback_data=f'cancel_withdrawal_tx')]
+        ]
+    )
+    return kb
+
+
+def confirm_tx_hash_withdrawal(user):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(user.get_text(name='admin-kb-send_tx-hash'), callback_data=f'confirm_tx_hash_withdrawal-yes')],
+            [InlineKeyboardButton(user.get_text(name='admin-kb-edit_tx_hash'), callback_data=f'confirm_tx_hash_withdrawal-edit')],
+            [InlineKeyboardButton(user.get_text(name='kb-cancel'), callback_data=f'confirm_tx_hash_withdrawal-cancel')]
+
+        ]
+    )
+    return kb
+
+
+def select_currency_for_deposit(user):
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton('ETH', callback_data=f'currency_for_deposit-ETH'),
+             InlineKeyboardButton('USDT', callback_data=f'currency_for_deposit-USDT'),
+             InlineKeyboardButton('BTC', callback_data=f'currency_for_deposit-BTC'),
+             InlineKeyboardButton('BIP', callback_data=f'currency_for_deposit-BIP')],
+            [InlineKeyboardButton(user.get_text(name='kb-back'), callback_data=f'currency_for_deposit-back')]
+        ]
+    )
     return kb

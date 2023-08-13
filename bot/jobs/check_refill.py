@@ -1,26 +1,31 @@
-from requests import ReadTimeout
-from web3 import Web3
-from web3.exceptions import TransactionNotFound
-from mintersdk.shortcuts import to_bip
+from pyrogram import Client
+from requests import ReadTimeout, RequestException
 
+from bot.blockchain.core import get_eth_refill_txs, get_bip_refill_txs, order_deposit, trade_deposit
 from bot.blockchain.ethAPI import w3
 from bot.blockchain.minterAPI import Minter, get_wallet_balance
+from bot.blockchain.rpc_btc import get_all_transactions
 from bot.helpers.misc import retry
+from bot.helpers.shortcut import to_units, round_currency
 
 from bot.models import CashFlow, Service
-from user.models import Wallet
+from config.settings import TG_API_ID, TG_API_HASH, TG_API_TOKEN
+from user.models import Wallet, VirtualWallet
 
 from user.logic import kb
+from collections import defaultdict
 
+import logging
+import rollbar
+from config.settings import POST_SERVER_ITEM_ACCESS_TOKEN
+
+logger = logging.getLogger('TradeErrors')
+rollbar.init(POST_SERVER_ITEM_ACCESS_TOKEN, 'production')
 
 @retry(Exception)
 def check_refill_eth(cli):
-    # contract address
-    usdt_address = '0xdac17f958d2ee523a2206206994597c13d831ec7'
     current_block = w3.eth.blockNumber
-    addresses = [w.address.lower() for w in Wallet.objects.filter(currency='ETH')]
     service = Service.objects.get_or_none(currency='ETH')
-
     if not service:
         Service.objects.create(currency='ETH', last_block=current_block)
         return
@@ -31,179 +36,18 @@ def check_refill_eth(cli):
 
     block_diff = current_block - last_block
 
-    refill_txs = {}
-
-    if block_diff > 1:
-        for block in range(1, block_diff + 1):
-            txs_in_block = w3.eth.getBlock(last_block + block).transactions
-
-            for tx_hash in txs_in_block:
-                try:
-                    tx = w3.eth.getTransactionReceipt(tx_hash)
-                except TransactionNotFound:
-                    continue
-
-                if tx.status == 0:
-                    continue
-
-                if len(tx.logs) == 0:
-                    if tx.to and tx.to.lower() in addresses:
-                        to_and_currency = (tx.to.lower(), 'ETH')
-                        if to_and_currency in refill_txs:
-                            continue
-                        txh = w3.eth.getTransaction(tx_hash)
-
-                        refill_txs[to_and_currency] = txh.value
-                    continue
-
-                if tx.to and tx.to.lower() != usdt_address.lower():
-                    continue
-
-                topics_flag = True
-                for element in tx.logs:
-
-                    if not element['topics']:
-                        topics_flag = False
-                        break
-
-                    foo = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
-                    bar = Web3.toHex(element['topics'][0])
-                    if bar != foo:
-                        topics_flag = False
-                        break
-
-                    len_0x = 2
-                    len_gap = 24
-                    len_address = 40
-
-                    if len(element['topics']) < 3:
-                        first = len_0x + len_gap
-                        second = len_0x + len_gap + len_address + len_gap
-                        receiver_address = '0x' + element['topics'][2].hex()[second:second + len_address]
-                    else:
-                        receiver_address = '0x' + element['topics'][2].hex()[len_0x + len_gap:]
-
-                    amount = Web3.toWei(int(element['data'], 16) / 1000000, 'ether')
-
-                    if receiver_address in addresses:
-                        to_and_currency = (receiver_address, 'USDT')
-                        if to_and_currency in refill_txs:
-                            continue
-
-                        refill_txs[to_and_currency] = amount
-
-                if not topics_flag:
-                    continue
-    else:
-        txs_in_block = w3.eth.getBlock(current_block).transactions
-
-        for tx_hash in txs_in_block:
-            try:
-                tx = w3.eth.getTransactionReceipt(tx_hash)
-            except TransactionNotFound:
-                continue
-
-            if tx.status == 0:
-                continue
-
-            if len(tx.logs) == 0:
-
-                if tx.to and tx.to.lower() in addresses:
-                    to_and_currency = (tx.to.lower(), 'ETH')
-                    if to_and_currency in refill_txs:
-                        continue
-
-                    txh = w3.eth.getTransaction(tx_hash)
-
-                    refill_txs[to_and_currency] = txh.value
-
-                continue
-
-            if tx.to and tx.to.lower() != usdt_address.lower():
-                continue
-
-            topics_flag = True
-            for element in tx.logs:
-
-                if not element['topics']:
-                    topics_flag = False
-                    break
-
-                foo = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
-                bar = Web3.toHex(element['topics'][0])
-                if bar != foo:
-                    topics_flag = False
-                    break
-
-                len_0x = 2
-                len_gap = 24
-                len_address = 40
-
-                if len(element['topics']) < 3:
-                    first = len_0x + len_gap
-                    second = len_0x + len_gap + len_address + len_gap
-                    receiver_address = '0x' + element['topics'][2].hex()[second:second + len_address]
-                else:
-                    receiver_address = '0x' + element['topics'][2].hex()[len_0x + len_gap:]
-
-                amount = Web3.toWei(int(element['data'], 16) / 1000000, 'ether')
-
-                if receiver_address.lower() in addresses:
-                    to_and_currency = (receiver_address, 'USDT')
-                    if to_and_currency in refill_txs:
-                        continue
-
-                    refill_txs[to_and_currency] = amount
-
-            if not topics_flag:
-                continue
-
-    service.last_block = current_block
-    service.save()
-    update_eth_balance(cli, refill_txs)
-
-
-def update_eth_balance(cli, refill_txs):
-    address_refills = {}
-    for (address, coin), refill_pip in refill_txs.items():
-        address_refills.setdefault(address, {})
-        address_refills[address][coin] = refill_pip
-
-    refills_list = []
-
-    for address in address_refills:
-        user = Wallet.objects.get(address=address).user
-
-        txt_refills = f''
-
-        for currency in address_refills[address]:
-            virt_wallet = user.virtual_wallets.get(currency=currency)
-            refill = address_refills[address][currency]
-            virt_wallet.balance += refill
-            virt_wallet.save()
-
-            refills_list.append(dict(user=user.id,
-                                     type_operation='deposit',
-                                     amount=refill,
-                                     currency=currency))
-
-            txt_refills += f'\n**{to_bip(refill)} {currency}**'
-        try:
-
-            cli.send_message(user.telegram_id, user.get_text(name='bot-balance_replinished') + txt_refills,
-                             reply_markup=kb.hide_notification(user))
-        except Exception as e:
-            print('check_refill, line 197\n', e)
-
-    CashFlow.objects.bulk_create([CashFlow(**q) for q in refills_list])
+    addresses = [w.address.lower() for w in Wallet.objects.filter(currency='ETH')]
+    for block in range(last_block + 1, last_block + block_diff + 1):
+        refill_txs = get_eth_refill_txs(addresses, block)
+        update_balance(cli, refill_txs)
+        service.last_block = block
+        service.save()
 
 
 @retry(ReadTimeout)
 def check_refill_bip(cli):
     current_block = Minter.get_latest_block_height()
-
     service = Service.objects.get_or_none(currency='BIP')
-
     if not service:
         Service.objects.create(last_block=current_block, currency='BIP')
         return
@@ -212,74 +56,90 @@ def check_refill_bip(cli):
     if current_block == service.last_block:
         return
 
-    service.last_block = current_block
-    service.save()
-
     block_diff = current_block - last_block
+
     addresses = [w.address for w in Wallet.objects.filter(currency='BIP')]
-
-    if block_diff > 1:
-        refills = {}
-        for i in range(1, block_diff + 1):
-            if 'result' in Minter.get_block(last_block + i):
-                txs = list(filter(lambda t: t['type'] == 1 and t['data']['to'] in addresses and t['data']['coin'] == 'BIP',
-                                  Minter.get_block(last_block + i)['result']['transactions']))
-
-                for tx in txs:
-                    value = tx['data']['value']
-                    coin = tx['data']['coin']
-                    refills[tx['data']['to'], coin] = value
-
-    else:
-        refill_txs = list(filter(lambda t: t['type'] == 1 and t['data']['to'] in addresses and t['data']['coin'] == 'BIP',
-                                 Minter.get_block(current_block)['result']['transactions']))
-
-        refills = {}
-        for tx in refill_txs:
-            value = tx['data']['value']
-            coin = tx['data']['coin']
-            refills[tx['data']['to'], coin] = value
-
-    update_balance(cli, refills)
-    service.last_block = current_block
-    service.save()
+    for block in range(last_block + 1, last_block + block_diff + 1):
+        try:
+            refill_txs = get_bip_refill_txs(addresses, block)
+            update_balance(cli, refill_txs)
+            service.last_block = block
+            service.save()
+        except RequestException:
+            rollbar.report_message('MaxRetryError: requests.exceptions.ConnectTimeout')
+            logger.warning('MaxRetryError: requests.exceptions.ConnectTimeout')
 
 
-def update_balance(cli, refills):
+@retry(ReadTimeout)
+def check_refill_btc(cli):
+    tx_cash_flow = [w.tx_hash.lower() for w in CashFlow.objects.filter(currency='BTC').exclude(tx_hash=None)]
+    addresses = [w.address.lower() for w in Wallet.objects.filter(currency='BTC')]
+    refill_txs = defaultdict(list)
 
-    address_refills = {}
-    for (address, coin), refill_pip in refills.items():
-        address_refills.setdefault(address, {})
-        address_refills[address][coin] = refill_pip
+    sorted_txs = list(
+        filter(
+            lambda tx: tx['category'] == 'receive'
+                       and tx['address'].lower() in addresses
+                       and tx['txid'].lower() not in tx_cash_flow
+                       and tx['confirmations'] != 0,  get_all_transactions()))
 
+    for tx in sorted_txs:
+            refill_txs[tx['address']] += [{'amount': tx['amount'], 'tx_hash': tx['txid'], 'currency': 'BTC'}]
+
+    update_balance(cli, refill_txs)
+
+
+def update_balance(cli, refill_txs):
     refills_list = []
 
-    for address in address_refills:
-
+    user_balances = defaultdict(int)
+    for address in refill_txs:
         user = Wallet.objects.get(address=address).user
-        user_balance = get_wallet_balance(address)
-        txt_refills = ''
-        refill_in_pip = address_refills[address]['BIP']
 
-        virt_wallet = user.virtual_wallets.get(currency='BIP')
+        await_deposit_currency = user.cache['clipboard'].get('deposit_currency', dict())  # TODO Это костыль т.к deposit_currency должен создаться при регистрации
 
-        virt_wallet.balance += refill_in_pip
-        if user_balance != virt_wallet.balance:
-            virt_wallet.balance = user_balance
+        for refill in refill_txs[address]:
+            currency = refill['currency']
+            refill_amount = refill['amount']
+            tx_hash = refill['tx_hash']
+            txt_refills = f''
 
-        virt_wallet.save()
+            user_balances[(user, currency)] += refill_amount
 
-        txt_refills += f'\n**{to_bip(refill_in_pip)} BIP**'
+            refills_list.append(
+                dict(
+                    user=user,
+                    type_operation='deposit',
+                    amount=refill_amount,
+                    currency=currency,
+                    tx_hash=tx_hash
+                )
+            )
 
-        refills_list.append(dict(user=user,
-                                 type_operation='deposit',
-                                 amount=refill_in_pip,
-                                 currency='BIP'))
+            instanse_wallet_list = []
 
-        try:
-            cli.send_message(user.telegram_id, user.get_text(name='bot-balance_replinished') + txt_refills,
-                             reply_markup=kb.hide_notification(user))
-        except Exception as e:
-            print('check_refill, line 272\n', e)
+            for (userx, amount) in user_balances.items():
+                wallet = userx[0].virtual_wallets.get(currency=userx[1])
+                wallet.balance += amount
+                instanse_wallet_list.append(wallet)
 
-    CashFlow.objects.bulk_create([CashFlow(**q) for q in refills_list])
+            VirtualWallet.objects.bulk_update(instanse_wallet_list, ['balance'])
+            CashFlow.objects.bulk_create([CashFlow(**q) for q in refills_list])
+
+            await_deposit_currency_trade = user.cache['clipboard'].get('trade_deposit_currency', list())
+
+            if user.flags.await_replenishment_for_order and currency in await_deposit_currency:
+                order_deposit(cli, user, refill_txs[address])
+
+            elif user.flags.await_replenishment_for_trade and currency in await_deposit_currency_trade:
+                trade_deposit(cli, user, refill_txs[address])
+
+            else:
+                txt_refills += f'**{round_currency(currency, to_units(currency, refill_amount))} {currency}**'
+
+                try:
+                    cli.send_message(user.telegram_id, user.get_text(name='bot-balance_replinished').format(refill=txt_refills),
+                                         reply_markup=kb.show_tx(user, currency, refill['tx_hash'].hex()))
+                except Exception as e:
+                    print('check_refill, line 142\n', e)
+

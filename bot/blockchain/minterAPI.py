@@ -7,8 +7,9 @@ from mintersdk.shortcuts import to_bip
 from requests import ReadTimeout, ConnectTimeout, HTTPError
 
 from ..helpers.misc import retry
+from constance import config
 
-Minter = MinterAPI('https://api.minter.one')
+Minter = MinterAPI(config.MINTER_NODE)
 
 to_handle = ReadTimeout, ConnectTimeout, ConnectionError, HTTPError, ValueError, KeyError
 

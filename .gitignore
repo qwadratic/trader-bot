@@ -1,4 +1,5 @@
 *.session
+*.session-journal
 *.idea
 *.xml
 /unknown_errors.txt
@@ -7,3 +8,6 @@
 *.venv
 *__pycache__
 *.env
+/TODO.txt
+static
+logs

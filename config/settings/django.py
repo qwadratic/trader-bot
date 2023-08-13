@@ -9,6 +9,10 @@ https://docs.djangoproject.com/en/3.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.0/ref/settings/
 """
+import logging
+import os
+from _decimal import Decimal
+from collections import OrderedDict
 
 from .env import env
 
@@ -26,7 +30,6 @@ ALLOWED_HOSTS = [
     "localhost",
 ]
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -37,11 +40,17 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'modeltranslation',
     'django.contrib.admin',
+    'constance',
+    'constance.backends.database',
+    'django_apscheduler',
     'bot',
     'user',
     'order',
     'trade',
+    'silk',
 ]
+
+APSCHEDULER_DATETIME_FORMAT = "N j, Y, f:s a"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -51,6 +60,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'silk.middleware.SilkyMiddleware',
+    'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -73,7 +84,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
 
@@ -82,6 +92,40 @@ DATABASES = {
     'default': env.db('DATABASE_URL')
 }
 
+CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
+CONSTANCE_DATABASE_PREFIX = 'constance:trader-bot:'
+
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+#         'LOCATION': '127.0.0.1:11211',
+#     }
+# }
+# CONSTANCE_DATABASE_CACHE_BACKEND = 'default'
+
+CONSTANCE_CONFIG = OrderedDict(
+    [
+        ('CRON_CHECK_REFILL_BIP_SEC', (15, 'Интервал запуска джобы пополнения BIP')),
+        ('CRON_CHECK_REFILL_ETH_SEC', (20, 'Интервал запуска джобы пополнения ETH')),
+        ('CRON_CHECK_REFILL_BTC_SEC', (30, 'Интервал запуска джобы пополнения BTC')),
+        ('CRON_UPDATE_EXCHANGE_RATES_MIN', (20, 'Интервал запуска джобы парса курса валют')),
+        ('CRON_VERIFICATION_WITHDRAWAL_REQUESTS_SEC', (10, 'Интервал запуска джобы проверки заявок на вывод средств')),
+        ('CRON_CHECK_SUBSCRIPTION_TIME_SEC', (300, 'Интервал проверки времени реф подписки')),
+        ('ETH_NODE', (env.str("ETH_RPC_URL"), ' ')),
+        ('MINTER_NODE', ('http://195.201.211.234:8841', ' ')),
+        ('BTC_NODE', ('http://{user}:{password}@5.9.65.243:8332/', ' ')),
+        ('BTC_WALLET_NAME', ('dev', 'Имя основного глобального кошелька, по умолчанию установлено имя dev кошелька')),
+        ('GET_MAX_PRICE_RANGE_FACTOR', (Decimal('1'), 'Коэффициент максимального отклонения от курса валют')),
+        ('WITHDRAWAL_FACTOR', (Decimal('1.2'), 'некий коэффициент для вычисления максимальной суммы вывода')),
+        ('TAKER_FEE', (Decimal('0.3'), 'Юзер который отозвался на объявление')),
+        ('MAKER_FEE', (Decimal('0.3'), 'Создатель объявления')),
+        ('AFFILIATE_FEE', (Decimal('0.25'), 'Комса рефереру')),
+        ('MIN_AMOUNT_CONVERT_BONUS', (1, 'Минимальная сумма для конвертации бонусных шекелей')),
+        ('USDT_CONTRACT_ADDRESS', (env.str('USDT_CONTRACT_ADDRESS'), '')),
+    ]
+)
+
+# CONSTANCE_CONFIG =
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
@@ -101,12 +145,10 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/3.0/topics/i18n/
-#LANGUAGE_CODE = 'ru-ru'
+# LANGUAGE_CODE = 'ru-ru'
 LANGUAGE_CODE = 'en-us'
-
 
 gettext = lambda s: s
 LANGUAGES = [
@@ -116,7 +158,6 @@ LANGUAGES = [
 
 MODELTRANSLATION_TRANSLATION_REGISTRY = 'bot.translation'
 
-
 TIME_ZONE = 'UTC'
 
 USE_I18N = True
@@ -125,8 +166,125 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
-
+_SETTINGS_DIR = os.path.dirname(os.path.abspath(__file__))
+_CONFIG_DIR = os.path.dirname(_SETTINGS_DIR)
+PROJECT_DIR = os.path.dirname(_CONFIG_DIR)
+STATIC_ROOT = os.path.join(PROJECT_DIR, 'static')
 STATIC_URL = '/static/'
+
+
+POST_SERVER_ITEM_ACCESS_TOKEN = '4ae1bed48b524ba4b7e1e22315bdbd6f'
+ROLLBAR = {
+    'access_token': 'POST_SERVER_ITEM_ACCESS_TOKEN',
+    'environment':  'production',
+    'branch': 'log',
+    'root': 'os.path.dirname(os.path.abspath(__file__))',
+}
+
+DJANGO_LOG_LEVEL = 'INFO'
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] ({module}.{filename}:{lineno} {thread:d}|{process:d}) [{levelname}]: {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+      'require_debug_true': {
+          '()': 'django.utils.log.RequireDebugTrue', # change on django.utils.log.RequireDebugFalse if DEBUG = off in .env
+      },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'rollbar': {
+            'filters': ['require_debug_true'],
+            'accsess_token': 'POST_SERVER_ITEM_ACCESS_TOKEN',
+            'enviroment': 'production',
+            'class': 'rollbar.logger.RollbarHandler',
+        },
+        'jobs': {
+            'formatter': 'verbose',
+            'filters': ['require_debug_true'],
+            'level': 'INFO',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': 'logs/jobs.log',
+            'when': 'midnight',
+            'utc': True,
+            'backupCount': 7
+        },
+        'trade_event': {
+            'formatter': 'verbose',
+            'filters': ['require_debug_true'],
+            'level': 'INFO',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': 'logs/trade_event.log',
+            'when': 'midnight',
+            'utc': True,
+            'backupCount': 7
+        },
+        'trade_operations': {
+            'formatter': 'verbose',
+            'filters': ['require_debug_true'],
+            'level': 'DEBUG',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': 'logs/trade_operations.log',
+            'when': 'midnight',
+            'utc': True,
+            'backupCount': 7
+        },
+        'trade_errors': {
+            'formatter': 'verbose',
+            'filters': ['require_debug_true'],
+            'level': 'WARNING',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': 'logs/trade_errors.log',
+            'when': 'midnight',
+            'utc': True,
+            'backupCount': 7
+        },
+    },
+    'loggers': {
+        'pyrogram.client.ext.syncer': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'pyrogram.session.session': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'pyrogram': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'TradeJobs': {
+            'handlers': ['console', 'jobs'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'TradeEvent': {
+            'handlers': ['console', 'trade_event'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'TradeOperations': {
+            'handlers': ['console', 'trade_operations'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'TradeErrors': {
+            'handlers': ['console', 'trade_errors', 'rollbar'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+    },
+}

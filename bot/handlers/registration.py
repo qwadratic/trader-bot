@@ -1,9 +1,11 @@
 from pyrogram import Client, Filters
 
+from order.logic.core import order_info_for_owner, get_order_info
 from user.logic import kb
-from user.logic.filters import ref_link
+from user.logic.filters import ref_link, unknown_command, active_flag
 from user.logic.registration import register_user
 from order.models import Order
+from order.logic import kb as order_kb
 from bot.helpers.shortcut import get_user
 
 
@@ -60,13 +62,12 @@ def ref_start(_, m):
         m.reply(user.get_text(name='user-start_ref'), reply_markup=kb.hide(user))
 
     # Мы попали в объявление.
-    # TODO:: заимплементить этот кусок
     if is_ref_order:
         # Перешли по своей же ссылке
         if referrer.id == user.id:
-            m.reply('TODO:: Интерфейс редактирования объявления (посетили свое по рефке)', reply_markup=kb.hide(user))
+            m.reply(order_info_for_owner(order.parent_order), reply_markup=order_kb.order_for_owner(order.parent_order))
         else:
-            m.reply('TODO:: Интерфейс просмотра объявления (возможно доп. логика, т. к. перешли по рефке)', reply_markup=kb.hide(user))
+            m.reply(get_order_info(user, order.id), reply_markup=order_kb.order_for_user(user, order.id))
         return
 
     # Переход на объявление по валидной рефке мы уже обработали - значит мы в главном меню
@@ -78,6 +79,30 @@ def ref_start(_, m):
         text_name, markup = 'user-start', kb.start_menu(user)
 
     m.reply(user.get_text(name=text_name), reply_markup=markup)
+
+
+@Client.on_message(~Filters.command("start") & Filters.create(lambda _, m: get_user(m.from_user.id)) & unknown_command & ~active_flag, group=-999)
+def start_m(_, m):
+
+    m.reply('Для начала работы с ботом - нажмите START', reply_markup=kb.start())
+
+
+@Client.on_message(~Filters.command("start") & ~Filters.create(lambda _, m: get_user(m.from_user.id)), group=999)
+def start_m_for_newuser(_, m):
+    m.reply('Для начала работы с ботом - нажмите START', reply_markup=kb.start())
+
+
+@Client.on_callback_query(Filters.create(lambda _, cb: cb.data == '/start'))
+def start_button(_, cb):
+    tg_user = cb.from_user
+    user = get_user(cb.from_user.id)
+
+    if not user:
+        user = register_user(tg_user)
+        text_name, markup = 'user-settings-select_language', kb.choice_language
+    else:
+        text_name, markup = 'user-start', kb.start_menu(user)
+    cb.message.reply(user.get_text(text_name), reply_markup=markup)
 
 
 @Client.on_callback_query(Filters.create(lambda _, cb: cb.data[:14] == 'choicelanguage'))
